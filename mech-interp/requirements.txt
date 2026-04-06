@@ -1,0 +1,21 @@
+# Core
+torch>=2.0
+einops
+fancy_einsum
+transformer-lens
+sae-lens
+circuitsvis
+
+# Analysis
+numpy
+pandas
+matplotlib
+plotly
+
+# Jupyter
+jupyter
+ipywidgets
+
+# Utilities
+tqdm
+wandb
