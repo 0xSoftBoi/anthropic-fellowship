@@ -22,42 +22,50 @@ from agents.static_analyzer_v2 import analyze_static, StaticFinding
 VULN_ALIASES = {
     "untrusted_external_call": [
         "untrusted_external_call", "arbitrary_external_call", "external_call",
-        "fake_verifier", "unvalidated_verifier",
+        "fake_verifier", "unvalidated_verifier", "arbitrary_calls",
     ],
     "reentrancy": [
         "reentrancy", "reentrant", "re-entrancy", "missing_reentrancy_guard",
     ],
     "unprotected_initializer": [
         "unprotected_initializer", "no_access_control_init", "missing_init_guard",
+        "initialization", "access_control_initializ",
     ],
     "reinitializable": [
         "reinitializable", "multiple_initialization", "re_initialization",
     ],
     "zero_root_acceptance": [
         "zero_root_acceptance", "zero_root", "default_value_exploit",
+        "message_validation_zero", "zero_hash",
     ],
     "missing_signature_verification": [
         "missing_signature_verification", "unused_signature_parameter",
-        "no_signature_check", "signature_bypass",
+        "no_signature_check", "signature_bypass", "signature_verification",
     ],
     "missing_proof_link": [
         "missing_proof_link", "no_proof_verification", "process_without_proof",
+        "message_validation_proof",
     ],
     "low_validator_threshold": [
         "low_validator_threshold", "insufficient_threshold",
+        "validator_threshold", "threshold",
     ],
     "duplicate_signature_acceptance": [
         "duplicate_signature_acceptance", "duplicate_signer",
+        "duplicate_signature", "signature_replay",
     ],
     "no_rate_limiting": [
         "no_rate_limiting", "rate_limit", "withdrawal_limit",
+        "no_withdrawal_limit",
     ],
     "unprotected_admin_function": [
         "unprotected_admin_function", "missing_access_control",
         "no_access_control", "unprotected_state_change",
+        "access_control",
     ],
     "no_withdrawal_delay": [
         "no_withdrawal_delay", "no_timelock", "missing_timelock",
+        "timelock",
     ],
     "spot_price_oracle": [
         "spot_price_oracle", "oracle_manipulation", "price_manipulation",
@@ -68,7 +76,7 @@ VULN_ALIASES = {
     ],
     "arbitrary_calldata": [
         "arbitrary_calldata", "arbitrary_call", "calldata_injection",
-        "arbitrary_external_call",
+        "arbitrary_external_call", "arbitrary_calls",
     ],
     "approval_drain": [
         "approval_drain", "approval_exploitation", "infinite_approval",
@@ -79,39 +87,72 @@ VULN_ALIASES = {
     ],
     "delegatecall_injection": [
         "delegatecall_injection", "delegatecall_to_user_address",
+        "delegatecall_to_user_input",
     ],
     "signature_malleability": [
         "signature_malleability", "malleable_signature", "ecrecover_malleability",
     ],
     "unchecked_return": [
         "unchecked_return", "unchecked_transfer", "unchecked_erc20",
+        "unchecked_transfer_return", "token_handling",
     ],
     "cross_chain_replay": [
         "cross_chain_replay", "replay_attack", "missing_chain_id",
+        "replay_chain_id", "replay",
     ],
     "missing_nonce": [
         "missing_nonce", "replay_nonce", "no_nonce",
     ],
     "unbounded_loop": [
         "unbounded_loop", "dos_loop", "gas_bomb", "unbounded_iteration",
+        "unbounded_loop_dos", "dos_gas", "dos",
     ],
     "selfdestruct_balance": [
         "selfdestruct_balance", "force_eth", "unexpected_balance",
+        "forced_eth_reception",
     ],
     "front_running": [
         "front_running", "frontrun", "mev", "sandwich",
     ],
     "missing_events": [
         "missing_events", "no_event", "missing_emit",
+        "missing_event_emission",
     ],
     "fee_on_transfer": [
         "fee_on_transfer", "deflationary_token", "transfer_fee",
+        "fee_on_transfer_mismatch",
     ],
     "zero_value_deposit": [
         "zero_value_deposit", "zero_value", "empty_deposit",
+        "input_validation_zero", "input_validation_deposit",
     ],
     "timelock_bypass": [
         "timelock_bypass", "emergency_bypass", "emergency_withdrawal",
+    ],
+    "input_validation_missing": [
+        "input_validation_missing", "input_validation", "missing_input_validation",
+    ],
+    "message_validation": [
+        "message_validation", "cross_chain_message", "message_verification",
+    ],
+    "centralization_risk": [
+        "centralization_risk", "centralization", "single_admin",
+    ],
+    "unprotected_push": [
+        "unprotected_push", "unbounded_push", "array_push",
+    ],
+    "unbounded_fee": [
+        "unbounded_fee", "fee_manipulation", "unrestricted_fee",
+    ],
+    "double_spend": [
+        "double_spend", "double_withdrawal",
+    ],
+    "keeper_overwrite": [
+        "keeper_overwrite", "keeper_key_overwrite",
+    ],
+    "arbitrary_execution": [
+        "arbitrary_execution", "arbitrary_contract_call",
+        "unrestricted_cross_chain_call",
     ],
 }
 

@@ -79,18 +79,29 @@ VULNERABILITY TAXONOMY — check each category systematically:
     - Are there unbounded loops over user-controlled arrays?
     - Can an attacker push many elements to cause out-of-gas?
 
-For EACH vulnerability found, output a JSON object with:
-{
-    "vuln_type": "<snake_case matching taxonomy above>",
-    "severity": "critical|high|medium",
-    "location": "<function_name>",
-    "description": "<one sentence>",
-    "exploit_scenario": "<how an attacker exploits this>",
-    "confidence": 0.0-1.0
-}
+For EACH vulnerability found, output a JSON object. You MUST use one of these EXACT vuln_type strings:
 
-Output ONLY a JSON array of vulnerability objects. No preamble, no markdown fences.
-Be thorough but avoid false positives. Focus on BRIDGE-SPECIFIC vulnerabilities."""
+  untrusted_external_call, reentrancy, unprotected_initializer, reinitializable,
+  zero_root_acceptance, missing_signature_verification, missing_proof_link,
+  low_validator_threshold, duplicate_signature_acceptance, no_rate_limiting,
+  unprotected_admin_function, no_withdrawal_delay, spot_price_oracle,
+  flash_loan_exploitable, arbitrary_calldata, approval_drain,
+  unprotected_upgrade, delegatecall_injection, signature_malleability,
+  unchecked_transfer_return, cross_chain_replay, missing_nonce,
+  unbounded_loop_dos, forced_eth_reception, front_running,
+  missing_event_emission, fee_on_transfer_mismatch, zero_value_deposit,
+  timelock_bypass, centralization_risk, input_validation_missing,
+  double_spend, arbitrary_execution, keeper_overwrite
+
+Example output:
+[
+  {"vuln_type": "unprotected_initializer", "severity": "critical", "location": "initialize", "description": "Anyone can call initialize() — no access control", "confidence": 0.95},
+  {"vuln_type": "missing_signature_verification", "severity": "critical", "location": "update", "description": "Signature parameter accepted but never verified with ecrecover", "confidence": 0.9}
+]
+
+Output ONLY a JSON array. No preamble, no markdown fences, no explanation.
+Be thorough but ONLY report vulnerabilities you are confident about (>0.6).
+Focus on BRIDGE-SPECIFIC vulnerabilities that static tools miss."""
 
 
 @dataclass
