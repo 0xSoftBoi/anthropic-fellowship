@@ -1,0 +1,13 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+solc = "0.8.20"
+
+# For forking mainnet (used in exploit reproduction)
+# Set ETH_RPC_URL env var or use --fork-url flag
+# eth_rpc_url = "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY"
+
+[fmt]
+line_length = 100
+tab_width = 4

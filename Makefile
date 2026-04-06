@@ -1,13 +1,17 @@
 # BRIDGE-bench Makefile
 # Run these on your local machine after cloning
 
-.PHONY: setup test-static test-claude benchmark docker help
+.PHONY: setup test-static test-claude benchmark docker help foundry-test foundry-build
 
 help:
 	@echo "BRIDGE-bench — Cross-Chain Bridge Vulnerability Detection"
 	@echo ""
 	@echo "Setup:"
 	@echo "  make setup           Install deps + clone DefiHackLabs"
+	@echo ""
+	@echo "Foundry (Solidity tests):"
+	@echo "  make foundry-build   Compile Solidity contracts"
+	@echo "  make foundry-test    Run exploit reproduction tests"
 	@echo ""
 	@echo "Benchmarks:"
 	@echo "  make test-static     Run static analyzer against test contracts"
@@ -22,6 +26,12 @@ help:
 	@echo "Environment variables:"
 	@echo "  ANTHROPIC_API_KEY    Required for Claude analysis"
 	@echo "  ETHERSCAN_API_KEY    Required for fetching real contract source"
+
+foundry-build:
+	cd ai-security/foundry && forge build
+
+foundry-test:
+	cd ai-security/foundry && forge test -vv
 
 setup:
 	pip install -r ai-security/requirements.txt --break-system-packages

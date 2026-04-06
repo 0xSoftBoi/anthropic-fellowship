@@ -40,9 +40,10 @@
 - [ ] Skim: "A Mathematical Framework for Transformer Circuits"
 
 **AI Security**
-- [ ] Set up local Hardhat/Foundry simulation environment
-- [ ] Reproduce one known exploit in simulation
-- [ ] Draft benchmark specification for cross-chain vulnerabilities
+- [x] Set up local Hardhat/Foundry simulation environment
+- [x] Reproduce one known exploit in simulation
+- [x] ★ BONUS: Reproduce 3 exploit patterns (Nomad, Wormhole, Ronin) — 16 passing Foundry tests
+- [x] Draft benchmark specification for cross-chain vulnerabilities
 
 **Hours target: 18**
 
