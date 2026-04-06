@@ -34,10 +34,13 @@
 
 ## Week 2 (Apr 14-20): Core Mech Interp Techniques
 **Mech Interp**
-- [ ] ARENA: "Mech Interp Intro: TransformerLens, Induction Heads"
-- [ ] Practice: direct logit attribution on GPT-2 small
-- [ ] Practice: activation patching to change outputs
+- [x] ARENA: "Mech Interp Intro: TransformerLens, Induction Heads"
+- [x] Practice: direct logit attribution on GPT-2 small
+- [x] Practice: activation patching to change outputs
 - [ ] Skim: "A Mathematical Framework for Transformer Circuits"
+- [x] ★ BONUS: Experiment 06 — induction head detection (L5H5=0.92, L4H11 prev-token)
+- [x] ★ BONUS: Experiment 07 — direct logit attribution + logit lens
+- [x] ★ BONUS: Experiment 08 — activation patching heatmaps (causal localization)
 
 **AI Security**
 - [x] Set up local Hardhat/Foundry simulation environment
