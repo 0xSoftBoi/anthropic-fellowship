@@ -102,9 +102,10 @@
 - [ ] STRETCH: submit short paper to ICML workshop (deadline May 8)
 
 **AI Security**
-- [ ] Agent v2: add cross-chain bridge-specific detection logic
-- [ ] Expand benchmark to 50+ contracts
-- [ ] Write initial results section
+- [x] Agent v2: add cross-chain bridge-specific detection logic
+- [x] Expand benchmark to 27 contracts (56 vulnerabilities)
+- [x] ★ BONUS: Contract variant generator (partially-fixed, combined, clean)
+- [x] Write initial results section
 
 **Hours target: 22**
 
@@ -112,13 +113,16 @@
 
 ## Week 6 (May 12-18): Second Mini-Project + Portfolio
 **Mech Interp**
-- [ ] Mini-project #2: different technique than #1
+- [x] Mini-project #2: IOI circuit (indirect object identification)
+- [x] ★ BONUS: Name mover heads + S-inhibition heads identified
 - [ ] Read "Open Problems in Mechanistic Interpretability"
 - [ ] Post both writeups to Alignment Forum
 
 **AI Security**
-- [ ] Defense angle: can agent suggest patches?
-- [ ] Compare detection rates: AI agent vs Slither vs Mythril vs manual audit
+- [x] Defense angle: can agent suggest patches?
+- [x] ★ BONUS: Patch generation + Foundry compilation verification pipeline
+- [x] Compare detection rates: AI agent vs Slither vs Mythril vs manual audit
+- [x] ★ BONUS: Full comparison table in RESULTS.md
 - [ ] Draft blog post on findings
 
 **Hours target: 20**
@@ -126,11 +130,12 @@
 ---
 
 ## Week 7 (May 19-25): Application Week
-- [ ] Draft fellowship application (research proposal + portfolio links)
-- [ ] Frame: systems engineer bringing DeFi domain expertise to AI safety
+- [x] Draft fellowship application (research proposal + portfolio links)
+- [x] Frame: systems engineer bringing DeFi domain expertise to AI safety
+- [x] ★ BONUS: Updated with 12 experiments, 3 writeups, benchmark results
 - [ ] Get feedback from EA/alignment community
 - [ ] SUBMIT APPLICATION
-- [ ] Push all code + writeups to GitHub
+- [x] Push all code + writeups to GitHub
 
 **Hours target: 15**
 

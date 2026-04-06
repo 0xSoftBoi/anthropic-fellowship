@@ -27,28 +27,30 @@ bridge vulnerability detection, with three contributions:
 **1. Cross-Chain Bridge Benchmark (BRIDGE-bench)**
 
 An extension of SCONE-bench focused on bridge-specific vulnerabilities.
-I've already catalogued 10 major bridge exploits ($2.1B total losses)
-with a vulnerability taxonomy:
-- Smart contract logic bugs: 5 exploits, $1.16B (55% of losses)
-- Key compromise: 4 exploits, $933M (44%)
-- Upgrade mechanism abuse: 1 exploit, $4.3M (1%)
+I've built a working benchmark with:
+- 10 real bridge exploits ($1.6B total losses) with fork data
+- 20 simplified pattern contracts with 44 labeled vulnerabilities
+- 3-tier vulnerability taxonomy (static-detectable → LLM-reasoning → operational)
+- 16 passing Foundry exploit reproduction tests (Nomad, Wormhole, Ronin)
+- Formal benchmark specification with evaluation modes (Detect → Patch → Verify)
 
-6 of 10 have AI-detectable vulnerability classes. I will expand this
-to 50+ contracts with source code, ground truth labels, and simulated
-exploit reproductions.
+I will expand this to 50+ contracts and systematically evaluate
+Claude-based agents against established baselines.
 
 **2. Claude-Based Detection Agent vs Static Tool Baselines**
 
-I've built a working pipeline:
-- Static pattern analyzer (6 vulnerability categories) → 41% F1 baseline
-- Claude-powered deep analyzer with structured JSON output
-- Evaluation harness measuring precision/recall/F1 against ground truth
-- Etherscan contract source fetcher
+I've built a working pipeline and measured baselines:
+
+| Analyzer | F1 | Precision | Recall | Notes |
+|----------|-----|-----------|--------|-------|
+| Slither (Trail of Bits) | 11% | 11% | 11% | Generic detectors miss bridge patterns |
+| Static Analyzer v2 (custom) | 42% | 49% | 36% | Regex heuristics tuned for bridges |
+| Agent v2 (Claude) | TBD | — | — | Bridge-specific prompt engineering |
 
 The core research question: does Claude find vulnerabilities that
-Slither/Mythril miss, especially compositional/cross-chain bugs where
-a flash loan + oracle manipulation + cross-chain message compose into
-an attack that no single static rule catches?
+static tools miss? Our gap analysis shows the static tools completely
+miss compositional vulnerabilities worth $621M+ (Poly Network, LiFi)
+— exactly the class where LLM reasoning should excel.
 
 **3. Defense-First Framing**
 
@@ -99,29 +101,32 @@ To demonstrate technical range beyond my DeFi domain, I spent a week
 doing hands-on mech interp research. This is capability demonstration,
 not novelty claims.
 
-**What I did:**
-- Replicated ROME-style causal tracing (Meng et al. 2022) across
-  GPT-2 small, Pythia-70m, and Pythia-160m using TransformerLens
-- Confirmed factual recall resolves at 75-83% network depth
-- Investigated negation processing: added mechanistic evidence
-  (layer-level localization of negation vs factual signals) to
-  the well-known finding that LLMs fail at negation
-- Made a methodological mistake (single-position patching of
-  multi-token entities), caught it, documented it
+**12 experiments completed:**
+
+| # | Experiment | Technique |
+|---|-----------|-----------|
+| 01-05 | Factual recall localization, multi-token patching, cross-model replication, negation processing | Activation patching, ablation |
+| 06 | Induction head detection | Repeated sequence analysis, composition |
+| 07 | Direct logit attribution | Residual stream decomposition, logit lens |
+| 08 | Activation patching practice | Causal interventions, heatmaps |
+| 09 | Toy models of superposition | Phase transitions, importance-based encoding |
+| 10 | Sparse autoencoder on GPT-2 | From-scratch SAE, 4x expansion, feature analysis |
+| 11 | Greater-than circuit (mini-project #1) | Full 5-step circuit analysis |
+| 12 | IOI circuit (mini-project #2) | Name mover / S-inhibition head groups |
+
+**3 writeups:** factual recall replication, negation as factual booster, greater-than circuit
 
 **What this shows:**
 - I can pick up a new technical domain (mech interp) and produce
-  working experiments in days, not months
+  12 working experiments covering the full ARENA curriculum
+- Two independent mini-projects demonstrating circuit-level analysis
+- From-scratch SAE implementation following Anthropic's architecture
 - I read the literature, identify when my results are replicating
   vs extending prior work, and frame honestly
-- I'm comfortable with the TransformerLens/PyTorch research stack
 
 **What this does NOT show:**
-- Novel mech interp findings (the field has covered this ground)
-- Deep theoretical understanding of superposition, SAEs, or
-  circuit tracing (I'm still learning)
-
-5 experiments, 2 writeups, documented on GitHub.
+- Novel mech interp findings (I'm building capability, not claiming discovery)
+- Deep theoretical contributions (I'm still learning)
 
 ---
 

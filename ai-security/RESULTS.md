@@ -1,0 +1,131 @@
+# BRIDGE-bench Results
+
+## Detection Baselines
+
+### Static Analyzer v2 (Custom)
+
+Our regex + heuristic-based analyzer, tuned for bridge-specific patterns.
+
+| Metric | Value |
+|--------|-------|
+| **F1** | **41.6%** |
+| Precision | 48.5% |
+| Recall | 36.4% |
+| True Positives | 16 |
+| False Positives | 17 |
+| False Negatives | 28 |
+
+**Strengths:**
+- Catches initialization bugs (NomadStyle: 4/5 vulns found)
+- Detects oracle manipulation (spot price patterns)
+- Good at unchecked ERC20 returns (PERFECT on UncheckedTransfer)
+- Low false positive rate for bridge-specific patterns
+
+**Weaknesses:**
+- Misses compositional vulnerabilities (Poly Network: 0/3)
+- Can't detect approval drain via arbitrary calldata (LiFi: 0/2)
+- No understanding of cross-contract interactions
+- Misses signature malleability, front-running, fee-on-transfer
+
+### Slither (Trail of Bits)
+
+Industry-standard static analysis with AST parsing, data flow, and taint tracking.
+
+| Metric | Value |
+|--------|-------|
+| **F1** | **11.1%** |
+| Precision | 10.9% |
+| Recall | 11.4% |
+| True Positives | 5 |
+| False Positives | 41 |
+| False Negatives | 39 |
+
+**Why Slither performs poorly on BRIDGE-bench:**
+1. Generic detectors don't map to bridge-specific vulnerability taxonomy
+2. High false positive rate (41 FPs) from detectors like `low-level-calls`, `unused-return` that fire on every contract
+3. Doesn't understand bridge-specific patterns (message validation, cross-chain replay)
+4. Our simplified contracts trigger fewer of Slither's sophisticated detectors
+
+**This is expected** — Slither is designed for general smart contract auditing, not bridge-specific analysis. The comparison demonstrates that domain-specific tooling (even simple heuristics) outperforms general-purpose tools on specialized benchmarks.
+
+### Agent v2 (Claude, bridge-specific prompt)
+
+LLM-based analyzer with bridge-specific system prompt and structured output.
+
+| Metric | Value |
+|--------|-------|
+| **F1** | **TBD** |
+
+Run with: `export ANTHROPIC_API_KEY=sk-ant-... && python agents/agent_v2_bridge.py`
+
+**Expected advantages over static tools:**
+- Can reason about compositional vulnerabilities
+- Understands cross-contract interaction patterns
+- Can detect approval drain via arbitrary calldata analysis
+- Understands flash loan + oracle manipulation composition
+
+## Dataset
+
+### v1: Test Contracts (4 contracts, 14 vulnerabilities)
+
+| Contract | Vulns | Static v2 TP | Notes |
+|----------|-------|-------------|-------|
+| WormholeStyle | 2 | 1 | Misses untrusted verifier (compositional) |
+| NomadStyle | 5 | 4 | Misses proof link (semantic) |
+| RoninStyle | 5 | 2 | Misses dup sigs, withdrawal delay |
+| OracleManipulation | 2 | 1 | Misses flash loan (compositional) |
+
+### v2: Full Benchmark (20 contracts, 44 vulnerabilities)
+
+| Contract | Based On | Vulns | Static v2 | Best Result |
+|----------|----------|-------|-----------|-------------|
+| WormholeStyle | Wormhole $320M | 2 | 0 TP, 1 FP | — |
+| NomadStyle | Nomad $190M | 5 | 4 TP, 1 FP | Near-perfect |
+| RoninStyle | Ronin $625M | 5 | 2 TP, 1 FP | — |
+| OracleManipulation | Allbridge $570K | 2 | 1 TP, 0 FP | — |
+| LiFiStyle | LiFi $11.6M | 2 | 0 TP, 0 FP | MISS |
+| QubitStyle | Qubit $80M | 2 | 1 TP, 1 FP | New detection |
+| HarmonyStyle | Harmony $100M | 3 | 2 TP, 1 FP | — |
+| PolyNetworkStyle | Poly Network $611M | 3 | 0 TP, 0 FP | MISS |
+| BadProxyBridge | UUPS proxy | 2 | 1 TP, 2 FP | — |
+| ReplayBridge | Cross-chain replay | 2 | 1 TP, 0 FP | — |
+| DelegateCallBridge | delegatecall inject | 1 | 1 TP, 5 FP | New detection |
+| TimelockBypass | Emergency bypass | 2 | 0 TP, 1 FP | MISS |
+| MalleableSig | ECDSA malleability | 2 | 0 TP, 2 FP | MISS |
+| UncheckedTransfer | Unchecked ERC20 | 2 | 2 TP, 0 FP | PERFECT |
+| DoubleSpend | Reentrancy | 2 | 1 TP, 1 FP | — |
+| GasBomb | DoS via gas | 2 | 0 TP, 1 FP | MISS |
+| SelfDestruct | Force-ETH | 1 | 0 TP, 2 FP | MISS |
+| FrontRun | MEV/sandwich | 1 | 0 TP, 1 FP | MISS |
+| MissingEvents | No events | 2 | 0 TP, 0 FP | MISS |
+| FeeOnTransfer | Deflationary | 1 | 0 TP, 2 FP | MISS |
+
+### Detection Gap Analysis
+
+Vulnerabilities MISSED by static analysis but theoretically detectable by LLMs:
+
+| Vulnerability Class | Contracts | Total $ at Risk | Why LLM Should Help |
+|---|---|---|---|
+| Arbitrary calldata → approval drain | LiFi, Poly Network | $621M | Requires tracing call flow |
+| Message validation (zero root) | Nomad (missed 1/5) | $190M | Semantic understanding of defaults |
+| Flash loan + oracle composition | Oracle, Allbridge | $570K+ | Multi-step reasoning |
+| Signature malleability | MalleableSig | — | Crypto domain knowledge |
+| Cross-chain replay | ReplayBridge | — | Protocol-level reasoning |
+| Front-running / MEV | FrontRun | — | Transaction ordering reasoning |
+
+## Patch Pipeline
+
+Status: Architecture complete, compilation verification working.
+
+```
+Detect (static/agent) → Patch (Claude) → Compile (Foundry) → Verify (exploit replay)
+```
+
+Current: Detect + Patch + Compile stages implemented.
+TODO: Exploit replay verification (requires matching Foundry tests to patches).
+
+## Key Insight
+
+**The gap between static tools and LLM agents is exactly where bridge-specific compositional vulnerabilities live.** Static tools catch pattern-matching bugs (42% F1). Slither catches generic Solidity issues (11% F1). Neither can reason about the multi-step attack flows that caused $1.6B in bridge losses.
+
+This is the hypothesis BRIDGE-bench tests: **LLM agents should significantly outperform static tools on Tier 2 (compositional) vulnerabilities.**
