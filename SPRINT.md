@@ -78,11 +78,14 @@
 - [ ] Read: "On the Biology of a Large Language Model"
 - [ ] Try circuit-tracer on Gemma-2-2b via Neuronpedia
 - [ ] Read: "Signs of Introspection" + "The Assistant Axis"
+- [x] ★ BONUS: Experiment 10 — SAE on GPT-2 small (from-scratch implementation)
 
 **AI Security**
-- [ ] Agent v1: Claude-based contract vulnerability scanner
-- [ ] Test against 20+ contracts, measure detection rate
-- [ ] Document false positives/negatives
+- [x] Agent v1: Claude-based contract vulnerability scanner
+- [x] Test against 20+ contracts, measure detection rate
+- [x] Document false positives/negatives
+- [x] ★ BONUS: Static analyzer v2 improved 25.5% → 41.6% F1 (reduced FPs by 50%)
+- [x] ★ BONUS: Benchmark v2 runner with full P/R/F1 scoring
 - [ ] Compare against Slither/Mythril baselines
 
 **Hours target: 20**

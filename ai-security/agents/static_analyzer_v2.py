@@ -42,6 +42,9 @@ def analyze_static(source: str) -> list[StaticFinding]:
     findings.extend(_check_validator_issues(source, lines))
     findings.extend(_check_rate_limiting(source, lines))
     findings.extend(_check_upgrade_risks(source, lines))
+    findings.extend(_check_input_validation(source, lines))
+    findings.extend(_check_delegatecall(source, lines))
+    findings.extend(_check_unchecked_returns(source, lines))
 
     return findings
 
@@ -176,12 +179,18 @@ def _check_access_control(source: str, lines: list[str]) -> list[StaticFinding]:
             has_access = any(pat in func_body for pat in access_patterns)
 
             if has_state_mod and not has_access:
-                # Check if it's a sensitive function
+                # Check if it's a sensitive function (must be genuinely admin-like)
                 sensitive = any(kw in func_name.lower() for kw in [
                     "update", "set", "change", "remove", "delete", "upgrade",
-                    "withdraw", "transfer", "mint", "burn", "pause", "admin",
+                    "mint", "burn", "pause", "admin",
                 ])
-                if sensitive:
+                # Exclude common user-facing functions that legitimately lack access control
+                user_facing = any(kw in func_name.lower() for kw in [
+                    "deposit", "withdraw", "swap", "stake", "unstake",
+                    "claim", "process", "submit", "prove", "liquidate",
+                    "register", "vote", "execute", "relay", "bridge",
+                ])
+                if sensitive and not user_facing:
                     findings.append(StaticFinding(
                         vuln_type="unprotected_admin_function",
                         severity="critical",
@@ -243,16 +252,8 @@ def _check_reentrancy(source: str, lines: list[str]) -> list[StaticFinding]:
                     ))
                     break
 
-    # Check for nonReentrant guard
-    if "nonreentrant" not in source.lower() and "reentrancyguard" not in source.lower():
-        if call_pattern.search(source):
-            findings.append(StaticFinding(
-                vuln_type="missing_reentrancy_guard",
-                severity="medium",
-                location="contract-level",
-                description="Contract has external calls but no ReentrancyGuard",
-                confidence=0.6,
-            ))
+    # Only flag missing reentrancy guard if we found an actual reentrancy pattern above
+    # (not just any external call — that creates too many false positives)
 
     return findings
 
@@ -293,10 +294,16 @@ def _check_rate_limiting(source: str, lines: list[str]) -> list[StaticFinding]:
     findings = []
     src_lower = source.lower()
 
-    # Bridge withdrawals without rate limiting
+    # Bridge withdrawals without rate limiting — only flag if this looks like
+    # a multisig/validator-based bridge (has threshold or signatures), not just
+    # any contract with a withdraw function
     if "withdraw" in src_lower and ".call{value:" in source:
+        is_bridge = any(kw in src_lower for kw in [
+            "threshold", "validator", "signatures",
+            "processedmessage", "processednonce",
+        ]) and "bridge" in src_lower
         rate_keywords = ["ratelimit", "rate_limit", "dailylimit", "maxwithdraw", "cooldown"]
-        if not any(kw in src_lower for kw in rate_keywords):
+        if is_bridge and not any(kw in src_lower for kw in rate_keywords):
             findings.append(StaticFinding(
                 vuln_type="no_rate_limiting",
                 severity="high",
@@ -321,6 +328,99 @@ def _check_upgrade_risks(source: str, lines: list[str]) -> list[StaticFinding]:
                 description="Upgradeable contract without timelock protection",
                 confidence=0.6,
             ))
+
+    return findings
+
+
+def _check_input_validation(source: str, lines: list[str]) -> list[StaticFinding]:
+    """Check for missing input validation (e.g., zero value deposits)."""
+    findings = []
+    src_lower = source.lower()
+
+    # Zero-value deposit: function accepts msg.value but doesn't check > 0
+    for i, line in enumerate(lines):
+        if "msg.value" in line and "function" not in line.lower():
+            # Find enclosing function
+            func_name = None
+            for j in range(i, max(0, i - 20), -1):
+                match = re.search(r"function\s+(\w+)", lines[j])
+                if match:
+                    func_name = match.group(1)
+                    break
+            if func_name and "deposit" in func_name.lower():
+                func_body = _extract_function_body(source, func_name)
+                if func_body and "require(msg.value" not in func_body and "msg.value > 0" not in func_body:
+                    findings.append(StaticFinding(
+                        vuln_type="zero_value_deposit",
+                        severity="critical",
+                        location=func_name,
+                        description="Deposit function uses msg.value without validating it's > 0",
+                        confidence=0.7,
+                    ))
+                break
+
+    # Arbitrary external call: function takes address + bytes and calls it
+    for i, line in enumerate(lines):
+        if re.search(r"\.(call|delegatecall)\(", line):
+            func_body_start = max(0, i - 15)
+            for j in range(func_body_start, i):
+                if re.search(r"address.*bytes", lines[j]) or re.search(r"bytes.*address", lines[j]):
+                    func_name = _find_function(lines[func_body_start:i+1], "function")
+                    findings.append(StaticFinding(
+                        vuln_type="arbitrary_external_call",
+                        severity="critical",
+                        location=func_name or f"line {i+1}",
+                        description="External call with user-supplied address and calldata",
+                        confidence=0.6,
+                    ))
+                    break
+
+    return findings
+
+
+def _check_delegatecall(source: str, lines: list[str]) -> list[StaticFinding]:
+    """Check for dangerous delegatecall patterns."""
+    findings = []
+
+    for i, line in enumerate(lines):
+        if "delegatecall" in line.lower():
+            # Check if target is from function parameter (user-controlled)
+            func_start = max(0, i - 20)
+            for j in range(func_start, i):
+                if "function" in lines[j].lower() and "address" in lines[j].lower():
+                    func_name = re.search(r"function\s+(\w+)", lines[j])
+                    if func_name:
+                        findings.append(StaticFinding(
+                            vuln_type="delegatecall_to_user_input",
+                            severity="critical",
+                            location=func_name.group(1),
+                            description="delegatecall to user-supplied address allows arbitrary code execution",
+                            confidence=0.8,
+                        ))
+                    break
+
+    return findings
+
+
+def _check_unchecked_returns(source: str, lines: list[str]) -> list[StaticFinding]:
+    """Check for unchecked ERC20 transfer return values."""
+    findings = []
+
+    # Look for .transfer( or .transferFrom( without checking return value
+    for i, line in enumerate(lines):
+        if re.search(r"\.(transfer|transferFrom)\(", line) and "require" not in line:
+            # Check if the return value is captured
+            if "=" not in line.split(".transfer")[0].split(";")[-1]:
+                # Check surrounding lines for require
+                context = "\n".join(lines[max(0, i-1):min(len(lines), i+2)])
+                if "require" not in context and "assert" not in context:
+                    findings.append(StaticFinding(
+                        vuln_type="unchecked_transfer_return",
+                        severity="high",
+                        location=f"line {i+1}",
+                        description="ERC20 transfer/transferFrom return value not checked",
+                        confidence=0.7,
+                    ))
 
     return findings
 
