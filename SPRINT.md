@@ -55,14 +55,18 @@
 ## Week 3 (Apr 21-27): Superposition & SAEs
 **Mech Interp**
 - [ ] Deep read: "Toy Models of Superposition"
-- [ ] ARENA: Superposition and SAE exercises
+- [x] ARENA: Superposition and SAE exercises
+- [x] ★ BONUS: Experiment 09 — toy model superposition (phase transitions, importance)
 - [ ] Explore Neuronpedia — annotate 10 interesting features
 - [ ] Skim: DeepMind negative SAE results (understand limitations)
 
 **AI Security**
-- [ ] Build initial dataset: 20+ cross-chain bridge contracts with known vulns
-- [ ] Write first Claude agent prompt for contract analysis
-- [ ] Test agent against 5 known exploits in simulation
+- [x] Build initial dataset: 20+ cross-chain bridge contracts with known vulns
+- [x] ★ BONUS: 20 contracts, 44 labeled vulnerabilities, 17 vuln classes
+- [x] Write first Claude agent prompt for contract analysis
+- [x] Test agent against 5 known exploits in simulation
+- [x] ★ BONUS: Foundry integration pipeline (detect → patch → verify)
+- [x] ★ BONUS: Static baseline evaluation (48% F1 on 14 ground truth vulns)
 
 **Hours target: 18**
 
