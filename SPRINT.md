@@ -86,7 +86,8 @@
 - [x] Document false positives/negatives
 - [x] ★ BONUS: Static analyzer v2 improved 25.5% → 41.6% F1 (reduced FPs by 50%)
 - [x] ★ BONUS: Benchmark v2 runner with full P/R/F1 scoring
-- [ ] Compare against Slither/Mythril baselines
+- [x] Compare against Slither/Mythril baselines
+- [x] ★ BONUS: Slither gets 11.1% F1 — our static analyzer (41.6%) wins decisively
 
 **Hours target: 20**
 
@@ -94,7 +95,9 @@
 
 ## Week 5 (May 5-11): Mini-Projects + ICML Deadline
 **Mech Interp**
-- [ ] Mini-project #1: pick behavior, reverse-engineer in GPT-2 small
+- [x] Mini-project #1: greater-than circuit in GPT-2 small
+- [x] ★ BONUS: 5-step analysis (behavior, attention, patching, ablation, logit lens)
+- [x] ★ BONUS: Found 117x above/below ratio, L5H5/L6H1 as comparison heads
 - [ ] Write up findings (even if negative)
 - [ ] STRETCH: submit short paper to ICML workshop (deadline May 8)
 
