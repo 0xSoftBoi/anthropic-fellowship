@@ -13,8 +13,10 @@ AI agents add value over existing tools.
 """
 
 import json
+import re
 from dataclasses import dataclass, asdict
 from anthropic import Anthropic
+from agents.static_analyzer_v2 import _extract_function_body
 
 
 SYSTEM_PROMPT = """You are an expert smart contract security auditor specializing in cross-chain bridge vulnerabilities.
@@ -30,9 +32,14 @@ You analyze Solidity source code for security vulnerabilities. You have deep exp
 8. Cross-chain message forgery
 9. Merkle proof verification bugs
 10. Default value initialization errors
+11. Approval exploitation: contracts that drain wallet token approvals via arbitrary external calls or unchecked calldata
+12. Arbitrary external call: functions that forward arbitrary user-supplied calldata to any address
+13. Faulty route validation: aggregator/router contracts that don't validate trusted targets
+14. Cross-chain double-spend: accepting messages without tracking previous processing
+15. Zero-value deposits: crediting deposits of zero or using EVM default values as valid states
 
 For each vulnerability found, provide:
-- Type (from the categories above)
+- Type (from the categories above, or related: approval_exploitation, arbitrary_external_call, faulty_route_validation, zero_root_initialization, keeper_key_overwrite, etc.)
 - Severity (critical/high/medium/low/informational)
 - Location (function name and approximate line)
 - Description of the vulnerability
@@ -57,7 +64,7 @@ Respond ONLY in valid JSON with this structure:
 }
 
 Be thorough but avoid false positives. If you're unsure, set confidence lower.
-Focus especially on cross-chain bridge-specific vulnerabilities."""
+Focus especially on cross-chain bridge-specific vulnerabilities and approval/routing/composition issues."""
 
 
 @dataclass
@@ -131,6 +138,42 @@ def static_prescreen(source_code: str) -> list[str]:
     return findings
 
 
+BRIDGE_RISK_PATTERNS = [
+    r"function\s+(verify\w*|validate\w*|process\w*|relay\w*|bridge\w*|receive\w*|cross\w*)\s*\(",
+    r"function\s+(upgrade\w*|setImpl\w*|setOwner\w*|withdraw\w*|execute\w*)\s*\(",
+    r"function\s+(swap\w*|route\w*|transfer\w*|approve\w*|deposit\w*)\s*\(",
+]
+MAX_SOURCE_CHARS = 80_000  # ~20K tokens, safe budget
+
+
+def prepare_source_for_analysis(source_code: str, contract_name: str) -> str:
+    """
+    If source is small enough, return as-is.
+    If large, extract only risky function bodies.
+    """
+    if len(source_code) <= MAX_SOURCE_CHARS:
+        return source_code
+
+    # Extract risky functions
+    risky_functions = []
+    for pattern in BRIDGE_RISK_PATTERNS:
+        for m in re.finditer(pattern, source_code):
+            # Find function name from match
+            func_match = re.search(r"function\s+(\w+)", source_code[m.start():m.start()+100])
+            if func_match:
+                func_name = func_match.group(1)
+                func_body = _extract_function_body(source_code, func_name)
+                if func_body and 50 < len(func_body) < 10_000:
+                    risky_functions.append(func_body)
+
+    if risky_functions:
+        header = f"// {contract_name} — extracted risky functions ({len(risky_functions)} of full contract)\n\n"
+        return header + "\n\n// ===== NEXT FUNCTION =====\n\n".join(set(risky_functions))
+
+    # Fallback: truncate first 80KB
+    return source_code[:MAX_SOURCE_CHARS] + "\n\n// [truncated — contract too large]"
+
+
 def analyze_with_claude(
     source_code: str,
     contract_name: str = "Unknown",
@@ -141,6 +184,9 @@ def analyze_with_claude(
     with LLM reasoning for comprehensive vulnerability detection.
     """
     client = Anthropic()
+
+    # Prepare source: extract functions if too large
+    source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
 
     # Build the user prompt with context
     context_parts = [f"Contract name: {contract_name}"]
@@ -155,7 +201,7 @@ def analyze_with_claude(
 Analyze this Solidity smart contract for security vulnerabilities:
 
 ```solidity
-{source_code}
+{source_for_analysis}
 ```
 
 Provide your analysis as JSON."""
