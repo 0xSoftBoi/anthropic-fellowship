@@ -54,15 +54,29 @@ LLM-based analyzer with bridge-specific system prompt and structured output.
 
 | Metric | Value |
 |--------|-------|
-| **F1** | **TBD** |
+| **F1** | **59.0%** |
+| Precision | 44.5% |
+| Recall | 87.5% |
+| True Positives | 49 |
+| False Positives | 61 |
+| False Negatives | 7 |
 
-Run with: `export ANTHROPIC_API_KEY=sk-ant-... && python agents/agent_v2_bridge.py`
+Tested on the full 27-contract expanded dataset (56 vulnerabilities).
 
-**Expected advantages over static tools:**
-- Can reason about compositional vulnerabilities
-- Understands cross-contract interaction patterns
-- Can detect approval drain via arbitrary calldata analysis
-- Understands flash loan + oracle manipulation composition
+**Strengths:**
+- 87.5% recall — finds 49 of 56 vulnerabilities
+- 2 PERFECT scores (UncheckedTransfer, TokenBridgeWithFeeAndApproval)
+- Catches compositional vulnerabilities that static tools miss completely:
+  - LiFi approval drain (2/2), Poly Network (2/3), Ronin (5/5)
+  - TimelockBypass (2/2), FrontRun (1/1), FeeOnTransfer (1/1)
+- Correctly identifies remaining bugs in partially-fixed contracts
+
+**Weaknesses:**
+- 61 false positives — flags `arbitrary_execution` and `reentrancy` too aggressively
+- 8 false positives on clean contracts (SecureBridge, SecureMultisig)
+- Lower precision (44.5%) than static analyzer (48.5%)
+
+**Cost:** ~$0.50 per full benchmark run (20 Sonnet API calls)
 
 ## Dataset
 
