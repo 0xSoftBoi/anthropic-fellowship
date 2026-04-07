@@ -66,6 +66,19 @@ TYPE_EQUIVALENCES = {
     "spot_price_dependency": ["spot_price_dependency", "flash_loan_price_manipulation", "spot_price_oracle"],
     # Phase 5A: Added from Sonnet's real findings
     "replay_attack": ["replay_attack", "message_replay", "status_update_reentrancy"],
+    # Phase 5B: DEX/AMM/Lending protocol types
+    "oracle_price_manipulation": ["oracle_price_manipulation", "flash_loan_price_manipulation", "spot_price_dependency", "spot_price_oracle"],
+    "tick_boundary_exploit": ["tick_boundary_exploit", "precision_loss_rounding", "integer_boundary_exploit"],
+    "flash_loan_collateral_inflation": ["flash_loan_collateral_inflation", "flash_loan_price_manipulation"],
+    "donation_attack_bad_debt": ["donation_attack_bad_debt", "bad_debt_accumulation", "zero_value_deposit"],
+    "reentrancy_in_dex_callback": ["reentrancy_in_dex_callback", "reentrancy"],
+    "spot_price_oracle": ["spot_price_oracle", "flash_loan_price_manipulation", "spot_price_dependency"],
+    "precision_loss_rounding": ["precision_loss_rounding", "tick_boundary_exploit", "integer_boundary_exploit"],
+    "jit_liquidity_attack": ["jit_liquidity_attack", "sandwich_attack_vector"],
+    "sandwich_attack_vector": ["sandwich_attack_vector", "jit_liquidity_attack"],
+    "liquidation_manipulation": ["liquidation_manipulation", "oracle_price_manipulation"],
+    "interest_rate_oracle_abuse": ["interest_rate_oracle_abuse", "oracle_price_manipulation"],
+    "bad_debt_accumulation": ["bad_debt_accumulation", "donation_attack_bad_debt"],
 }
 
 
