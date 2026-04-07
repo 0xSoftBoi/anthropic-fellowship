@@ -478,9 +478,10 @@ if __name__ == "__main__":
             {
                 "contract": args.contract,
                 "analysis_depth": result.analysis_depth,
-                "static_findings": len(result.static_findings),
+                "tool_findings": len(result.tool_findings),
                 "agentic_findings": len(result.agentic_findings),
                 "combined_findings": len(result.combined_findings),
+                "tools_run": result.tools_run,
                 "findings": [
                     {
                         "type": f.vuln_type,
