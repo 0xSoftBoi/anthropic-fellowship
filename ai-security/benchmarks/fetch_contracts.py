@@ -275,6 +275,43 @@ CONTRACTS_TO_FETCH = [
         "description": "Spot price oracle vulnerability via reserves manipulation",
         "verified": True,
     },
+
+    # ──────────────────────────────────────────────────────────────────
+    # PHASE 5C: LENDING/MONEY MARKET PROTOCOL EXPLOITS
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "compound_oracle_manipulation",
+        "address": "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",  # Comptroller
+        "chain": "ethereum",
+        "exploit_date": "2021-05-15",
+        "loss_usd": 80_000_000,
+        "vuln_class": "price_oracle_manipulation",
+        "fork_block": 12_255_000,
+        "description": "Oracle price manipulation enables liquidation of healthy positions",
+        "verified": True,
+    },
+    {
+        "name": "venus_flash_loan",
+        "address": "0xfD36E86F0B755b9B51006AD3578Be3e328F3069d",  # Venus Unitroller
+        "chain": "bsc",
+        "exploit_date": "2021-05-19",
+        "loss_usd": 200_000_000,
+        "vuln_class": "flash_loan_collateral_inflation",
+        "fork_block": 6_000_000,
+        "description": "Flash loan inflates collateral, enables liquidator undercut",
+        "verified": True,
+    },
+    {
+        "name": "cream_finance_reentrancy",
+        "address": "0x3fda67f7d3255e1b3323645fe1e9d234838746e2",  # crETH
+        "chain": "ethereum",
+        "exploit_date": "2021-10-27",
+        "loss_usd": 130_000_000,
+        "vuln_class": "reentrancy_price_oracle",
+        "fork_block": 13_055_000,
+        "description": "Reentrancy in price oracle update during liquidation",
+        "verified": True,
+    },
 ]
 
 
@@ -437,10 +474,15 @@ def fetch_all_contracts(verbose: bool = True, dataset: str = "all") -> dict:
     BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
 
     # Filter contracts by dataset
+    defi_classes = ["donation_attack_bad_debt", "tick_boundary_exploit", "flash_loan_collateral_inflation", "reentrancy_in_dex_callback"]
+    lending_classes = ["price_oracle_manipulation", "flash_loan_collateral_inflation", "reentrancy_price_oracle"]
+
     if dataset == "bridge":
-        contracts = [c for c in CONTRACTS_TO_FETCH if c.get("vuln_class") not in ["donation_attack_bad_debt", "tick_boundary_exploit", "flash_loan_collateral_inflation", "oracle_price_manipulation", "reentrancy_in_dex_callback"]]
+        contracts = [c for c in CONTRACTS_TO_FETCH if c.get("vuln_class") not in (defi_classes + lending_classes)]
     elif dataset == "defi":
-        contracts = [c for c in CONTRACTS_TO_FETCH if c.get("vuln_class") in ["donation_attack_bad_debt", "tick_boundary_exploit", "flash_loan_collateral_inflation", "oracle_price_manipulation", "reentrancy_in_dex_callback"]]
+        contracts = [c for c in CONTRACTS_TO_FETCH if c.get("vuln_class") in defi_classes]
+    elif dataset == "lending":
+        contracts = [c for c in CONTRACTS_TO_FETCH if c.get("vuln_class") in lending_classes]
     else:  # "all"
         contracts = CONTRACTS_TO_FETCH
 
@@ -586,6 +628,11 @@ if __name__ == "__main__":
         help="Fetch DEX/lending exploits only (Phase 5B)",
     )
     parser.add_argument(
+        "--lending",
+        action="store_true",
+        help="Fetch lending/money market exploits only (Phase 5C)",
+    )
+    parser.add_argument(
         "--analyze",
         action="store_true",
         help="Run Claude analyzer against fetched contracts",
@@ -600,7 +647,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Determine dataset
-    if args.defi:
+    if args.lending:
+        dataset = "lending"
+        title = "🔗 BRIDGE-bench: Fetching Phase 5C Lending/Money Market exploit contracts"
+    elif args.defi:
         dataset = "defi"
         title = "🔗 BRIDGE-bench: Fetching Phase 5B DEX/Lending exploit contracts"
     elif args.bridge:
