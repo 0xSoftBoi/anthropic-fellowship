@@ -79,6 +79,8 @@
 - [ ] Try circuit-tracer on Gemma-2-2b via Neuronpedia
 - [ ] Read: "Signs of Introspection" + "The Assistant Axis"
 - [x] ★ BONUS: Experiment 10 — SAE on GPT-2 small (from-scratch implementation)
+- [x] ★ BONUS: Experiment 13 — SAE feature steering (negative result: insufficient data)
+- [x] ★ BONUS: Experiment 14 — activation steering (positive result: sentiment/formality/topic)
 
 **AI Security**
 - [x] Agent v1: Claude-based contract vulnerability scanner
