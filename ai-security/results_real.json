@@ -3,25 +3,7 @@
     "method": "static_v2",
     "overall": {
       "precision": 0.0,
-      "recall": {
-        "metrics": {
-          "tp": 0,
-          "fp": 0,
-          "fn": 3,
-          "precision": 0,
-          "recall": 0.0,
-          "f1": 0,
-          "missed": [
-            "arbitrary_external_call",
-            "infinite_approval_drain",
-            "recurring_vulnerability"
-          ],
-          "false_positives": []
-        },
-        "n_findings": 0,
-        "n_gt": 3,
-        "findings": []
-      },
+      "recall": 0.0,
       "f1": 0,
       "tp": 0,
       "fp": 56,
@@ -535,5 +517,161 @@
       "lifi_protocol_diamond_july_2024: infinite_approval_drain",
       "lifi_protocol_diamond_july_2024: recurring_vulnerability"
     ]
+  },
+  "real_claude": {
+    "method": "claude",
+    "overall": {
+      "precision": 0.15789473684210525,
+      "recall": 0.17647058823529413,
+      "f1": 0.16666666666666669,
+      "tp": 3,
+      "fp": 16,
+      "fn": 14
+    },
+    "per_contract": {
+      "poly_network_eth_cross_chain_manager": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "unrestricted_cross_chain_call",
+            "keeper_key_overwrite"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0
+      },
+      "nomad_bridge_replica": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "zero_root_initialization",
+            "default_value_exploit",
+            "missing_upgrade_validation"
+          ],
+          "false_positives": [
+            "reentrancy",
+            "cross_chain_double_spend",
+            "arbitrary_external_call",
+            "access_control",
+            "upgrade_risk"
+          ]
+        },
+        "n_findings": 5
+      },
+      "ronin_bridge_validator": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 3,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "low_validator_threshold",
+            "no_anomaly_detection",
+            "social_engineering_vector"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0
+      },
+      "orbit_chain_multisig": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "multisig_key_compromise"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0
+      },
+      "lifi_protocol_diamond_march_2022": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "infinite_approval_drain"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0
+      },
+      "socket_gateway_registry": {
+        "metrics": {
+          "tp": 2,
+          "fp": 5,
+          "fn": 0,
+          "precision": 0.2857142857142857,
+          "recall": 1.0,
+          "f1": 0.4444444444444445,
+          "missed": [],
+          "false_positives": [
+            "arbitrary_external_call",
+            "reentrancy",
+            "bridge_parameter_manipulation",
+            "access_control",
+            "integer_overflow"
+          ]
+        },
+        "n_findings": 7
+      },
+      "xbridge_approval_drain": {
+        "metrics": {
+          "tp": 1,
+          "fp": 6,
+          "fn": 0,
+          "precision": 0.14285714285714285,
+          "recall": 1.0,
+          "f1": 0.25,
+          "missed": [],
+          "false_positives": [
+            "arbitrary_external_call",
+            "zero_value_deposits",
+            "cross_chain_message_forgery",
+            "upgrade_risk",
+            "access_control_weakness",
+            "reentrancy_attack"
+          ]
+        },
+        "n_findings": 7
+      },
+      "lifi_protocol_diamond_july_2024": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 3,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "infinite_approval_drain",
+            "recurring_vulnerability"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0
+      }
+    }
   }
 }

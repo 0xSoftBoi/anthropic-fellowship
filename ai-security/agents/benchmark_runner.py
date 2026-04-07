@@ -155,8 +155,8 @@ def run_static_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Sy
 
     # What static CAN'T find (the gap Claude should fill)
     all_missed = []
-    for name, r in results.items():
-        for m in r["metrics"]["missed"]:
+    for name, result in results.items():
+        for m in result["metrics"]["missed"]:
             all_missed.append(f"{name}: {m}")
 
     print("VULNERABILITIES STATIC ANALYSIS CANNOT DETECT:")
