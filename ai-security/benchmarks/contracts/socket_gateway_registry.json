@@ -1,0 +1,12 @@
+{
+  "name": "socket_gateway_registry",
+  "address": "0x3a23F943181408EAC424116Af7b7790c94Cb97a5",
+  "chain": "ethereum",
+  "exploit_date": "2024-01-16",
+  "loss_usd": 3300000,
+  "vuln_class": "approval_exploitation",
+  "fork_block": 19021453,
+  "description": "Faulty route validation drained wallet approvals",
+  "source": null,
+  "fetched": false
+}

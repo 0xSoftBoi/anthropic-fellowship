@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+.env
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Models & large data
+*.pt
+*.bin
+*.safetensors
+*.ckpt
+mech-interp/models/*.pt
+mech-interp/models/*.bin
+
+# Generated results (regenerate with `make benchmark`)
+ai-security/results.json
+
+# DefiHackLabs (clone separately)
+DeFiHackLabs/
+
+# Foundry artifacts
+out/
+cache/
+broadcast/
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets — NEVER commit these
+*.key
+*.pem
+.env.local
+.env.production

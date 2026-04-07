@@ -23,8 +23,6 @@ import json
 import subprocess
 import tempfile
 import os
-import time
-import socket
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -176,136 +174,6 @@ def run_detect_mode(
     )
 
 
-def find_free_port(start_port: int = 8540) -> int:
-    """Find an available port for anvil."""
-    port = start_port
-    while port < 8600:
-        try:
-            with socket.create_connection(("127.0.0.1", port), timeout=1):
-                port += 1
-        except (ConnectionRefusedError, socket.timeout):
-            return port
-    raise RuntimeError("Could not find available port for anvil")
-
-
-def start_anvil_fork(
-    exploit: BridgeExploit,
-    timeout: int = 30,
-) -> Optional[subprocess.Popen]:
-    """
-    Start anvil with blockchain fork at the pre-exploit block.
-
-    Args:
-        exploit: BridgeExploit with fork_chain and fork_block
-        timeout: Time to wait for anvil to start
-
-    Returns:
-        Process handle if successful, None otherwise
-    """
-    if exploit.fork_block == 0 or not exploit.fork_chain:
-        print(f"    ⚠ No fork data for {exploit.name}")
-        return None
-
-    # Get RPC URL from environment
-    rpc_env = "ETH_RPC_URL" if exploit.fork_chain == "mainnet" else "BSC_RPC_URL"
-    rpc_url = os.environ.get(rpc_env, "")
-
-    if not rpc_url:
-        print(f"    ⚠ Missing {rpc_env} environment variable (anvil fork skipped)")
-        return None
-
-    # Find available port
-    try:
-        port = find_free_port()
-    except RuntimeError as e:
-        print(f"    ⚠ {e}")
-        return None
-
-    # Start anvil with fork
-    cmd = [
-        "anvil",
-        f"--fork-url", rpc_url,
-        f"--fork-block-number", str(exploit.fork_block),
-        f"--port", str(port),
-        "--silent",  # Suppress output
-    ]
-
-    try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-
-        # Wait for anvil to start
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            try:
-                with socket.create_connection(("127.0.0.1", port), timeout=1):
-                    print(f"    ✓ Anvil forked at block {exploit.fork_block} (http://127.0.0.1:{port})")
-                    return proc
-            except (ConnectionRefusedError, socket.timeout):
-                time.sleep(0.1)
-
-        proc.terminate()
-        print(f"    ⚠ Anvil did not start within {timeout}s")
-        return None
-
-    except FileNotFoundError:
-        print(f"    ⚠ anvil not found (install Foundry)")
-        return None
-    except Exception as e:
-        print(f"    ⚠ Failed to start anvil: {e}")
-        return None
-
-
-def run_forked_exploit_tests(
-    exploit: BridgeExploit,
-    work_dir: Path,
-    anvil_port: int = 8540,
-) -> tuple[bool, str]:
-    """
-    Run Foundry tests against a forked blockchain.
-
-    Args:
-        exploit: The exploit to test
-        work_dir: Foundry project directory
-        anvil_port: Port where anvil is running
-
-    Returns:
-        (success: bool, details: str)
-    """
-    rpc_url = f"http://127.0.0.1:{anvil_port}"
-
-    # Run Foundry tests against the fork
-    cmd = [
-        "forge", "test",
-        f"--fork-url", rpc_url,
-        f"--match-contract", f"{exploit.name.replace(' ', '')}",
-        "-vvv",
-    ]
-
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=work_dir,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-
-        if result.returncode == 0:
-            return True, f"Exploit tests passed (patched contract)"
-        else:
-            return False, f"Exploit tests failed: {result.stdout}"
-
-    except subprocess.TimeoutExpired:
-        return False, "Exploit test execution timeout"
-    except Exception as e:
-        return False, f"Error running tests: {e}"
-
-
 def run_patch_verify_mode(
     exploit: BridgeExploit,
     patch_fn,  # callable(source_code, vuln_description) -> str (patched source)
@@ -315,10 +183,10 @@ def run_patch_verify_mode(
     Patch + Verify mode:
       1. Agent generates a patched version of the contract
       2. Harness compiles the patch
-      3. Harness replays the original exploit against the patch via anvil fork
+      3. Harness replays the original exploit against the patch
       4. Score: exploit blocked AND functionality preserved
 
-    Requires Foundry (forge/anvil).
+    Requires Foundry.
     """
     source = None
     if exploit.vulnerable_contract:
@@ -358,56 +226,17 @@ def run_patch_verify_mode(
     )
     compiles = compile_result.returncode == 0
 
-    if not compiles:
-        return PatchResult(
-            exploit_name=exploit.name,
-            patch_generated=True,
-            patch_code=patched_source[:500] + "...",
-            patch_compiles=False,
-            exploit_blocked=False,
-            functionality_preserved=False,
-            verification_details=f"Compilation failed: {compile_result.stderr}",
-        )
-
-    # Attempt to replay exploit against patched contract using anvil fork
-    exploit_blocked = False
-    functionality_preserved = False
-    verification_details = "Compiled successfully"
-
-    if check_foundry_installed() and exploit.fork_block > 0:
-        # Start anvil fork
-        anvil_proc = start_anvil_fork(exploit)
-
-        if anvil_proc:
-            try:
-                # Find the port anvil is running on
-                port = find_free_port(start_port=8540)
-
-                # Run exploit tests
-                exploit_blocked, test_details = run_forked_exploit_tests(
-                    exploit, work_dir, port
-                )
-                verification_details = test_details
-
-                if exploit_blocked:
-                    functionality_preserved = True  # If tests pass, functionality is preserved
-
-            finally:
-                # Cleanup: terminate anvil
-                try:
-                    anvil_proc.terminate()
-                    anvil_proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    anvil_proc.kill()
-
+    # TODO: replay exploit against patched contract
+    # This requires setting up the full Foundry test with anvil fork
+    # For now, just check compilation
     return PatchResult(
         exploit_name=exploit.name,
         patch_generated=True,
         patch_code=patched_source[:500] + "...",
         patch_compiles=compiles,
-        exploit_blocked=exploit_blocked,
-        functionality_preserved=functionality_preserved,
-        verification_details=verification_details,
+        exploit_blocked=False,  # TODO: implement exploit replay
+        functionality_preserved=False,  # TODO: implement basic function tests
+        verification_details="Compilation check only (exploit replay TODO)",
     )
 
 

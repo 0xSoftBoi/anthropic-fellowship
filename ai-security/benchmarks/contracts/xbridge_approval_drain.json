@@ -1,0 +1,12 @@
+{
+  "name": "xbridge_approval_drain",
+  "address": "0x354cca2f55dde182d36fe34d673430e226a3cb8c",
+  "chain": "ethereum",
+  "exploit_date": "2024-04-01",
+  "loss_usd": 1600000,
+  "vuln_class": "approval_exploitation",
+  "fork_block": 19723701,
+  "description": "Bridge allowed draining tokens from approved wallets",
+  "source": null,
+  "fetched": false
+}

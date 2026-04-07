@@ -1,0 +1,12 @@
+{
+  "name": "qubit_finance_bridge",
+  "address": "0xd01aD3D73Bae00a9CeA5fc0A2E561F47B2e54b79",
+  "chain": "bsc",
+  "exploit_date": "2022-01-28",
+  "loss_usd": 80000000,
+  "vuln_class": "input_validation",
+  "fork_block": 14090169,
+  "description": "Zero-value ETH deposit credited on BSC side",
+  "source": null,
+  "fetched": false
+}

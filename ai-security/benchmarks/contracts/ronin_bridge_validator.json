@@ -1,0 +1,12 @@
+{
+  "name": "ronin_bridge_validator",
+  "address": "0x1A2a1c938CE3eC39b6D47113c7955bAa9B236945",
+  "chain": "ethereum",
+  "exploit_date": "2022-03-23",
+  "loss_usd": 625000000,
+  "vuln_class": "validator_governance",
+  "fork_block": 14442834,
+  "description": "5/9 validator keys compromised via social engineering",
+  "source": null,
+  "fetched": false
+}

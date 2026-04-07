@@ -1,0 +1,12 @@
+{
+  "name": "nomad_bridge_replica",
+  "address": "0xB92336759618F55bd0F8313bd843604592E27bd8",
+  "chain": "ethereum",
+  "exploit_date": "2022-08-01",
+  "loss_usd": 190000000,
+  "vuln_class": "message_validation",
+  "fork_block": 15259100,
+  "description": "Zero Merkle root initialization accepted any message",
+  "source": null,
+  "fetched": false
+}

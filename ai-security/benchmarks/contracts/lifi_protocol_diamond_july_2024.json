@@ -1,0 +1,12 @@
+{
+  "name": "lifi_protocol_diamond_july_2024",
+  "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaA",
+  "chain": "ethereum",
+  "exploit_date": "2024-07-16",
+  "loss_usd": 10000000,
+  "vuln_class": "approval_exploitation",
+  "fork_block": 20318962,
+  "description": "Recurring arbitrary calldata vulnerability in swap facet",
+  "source": null,
+  "fetched": false
+}

@@ -1,0 +1,22 @@
+# Core
+anthropic
+web3>=6.0
+eth-abi
+eth-utils
+
+# Smart contract analysis
+# slither-analyzer  # install separately: pip install slither-analyzer
+# mythril           # install separately: pip install mythril
+
+# Data
+pandas
+numpy
+
+# Simulation
+py-evm
+
+# Utilities
+tqdm
+python-dotenv
+requests
+aiohttp

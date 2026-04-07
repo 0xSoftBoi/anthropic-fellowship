@@ -1,0 +1,12 @@
+{
+  "name": "lifi_protocol_diamond_march_2022",
+  "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaA",
+  "chain": "ethereum",
+  "exploit_date": "2022-03-20",
+  "loss_usd": 600000,
+  "vuln_class": "approval_exploitation",
+  "fork_block": 14420686,
+  "description": "Arbitrary calldata drain of approvals in pre-bridge swap",
+  "source": null,
+  "fetched": false
+}

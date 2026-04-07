@@ -1,0 +1,12 @@
+{
+  "name": "orbit_chain_multisig",
+  "address": "0xd80F4e5d3c0c69F9e2eFCCf74f21a093f9A56d07",
+  "chain": "ethereum",
+  "exploit_date": "2024-01-01",
+  "loss_usd": 82000000,
+  "vuln_class": "validator_governance",
+  "fork_block": 18908049,
+  "description": "7/10 multisig keys compromised",
+  "source": null,
+  "fetched": false
+}

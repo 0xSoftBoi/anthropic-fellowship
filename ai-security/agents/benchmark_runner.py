@@ -1,28 +1,36 @@
 """
 BRIDGE-bench: Cross-Chain Bridge Vulnerability Detection Benchmark
 
-Runs static analysis (v2) against the full test contract suite and
-produces evaluation metrics. When ANTHROPIC_API_KEY is set, also
-runs Claude analysis and produces comparison metrics.
+Runs static analysis (v2) against test contract suite and produces
+evaluation metrics. When ANTHROPIC_API_KEY is set, also runs Claude
+analysis and produces comparison metrics.
+
+Supports both synthetic patterns (test_contracts.py) and real verified
+contracts (bridge_contracts_real.py).
 
 This is the core evaluation artifact for the AI Security Fellowship
 application. The key question: does Claude find the compositional
 vulnerabilities that static analysis misses?
 
 Usage:
-    python benchmark_runner.py                  # static only
-    ANTHROPIC_API_KEY=sk-... python benchmark_runner.py  # static + Claude
+    python benchmark_runner.py                  # synthetic, static only
+    ANTHROPIC_API_KEY=sk-... python benchmark_runner.py  # synthetic, static + Claude
+    python benchmark_runner.py --real          # real contracts
+    python benchmark_runner.py --compare       # synthetic vs real comparison
 """
 
 import os
 import sys
 import json
+import argparse
 from pathlib import Path
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from agents.static_analyzer_v2 import analyze_static, StaticFinding
 from benchmarks.test_contracts import TEST_CONTRACTS
+from benchmarks.bridge_contracts_real import load_real_contracts
 
 
 # Fuzzy type matching for evaluation
@@ -85,22 +93,45 @@ def evaluate_findings(findings: list, gt_vulns: list) -> dict:
     }
 
 
-def run_static_benchmark() -> dict:
-    print("BRIDGE-bench: Static Analysis (v2)")
+def run_static_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict:
+    """
+    Run static analysis benchmark against a dataset.
+
+    Args:
+        dataset: Dict of contract_name -> {source, ground_truth} (default: TEST_CONTRACTS)
+        dataset_name: Name for output display
+
+    Returns:
+        Results dict with metrics
+    """
+    if dataset is None:
+        dataset = TEST_CONTRACTS
+
+    print(f"BRIDGE-bench: Static Analysis (v2) on {dataset_name}")
     print("=" * 60)
 
     results = {}
     totals = {"tp": 0, "fp": 0, "fn": 0}
 
-    for name, data in TEST_CONTRACTS.items():
-        findings = analyze_static(data["source"])
-        gt = data["ground_truth"]["vulnerabilities"]
-        metrics = evaluate_findings(findings, gt)
+    for name, data in dataset.items():
+        # Handle both dict and list-of-dicts formats
+        if isinstance(data, dict) and "source" in data:
+            source = data["source"]
+            gt_vulns = data["ground_truth"]["vulnerabilities"]
+        else:
+            continue  # Skip if format doesn't match
+
+        if source is None:
+            print(f"\n{name}: SKIPPED (source not available)")
+            continue
+
+        findings = analyze_static(source)
+        metrics = evaluate_findings(findings, gt_vulns)
 
         results[name] = {
             "metrics": metrics,
             "n_findings": len(findings),
-            "n_gt": len(gt),
+            "n_gt": len(gt_vulns),
             "findings": [{"type": f.vuln_type, "severity": f.severity, "confidence": f.confidence} for f in findings],
         }
 
@@ -141,27 +172,50 @@ def run_static_benchmark() -> dict:
     }
 
 
-def run_claude_benchmark() -> dict | None:
+def run_claude_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
+    """
+    Run Claude analysis benchmark against a dataset.
+
+    Args:
+        dataset: Dict of contract_name -> {source, ground_truth} (default: TEST_CONTRACTS)
+        dataset_name: Name for output display
+
+    Returns:
+        Results dict with metrics, or None if API key not set
+    """
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print("\nSkipping Claude analysis (set ANTHROPIC_API_KEY to enable)")
         return None
 
+    if dataset is None:
+        dataset = TEST_CONTRACTS
+
     from agents.claude_analyzer import analyze_with_claude, static_prescreen
 
     print(f"\n{'=' * 60}")
-    print("BRIDGE-bench: Claude Analysis")
+    print(f"BRIDGE-bench: Claude Analysis on {dataset_name}")
     print("=" * 60)
 
     results = {}
     totals = {"tp": 0, "fp": 0, "fn": 0}
 
-    for name, data in TEST_CONTRACTS.items():
-        static = static_prescreen(data["source"])
-        report = analyze_with_claude(data["source"], name, static)
-        gt = data["ground_truth"]["vulnerabilities"]
+    for name, data in dataset.items():
+        # Handle both dict and list-of-dicts formats
+        if isinstance(data, dict) and "source" in data:
+            source = data["source"]
+            gt_vulns = data["ground_truth"]["vulnerabilities"]
+        else:
+            continue  # Skip if format doesn't match
+
+        if source is None:
+            print(f"\n{name}: SKIPPED (source not available)")
+            continue
+
+        static = static_prescreen(source)
+        report = analyze_with_claude(source, name, static)
 
         ai_findings = [{"type": v.type, "severity": v.severity} for v in report.vulnerabilities]
-        metrics = evaluate_findings(ai_findings, gt)
+        metrics = evaluate_findings(ai_findings, gt_vulns)
 
         results[name] = {"metrics": metrics, "n_findings": len(ai_findings)}
         for k in ["tp", "fp", "fn"]:
@@ -183,33 +237,124 @@ def run_claude_benchmark() -> dict | None:
     }
 
 
+def convert_real_contracts_to_dict(real_contracts: list) -> dict:
+    """Convert list of real contracts to dict format for benchmark."""
+    result = {}
+    for contract in real_contracts:
+        result[contract["name"]] = {
+            "source": contract["source"],
+            "ground_truth": contract["ground_truth"],
+            "metadata": contract.get("metadata", {}),
+        }
+    return result
+
+
 if __name__ == "__main__":
-    static_results = run_static_benchmark()
+    parser = argparse.ArgumentParser(
+        description="BRIDGE-bench: Cross-chain bridge vulnerability detection benchmark"
+    )
+    parser.add_argument(
+        "--real",
+        action="store_true",
+        help="Run against real verified contracts from Etherscan/BSCScan",
+    )
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Compare synthetic vs real contract results",
+    )
+    parser.add_argument(
+        "--no-claude",
+        action="store_true",
+        help="Skip Claude analysis even if ANTHROPIC_API_KEY is set",
+    )
 
-    claude_results = run_claude_benchmark()
+    args = parser.parse_args()
 
-    if claude_results:
-        print(f"\n{'=' * 60}")
-        print("COMPARISON: Static v2 vs Claude")
-        print("=" * 60)
-        s = static_results["overall"]
-        c = claude_results["overall"]
-        print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
-        print(f"  Claude:     P={c['precision']:.0%}  R={c['recall']:.0%}  F1={c['f1']:.0%}")
-        delta = c["f1"] - s["f1"]
-        print(f"  Delta F1:   {delta:+.0%}")
+    # Determine which dataset(s) to run
+    run_synthetic = not args.real or args.compare
+    run_real = args.real or args.compare
 
+    results_all = {}
+
+    # ──────────────────────────────────────────────────────────────────
+    # Run synthetic benchmarks
+    # ──────────────────────────────────────────────────────────────────
+    if run_synthetic:
+        synthetic_static = run_static_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
+        results_all["synthetic_static"] = synthetic_static
+
+        if not args.no_claude:
+            synthetic_claude = run_claude_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
+            results_all["synthetic_claude"] = synthetic_claude
+
+            if synthetic_claude:
+                print(f"\n{'=' * 60}")
+                print("SYNTHETIC: Static v2 vs Claude")
+                print("=" * 60)
+                s = synthetic_static["overall"]
+                c = synthetic_claude["overall"]
+                print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
+                print(f"  Claude:     P={c['precision']:.0%}  R={c['recall']:.0%}  F1={c['f1']:.0%}")
+                delta = c["f1"] - s["f1"]
+                print(f"  Delta F1:   {delta:+.0%}")
+
+    # ──────────────────────────────────────────────────────────────────
+    # Run real contract benchmarks
+    # ──────────────────────────────────────────────────────────────────
+    if run_real:
+        real_contracts_list = load_real_contracts()
+        real_contracts_dict = convert_real_contracts_to_dict(real_contracts_list)
+
+        print(f"\n{'='*60}")
+        print(f"Real contracts loaded: {sum(1 for c in real_contracts_list if c['source'])}/{len(real_contracts_list)}")
+        print(f"{'='*60}\n")
+
+        real_static = run_static_benchmark(real_contracts_dict, "Real Verified Contracts")
+        results_all["real_static"] = real_static
+
+        if not args.no_claude:
+            real_claude = run_claude_benchmark(real_contracts_dict, "Real Verified Contracts")
+            results_all["real_claude"] = real_claude
+
+            if real_claude:
+                print(f"\n{'=' * 60}")
+                print("REAL: Static v2 vs Claude")
+                print("=" * 60)
+                s = real_static["overall"]
+                c = real_claude["overall"]
+                print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
+                print(f"  Claude:     P={c['precision']:.0%}  R={c['recall']:.0%}  F1={c['f1']:.0%}")
+                delta = c["f1"] - s["f1"]
+                print(f"  Delta F1:   {delta:+.0%}")
+
+    # ──────────────────────────────────────────────────────────────────
     # Save results
-    output = {
-        "static": static_results,
-        "claude": claude_results,
-        "benchmark_info": {
-            "n_contracts": len(TEST_CONTRACTS),
-            "n_vulns": sum(len(d["ground_truth"]["vulnerabilities"]) for d in TEST_CONTRACTS.values()),
-            "contracts": list(TEST_CONTRACTS.keys()),
-        },
-    }
-    output_path = Path(__file__).parent.parent / "results.json"
+    # ──────────────────────────────────────────────────────────────────
+    if args.compare and "synthetic_static" in results_all and "real_static" in results_all:
+        print(f"\n{'=' * 60}")
+        print("OVERALL COMPARISON: Synthetic vs Real")
+        print("=" * 60)
+        s_syn = results_all["synthetic_static"]["overall"]
+        s_real = results_all["real_static"]["overall"]
+
+        print(f"\nStatic Analysis v2:")
+        print(f"  Synthetic:  F1={s_syn['f1']:.0%} (P={s_syn['precision']:.0%} R={s_syn['recall']:.0%})")
+        print(f"  Real:       F1={s_real['f1']:.0%} (P={s_real['precision']:.0%} R={s_real['recall']:.0%})")
+        print(f"  Delta:      {s_real['f1'] - s_syn['f1']:+.0%}")
+
+        if "synthetic_claude" in results_all and "real_claude" in results_all:
+            c_syn = results_all["synthetic_claude"]["overall"]
+            c_real = results_all["real_claude"]["overall"]
+
+            print(f"\nClaude Analysis:")
+            print(f"  Synthetic:  F1={c_syn['f1']:.0%} (P={c_syn['precision']:.0%} R={c_syn['recall']:.0%})")
+            print(f"  Real:       F1={c_real['f1']:.0%} (P={c_real['precision']:.0%} R={c_real['recall']:.0%})")
+            print(f"  Delta:      {c_real['f1'] - c_syn['f1']:+.0%}")
+
+    # Save JSON results
+    output_filename = "results_real.json" if args.real and not args.compare else "results.json"
+    output_path = Path(__file__).parent.parent / output_filename
     with open(output_path, "w") as f:
-        json.dump(output, f, indent=2, default=str)
+        json.dump(results_all, f, indent=2, default=str)
     print(f"\nResults saved to {output_path}")

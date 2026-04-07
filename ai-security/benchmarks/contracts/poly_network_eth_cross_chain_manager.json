@@ -1,0 +1,12 @@
+{
+  "name": "poly_network_eth_cross_chain_manager",
+  "address": "0x838bf9E95CB12Dd76a54C9f9D2E3082EAF928270",
+  "chain": "ethereum",
+  "exploit_date": "2021-08-10",
+  "loss_usd": 610000000,
+  "vuln_class": "message_validation",
+  "fork_block": 12996658,
+  "description": "Unrestricted cross-chain calls allowed overwriting keeper keys",
+  "source": null,
+  "fetched": false
+}

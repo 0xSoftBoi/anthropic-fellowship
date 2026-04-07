@@ -1,32 +1,45 @@
 """
-Fetch verified contract source code from Etherscan for bridge exploit benchmark.
+Fetch verified contract source code from Etherscan/BSCScan for bridge exploit benchmark.
 
 Usage:
     export ETHERSCAN_API_KEY=your_key
-    python fetch_contracts.py
+    export BSCSCAN_API_KEY=your_key
+    python fetch_contracts.py [--all | --real]
 
-This populates the benchmarks/ directory with real contract source code
-that can be fed to the Claude analyzer for evaluation.
+This populates the benchmarks/contracts/ directory with real verified source code
+for all 10 EVM bridge exploits from bridge_bench.py.
+
+--all: Fetch all 10 exploits (default)
+--real: Only run benchmark comparison (requires ANTHROPIC_API_KEY)
 """
 
 import os
 import json
 import time
 import requests
+import argparse
 from pathlib import Path
+from typing import Optional
 
-ETHERSCAN_API = "https://api.etherscan.io/api"
-BENCHMARK_DIR = Path(__file__).parent.parent / "benchmarks" / "contracts"
+ETHERSCAN_API = "https://api.etherscan.io/v2/api"
+BSCSCAN_API = "https://api.bscscan.com/v2/api"
+BENCHMARK_DIR = Path(__file__).parent / "contracts"
 
-# Contracts with verified source on Etherscan
+# Real bridge exploits from bridge_bench.py — 10 EVM exploits
+# Mapped with verified Etherscan/BSCScan addresses
 CONTRACTS_TO_FETCH = [
+    # ──────────────────────────────────────────────────────────────────
+    # MESSAGE VALIDATION (Nomad, Poly Network)
+    # ──────────────────────────────────────────────────────────────────
     {
-        "name": "wormhole_bridge",
-        "address": "0x3ee18B2214AFF97000D974cf647E7C347E8fa585",
+        "name": "poly_network_eth_cross_chain_manager",
+        "address": "0x838bf9E95CB12Dd76a54C9f9D2E3082EAF928270",
         "chain": "ethereum",
-        "exploit_date": "2022-02-02",
-        "loss_usd": 320_000_000,
-        "vuln_type": "signature_verification_bypass",
+        "exploit_date": "2021-08-10",
+        "loss_usd": 610_000_000,
+        "vuln_class": "message_validation",
+        "fork_block": 12_996_658,
+        "description": "Unrestricted cross-chain calls allowed overwriting keeper keys",
     },
     {
         "name": "nomad_bridge_replica",
@@ -34,22 +47,127 @@ CONTRACTS_TO_FETCH = [
         "chain": "ethereum",
         "exploit_date": "2022-08-01",
         "loss_usd": 190_000_000,
-        "vuln_type": "default_value_initialization",
+        "vuln_class": "message_validation",
+        "fork_block": 15_259_100,
+        "description": "Zero Merkle root initialization accepted any message",
     },
+
+    # ──────────────────────────────────────────────────────────────────
+    # INPUT VALIDATION (Qubit)
+    # ──────────────────────────────────────────────────────────────────
     {
-        "name": "ronin_bridge",
+        "name": "qubit_finance_bridge",
+        "address": "0xd01aD3D73Bae00a9CeA5fc0A2E561F47B2e54b79",
+        "chain": "bsc",
+        "exploit_date": "2022-01-28",
+        "loss_usd": 80_000_000,
+        "vuln_class": "input_validation",
+        "fork_block": 14_090_169,
+        "description": "Zero-value ETH deposit credited on BSC side",
+    },
+
+    # ──────────────────────────────────────────────────────────────────
+    # VALIDATOR GOVERNANCE (Ronin, Orbit)
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "ronin_bridge_validator",
         "address": "0x1A2a1c938CE3eC39b6D47113c7955bAa9B236945",
         "chain": "ethereum",
         "exploit_date": "2022-03-23",
         "loss_usd": 625_000_000,
-        "vuln_type": "validator_key_theft",
+        "vuln_class": "validator_governance",
+        "fork_block": 14_442_834,
+        "description": "5/9 validator keys compromised via social engineering",
+    },
+    {
+        "name": "orbit_chain_multisig",
+        "address": "0xd80F4e5d3c0c69F9e2eFCCf74f21a093f9A56d07",
+        "chain": "ethereum",
+        "exploit_date": "2024-01-01",
+        "loss_usd": 82_000_000,
+        "vuln_class": "validator_governance",
+        "fork_block": 18_908_049,
+        "description": "7/10 multisig keys compromised",
+    },
+
+    # ──────────────────────────────────────────────────────────────────
+    # APPROVAL EXPLOITATION (LiFi, Socket, XBridge)
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "lifi_protocol_diamond_march_2022",
+        "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaA",
+        "chain": "ethereum",
+        "exploit_date": "2022-03-20",
+        "loss_usd": 600_000,
+        "vuln_class": "approval_exploitation",
+        "fork_block": 14_420_686,
+        "description": "Arbitrary calldata drain of approvals in pre-bridge swap",
+    },
+    {
+        "name": "socket_gateway_registry",
+        "address": "0x3a23F943181408EAC424116Af7b7790c94Cb97a5",
+        "chain": "ethereum",
+        "exploit_date": "2024-01-16",
+        "loss_usd": 3_300_000,
+        "vuln_class": "approval_exploitation",
+        "fork_block": 19_021_453,
+        "description": "Faulty route validation drained wallet approvals",
+    },
+    {
+        "name": "xbridge_approval_drain",
+        "address": "0x354cca2f55dde182d36fe34d673430e226a3cb8c",
+        "chain": "ethereum",
+        "exploit_date": "2024-04-01",
+        "loss_usd": 1_600_000,
+        "vuln_class": "approval_exploitation",
+        "fork_block": 19_723_701,
+        "description": "Bridge allowed draining tokens from approved wallets",
+    },
+    {
+        "name": "lifi_protocol_diamond_july_2024",
+        "address": "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaA",
+        "chain": "ethereum",
+        "exploit_date": "2024-07-16",
+        "loss_usd": 10_000_000,
+        "vuln_class": "approval_exploitation",
+        "fork_block": 20_318_962,
+        "description": "Recurring arbitrary calldata vulnerability in swap facet",
+    },
+
+    # ──────────────────────────────────────────────────────────────────
+    # ORACLE MANIPULATION (Allbridge)
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "allbridge_oracle_pool",
+        "address": "0x4694b65b3bfD33A9ED6D279B35A5c37fF3eA34d6",
+        "chain": "bsc",
+        "exploit_date": "2023-04-01",
+        "loss_usd": 570_000,
+        "vuln_class": "oracle_manipulation",
+        "fork_block": 26_982_067,
+        "description": "Flash loan price manipulation via spot price dependency",
     },
 ]
 
 
-def fetch_contract_source(address: str, api_key: str) -> dict | None:
-    """Fetch verified contract source from Etherscan API."""
+def fetch_contract_source(address: str, chain: str, api_key: str) -> dict | None:
+    """
+    Fetch verified contract source from Etherscan or BSCScan API (V2).
+
+    Args:
+        address: Contract address
+        chain: "ethereum" or "bsc"
+        api_key: API key for the respective service
+
+    Returns:
+        Dict with source code and metadata, or None if fetch failed
+    """
+    chain_ids = {"ethereum": "1", "bsc": "56"}
+    api_url = ETHERSCAN_API if chain == "ethereum" else BSCSCAN_API
+    chain_id = chain_ids.get(chain, "1")
+
     params = {
+        "chainid": chain_id,
         "module": "contract",
         "action": "getsourcecode",
         "address": address,
@@ -57,82 +175,155 @@ def fetch_contract_source(address: str, api_key: str) -> dict | None:
     }
 
     try:
-        resp = requests.get(ETHERSCAN_API, params=params, timeout=30)
+        resp = requests.get(api_url, params=params, timeout=30)
         data = resp.json()
 
-        if data["status"] != "1" or not data["result"]:
+        if data.get("status") != "1" or not data.get("result"):
             print(f"  Failed: {data.get('message', 'Unknown error')}")
             return None
 
         result = data["result"][0]
+
+        # Handle proxy detection — if this is a proxy, optionally fetch implementation
+        is_proxy = result.get("Proxy") == "1"
+        impl_address = result.get("Implementation", "")
+
         return {
             "contract_name": result.get("ContractName", "Unknown"),
             "source_code": result.get("SourceCode", ""),
             "abi": result.get("ABI", ""),
             "compiler_version": result.get("CompilerVersion", ""),
             "optimization_used": result.get("OptimizationUsed", ""),
-            "proxy": result.get("Proxy", "0"),
-            "implementation": result.get("Implementation", ""),
+            "proxy": "1" if is_proxy else "0",
+            "implementation": impl_address,
+            "is_proxy": is_proxy,
         }
     except Exception as e:
-        print(f"  Error: {e}")
+        print(f"  Error fetching {address}: {e}")
         return None
 
 
-def fetch_all_contracts():
-    """Fetch all benchmark contracts and save to disk."""
-    api_key = os.environ.get("ETHERSCAN_API_KEY", "")
-    if not api_key:
-        print("WARNING: No ETHERSCAN_API_KEY set.")
-        print("Get a free key at https://etherscan.io/apis")
-        print("Running in demo mode with placeholder data.\n")
+def flatten_multi_file_contract(sol_source: str) -> str:
+    """
+    Convert Etherscan's multi-file JSON format into flattened Solidity.
+
+    Args:
+        sol_source: Either raw Solidity source or Etherscan JSON format
+
+    Returns:
+        Flattened Solidity source code
+    """
+    if not sol_source.startswith("{"):
+        return sol_source  # Already flat
+
+    try:
+        files = json.loads(sol_source)
+        if "sources" not in files:
+            return sol_source  # Not standard multi-file format
+
+        # Flatten: include all source files with file path comments
+        flattened_lines = []
+        for fname, fdata in files["sources"].items():
+            flattened_lines.append(f"// File: {fname}")
+            if isinstance(fdata, dict) and "content" in fdata:
+                flattened_lines.append(fdata["content"])
+            else:
+                flattened_lines.append(str(fdata))
+            flattened_lines.append("")  # Separator
+
+        return "\n".join(flattened_lines)
+    except json.JSONDecodeError:
+        return sol_source  # Couldn't parse, return as-is
+
+
+def fetch_all_contracts(verbose: bool = True) -> dict:
+    """
+    Fetch all benchmark contracts and save to disk.
+
+    Returns:
+        Dict with fetch statistics: {total: int, fetched: int, failed: list}
+    """
+    eth_key = os.environ.get("ETHERSCAN_API_KEY", "")
+    bsc_key = os.environ.get("BSCSCAN_API_KEY", "")
+
+    if not eth_key:
+        print("⚠️  WARNING: No ETHERSCAN_API_KEY set (Ethereum contracts will fail)")
+        print("   Get a free key at https://etherscan.io/apis")
+    if not bsc_key:
+        print("⚠️  WARNING: No BSCSCAN_API_KEY set (BSC contracts will fail)")
+        print("   Get a free key at https://bscscan.com/apis")
 
     BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
+
+    stats = {"total": len(CONTRACTS_TO_FETCH), "fetched": 0, "failed": []}
 
     for contract in CONTRACTS_TO_FETCH:
         name = contract["name"]
         addr = contract["address"]
-        print(f"Fetching {name} ({addr})...")
+        chain = contract["chain"]
 
-        if api_key:
-            source = fetch_contract_source(addr, api_key)
-            time.sleep(0.25)  # Rate limit: 5 req/sec
-        else:
-            source = None
+        if verbose:
+            print(f"\n📦 {name}")
+            print(f"   Chain: {chain.upper()} | Block: {contract.get('fork_block', '?')}")
+            print(f"   Loss: ${contract['loss_usd']:,}")
 
-        # Save metadata + source
+        # Get appropriate API key
+        api_key = eth_key if chain == "ethereum" else bsc_key
+
+        if not api_key:
+            print(f"   ⚠ Skipped (missing {chain.upper()} API key)")
+            stats["failed"].append({"name": name, "reason": f"Missing {chain.upper()} API key"})
+            continue
+
+        # Fetch source code
+        source = fetch_contract_source(addr, chain, api_key)
+        time.sleep(0.3)  # Rate limit: 5 req/sec
+
+        # Prepare output
         output = {
             **contract,
+            "address": addr,
             "source": source,
             "fetched": source is not None,
         }
 
+        # Save JSON metadata
         output_path = BENCHMARK_DIR / f"{name}.json"
         with open(output_path, "w") as f:
             json.dump(output, f, indent=2)
 
         if source:
-            # Also save raw .sol file for easy reading
+            # Flatten and save .sol file
             sol_path = BENCHMARK_DIR / f"{name}.sol"
             sol_source = source["source_code"]
-            # Handle multi-file contracts (Etherscan returns JSON)
-            if sol_source.startswith("{"):
-                try:
-                    files = json.loads(sol_source)
-                    if "sources" in files:
-                        sol_source = "\n\n".join(
-                            f"// File: {fname}\n{fdata['content']}"
-                            for fname, fdata in files["sources"].items()
-                        )
-                except json.JSONDecodeError:
-                    pass
+            sol_source = flatten_multi_file_contract(sol_source)
+
             with open(sol_path, "w") as f:
                 f.write(sol_source)
-            print(f"  ✓ Saved {sol_path.name} ({len(sol_source)} chars)")
-        else:
-            print(f"  ⚠ No source fetched (set ETHERSCAN_API_KEY)")
 
-    print(f"\nContracts saved to {BENCHMARK_DIR}/")
+            stats["fetched"] += 1
+            if verbose:
+                print(f"   ✓ Saved {sol_path.name} ({len(sol_source)} chars)")
+
+            # Note proxy status
+            if source.get("is_proxy"):
+                impl = source.get("implementation", "")
+                if verbose:
+                    print(f"   ℹ️ Proxy detected, implementation: {impl[:10]}...")
+        else:
+            stats["failed"].append({"name": name, "reason": "Fetch failed"})
+            if verbose:
+                print(f"   ✗ Failed to fetch source")
+
+    print(f"\n{'='*60}")
+    print(f"Summary: {stats['fetched']}/{stats['total']} contracts fetched")
+    if stats["failed"]:
+        print(f"\nFailed ({len(stats['failed'])}):")
+        for failure in stats["failed"]:
+            print(f"  - {failure['name']}: {failure['reason']}")
+
+    print(f"\nSaved to: {BENCHMARK_DIR}/")
+    return stats
 
 
 def analyze_benchmark_contracts():
@@ -140,28 +331,68 @@ def analyze_benchmark_contracts():
     Run the Claude analyzer against all fetched contracts.
     Requires: ANTHROPIC_API_KEY environment variable.
     """
-    from ai_security.agents.claude_analyzer import (
-        analyze_with_claude,
-        static_prescreen,
-        format_report,
-    )
+    try:
+        from agents.claude_analyzer import (
+            analyze_with_claude,
+            static_prescreen,
+            format_report,
+        )
+    except ImportError:
+        print("Error: claude_analyzer module not found.")
+        print("Make sure ANTHROPIC_API_KEY is set and run from ai-security/ directory.")
+        return
 
     for json_file in sorted(BENCHMARK_DIR.glob("*.json")):
         with open(json_file) as f:
             data = json.load(f)
 
         if not data.get("fetched"):
-            print(f"Skipping {data['name']} (no source code)")
+            print(f"⊘ Skipping {data['name']} (no source code)")
             continue
 
         source = data["source"]["source_code"]
         name = data["name"]
 
-        print(f"\nAnalyzing {name}...")
+        print(f"\n{'='*60}")
+        print(f"📊 Analyzing {name}...")
         static = static_prescreen(source)
         report = analyze_with_claude(source, name, static)
         print(format_report(report))
 
 
 if __name__ == "__main__":
-    fetch_all_contracts()
+    parser = argparse.ArgumentParser(
+        description="Fetch real bridge exploit contracts from Etherscan/BSCScan"
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Fetch all 10 EVM exploits (default)",
+    )
+    parser.add_argument(
+        "--analyze",
+        action="store_true",
+        help="Run Claude analyzer against fetched contracts",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        default=True,
+        help="Verbose output (default)",
+    )
+
+    args = parser.parse_args()
+
+    # Fetch contracts
+    print(f"{'='*60}")
+    print("🔗 BRIDGE-bench: Fetching real exploit contracts")
+    print(f"{'='*60}\n")
+
+    fetch_all_contracts(verbose=args.verbose)
+
+    # Optionally run analyzer
+    if args.analyze:
+        print(f"\n{'='*60}")
+        print("🤖 Running Claude analyzer...")
+        print(f"{'='*60}\n")
+        analyze_benchmark_contracts()

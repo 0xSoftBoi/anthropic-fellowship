@@ -1,0 +1,12 @@
+{
+  "name": "allbridge_oracle_pool",
+  "address": "0x4694b65b3bfD33A9ED6D279B35A5c37fF3eA34d6",
+  "chain": "bsc",
+  "exploit_date": "2023-04-01",
+  "loss_usd": 570000,
+  "vuln_class": "oracle_manipulation",
+  "fork_block": 26982067,
+  "description": "Flash loan price manipulation via spot price dependency",
+  "source": null,
+  "fetched": false
+}
