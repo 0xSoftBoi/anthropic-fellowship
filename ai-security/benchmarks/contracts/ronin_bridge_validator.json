@@ -7,6 +7,8 @@
   "vuln_class": "validator_governance",
   "fork_block": 14442834,
   "description": "5/9 validator keys compromised via social engineering",
+  "verified": false,
+  "note": "Source not verified on Etherscan (off-chain key compromise, not code vulnerability)",
   "source": {
     "contract_name": "",
     "source_code": "",

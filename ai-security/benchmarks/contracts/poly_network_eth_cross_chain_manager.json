@@ -7,6 +7,8 @@
   "vuln_class": "message_validation",
   "fork_block": 12996658,
   "description": "Unrestricted cross-chain calls allowed overwriting keeper keys",
+  "verified": false,
+  "note": "Source not verified on Etherscan (would need to source from Poly Network repo or Sourcify)",
   "source": {
     "contract_name": "",
     "source_code": "",

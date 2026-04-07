@@ -7,6 +7,8 @@
   "vuln_class": "validator_governance",
   "fork_block": 18908049,
   "description": "7/10 multisig keys compromised",
+  "verified": false,
+  "note": "Source not verified on Etherscan (multisig compromise, not code vulnerability)",
   "source": {
     "contract_name": "",
     "source_code": "",

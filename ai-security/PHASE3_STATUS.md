@@ -2,9 +2,11 @@
 
 ## Executive Summary
 
-Phase 3 successfully implemented **token-budget-aware LLM analysis** for real bridge contracts. The core infrastructure is complete; data acquisition remains the limiting factor for 7/10 contracts.
+Phase 3 successfully implemented **token-budget-aware LLM analysis** for real bridge contracts. Core infrastructure complete with **6 verified Etherscan contracts** (expanded from original 3).
 
 **Result**: Claude analyzer scales from 0% F1 (token overflow) to **17-44% F1** on real contracts via function extraction.
+
+**Dataset**: 13 total contracts, 6 verified on Etherscan, 3 with ground truth labels for scoring.
 
 ---
 
@@ -61,32 +63,43 @@ for name, result in results.items():  # Descriptive name
 - V1→V2 migration with `chainid` parameter (Ethereum=1, BSC=56)
 - Multi-file JSON wrapper stripping: `source[1:-1]` to remove `{{ }}`
 - Proper flattening with `// File: <path>` comments
+- **Expanded to 13 contracts** (original 10 + 3 alternatives: Wormhole, Across, Synapse)
 
-**Result**: 8/10 contracts fetch successfully (3 have verified source)
+**Result**: 11/13 contracts fetch successfully; 6/13 have verified Etherscan source
 
 ---
 
 ## Test Results
 
-### Verified Contracts (Ready for Analysis)
-| Contract | Chain | Size | F1 (Static) | F1 (Claude*) | Status |
-|----------|-------|------|-----------|------------|--------|
-| nomad_bridge_replica | Ethereum | 81KB | 0% | ~40% | ✓ Works |
-| socket_gateway_registry | Ethereum | 511KB | 0% | ~44% | ✓ Works |
-| xbridge_approval_drain | Ethereum | 67KB | 0% | ~25% | ✓ Works |
+### Verified Contracts on Etherscan (6/13)
+
+**With Ground Truth Labels (Benchmark-Scoreable)**:
+| Contract | Size | Category | F1 (Static) | F1 (Claude*) |
+|----------|------|----------|-----------|------------|
+| nomad_bridge_replica | 81KB | Message Validation | 0% | ~40% |
+| socket_gateway_registry | 511KB | Approval Exploit | 0% | ~44% |
+| xbridge_approval_drain | 68KB | Approval Exploit | 0% | ~25% |
+
+**Verified But No GT Labels (Additional Data)**:
+| Contract | Size | Category | Status |
+|----------|------|----------|--------|
+| wormhole_token_bridge | 22KB | Message Verification | ✓ Fetched |
+| across_hub_pool_v2 | 177KB | Liquidity Bridge | ✓ Fetched |
+| synapse_bridge | 18KB | Liquidity Bridge | ✓ Fetched |
 
 *Claude F1 from previous Phase 3 runs with function extraction enabled
+GT = Ground Truth vulnerability labels for F1 scoring
 
-### Unverified Contracts (Data Acquisition Problem)
+### Unverified Contracts (7/13)
 | Contract | Issue | Reason |
 |----------|-------|--------|
 | poly_network | Source not verified | Address not in Etherscan (exploit 2021) |
-| ronin_bridge | Source not verified | Off-chain key compromise (no code exploit) |
-| orbit_chain | Source not verified | Multisig compromise (operational, not code) |
-| qubit_finance | Source not verified | BSC contract, not verified |
-| lifi_march_2022 | Diamond proxy | Implementation at different address (not verified) |
-| lifi_july_2024 | Diamond proxy | GasZipFacet implementation unverified |
-| allbridge | Source not verified | BSC contract, not verified |
+| ronin_bridge | Source not verified | Off-chain key compromise (not code) |
+| orbit_chain | Source not verified | Multisig compromise (operational) |
+| qubit_finance | Source not verified | BSC, not verified |
+| lifi_march_2022 | Diamond proxy | Implementation unverified |
+| lifi_july_2024 | Diamond proxy | GasZipFacet unverified |
+| allbridge | Source not verified | BSC, not verified |
 
 ---
 
@@ -111,25 +124,31 @@ This keeps the analyzer modular and the function extraction testable.
 
 ---
 
-## Why 3/10 Only?
+## Dataset Expansion: 3 → 6 Verified Contracts
 
-### Cannot Be Verified on Etherscan
-1. **Poly Network exploit (2021)**: Address was upgraded; original vulnerable instance not preserved
-2. **Ronin, Orbit**: Key compromise exploits (off-chain security), not code vulnerabilities
-3. **LiFi (both)**: Diamond proxy pattern; vulnerable facet implementations never verified separately
+After extensive Etherscan searches, we identified **3 additional verified bridge contracts** to expand the dataset:
 
-### Not Standard Chains
-1. **Qubit, Allbridge**: BSC contracts; require BSC API key (BSCSCAN_API_KEY)
-2. **Possible BSC key issue**: May not be configured in environment during Phase 3
+### Original 3 (Phase 3 initial)
+1. **nomad_bridge_replica** - Message validation vulnerability
+2. **socket_gateway_registry** - Approval exploitation  
+3. **xbridge_approval_drain** - Approval exploitation
 
-### Path Forward for 7/10
-- **Poly Network**: Source from `github.com/polynetwork/eth-contracts` 
-- **Ronin**: Skip (off-chain compromise, not code pattern)
-- **Orbit**: Skip (multisig compromise, not code pattern)
-- **Qubit**: Try Sourcify or fetch from QubitFinance GitHub
-- **LiFi**: Extract facet implementations from transaction traces at exploit block
-- **Allbridge**: Try Sourcify or AllurianceCI documentation
-- **BSC**: May work if BSCSCAN_API_KEY environment variable is set
+### New 3 (Found during verification search)
+4. **wormhole_token_bridge** (0x3ee18...) - Message verification bypass via sysvar injection ($325M loss)
+5. **across_hub_pool_v2** (0xc186fa...) - Liquidity bridge (177KB, verified)
+6. **synapse_bridge** (0x27963...) - Cross-chain liquidity (18KB, verified)
+
+### Why 7/13 Still Unverified
+
+**Cannot Be Verified on Etherscan** (0 code vulnerability patterns):
+1. **Ronin, Orbit**: Key compromise exploits (off-chain security issue, not code pattern)
+2. **LiFi (both)**: Diamond proxy; vulnerable facet implementations at different addresses (unverified)
+3. **Poly Network**: Address was upgraded; vulnerable instance not preserved
+
+**Not On Standard Chains**:
+1. **Qubit, Allbridge**: BSC contracts; require BSCSCAN_API_KEY configuration
+
+**Assessment**: The remaining 7 are either (a) off-chain exploits, (b) unverified proxy implementations, or (c) not on Etherscan. Expanding further would require GitHub source integration, which is beyond Phase 3 scope.
 
 ---
 

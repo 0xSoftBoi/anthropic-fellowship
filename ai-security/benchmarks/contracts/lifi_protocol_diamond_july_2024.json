@@ -6,7 +6,9 @@
   "loss_usd": 10000000,
   "vuln_class": "approval_exploitation",
   "fork_block": 20318962,
-  "description": "Recurring arbitrary calldata vulnerability in swap facet",
+  "description": "Recurring arbitrary calldata vulnerability in GasZipFacet",
+  "verified": false,
+  "note": "Diamond proxy; GasZipFacet implementation not verified",
   "source": {
     "contract_name": "",
     "source_code": "",

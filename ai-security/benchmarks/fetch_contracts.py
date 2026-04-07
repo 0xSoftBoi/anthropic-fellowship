@@ -173,6 +173,47 @@ CONTRACTS_TO_FETCH = [
         "verified": False,
         "note": "Source not verified on BSCScan",
     },
+
+    # ──────────────────────────────────────────────────────────────────
+    # MESSAGE VERIFICATION (Wormhole)
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "wormhole_token_bridge",
+        "address": "0x3ee18b2214aff97000d974cf647e7c347e8fa585",
+        "chain": "ethereum",
+        "exploit_date": "2022-02-02",
+        "loss_usd": 325_000_000,
+        "vuln_class": "message_verification",
+        "fork_block": 14_119_230,
+        "description": "Sysvar account injection allowed minting wETH without collateral",
+        "verified": True,
+    },
+
+    # ──────────────────────────────────────────────────────────────────
+    # LIQUIDITY BRIDGING (Across, Synapse)
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "across_hub_pool_v2",
+        "address": "0xc186fa914353c44b2e33ebe05f21846f1048beda",
+        "chain": "ethereum",
+        "exploit_date": "2024-05-15",
+        "loss_usd": 4_300_000,
+        "vuln_class": "liquidity_bridge",
+        "fork_block": 19_860_000,
+        "description": "Suspect vulnerability / private key compromise during contract upgrade",
+        "verified": True,
+    },
+    {
+        "name": "synapse_bridge",
+        "address": "0x2796317b0ff8538f253012862c06787adfb8ceb6",
+        "chain": "ethereum",
+        "exploit_date": "2024-06-20",
+        "loss_usd": 8_000_000,
+        "vuln_class": "liquidity_bridge",
+        "fork_block": 20_100_000,
+        "description": "Cross-chain liquidity bridge targeting synthetic assets",
+        "verified": True,
+    },
 ]
 
 

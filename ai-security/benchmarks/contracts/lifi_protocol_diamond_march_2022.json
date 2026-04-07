@@ -7,6 +7,8 @@
   "vuln_class": "approval_exploitation",
   "fork_block": 14420686,
   "description": "Arbitrary calldata drain of approvals in pre-bridge swap",
+  "verified": false,
+  "note": "Diamond proxy at this address; vulnerable SwapFacet implementation not verified",
   "source": {
     "contract_name": "",
     "source_code": "",
