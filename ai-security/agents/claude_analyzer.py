@@ -213,7 +213,7 @@ Analyze this Solidity smart contract for security vulnerabilities:
 Provide your analysis as JSON."""
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-sonnet-4-6",
         max_tokens=4096,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
