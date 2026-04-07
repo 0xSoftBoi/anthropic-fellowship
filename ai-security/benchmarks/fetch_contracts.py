@@ -23,6 +23,7 @@ from typing import Optional
 
 ETHERSCAN_API = "https://api.etherscan.io/v2/api"
 BSCSCAN_API = "https://api.bscscan.com/v2/api"
+SOURCIFY_API = "https://sourcify.dev/server"
 BENCHMARK_DIR = Path(__file__).parent / "contracts"
 
 # Real bridge exploits from bridge_bench.py — 10 EVM exploits
@@ -308,6 +309,54 @@ def flatten_multi_file_contract(sol_source: str) -> str:
         return sol_source  # Couldn't parse, return as-is
 
 
+def fetch_from_sourcify(address: str, chain_id: int) -> Optional[str]:
+    """Fetch verified source from Sourcify as fallback when Etherscan fails."""
+    url = f"{SOURCIFY_API}/files/any/{chain_id}/{address}"
+    try:
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        if "files" not in data:
+            return None
+        # Find .sol files (not metadata.json)
+        sources = {}
+        for f in data["files"]:
+            if f["name"].endswith(".sol"):
+                sources[f["name"]] = {"content": f["content"]}
+        if not sources:
+            return None
+        # Use existing flatten function
+        return flatten_multi_file_contract(json.dumps({"sources": sources}))
+    except Exception as e:
+        if verbose:
+            print(f"    Sourcify error: {e}")
+        return None
+
+
+GITHUB_FALLBACK_URLS = {
+    "poly_network_eth_cross_chain_manager":
+        "https://raw.githubusercontent.com/polynetwork/eth-contracts/master/contracts/core/cross_chain_manager/logic/EthCrossChainManager.sol",
+    "lifi_protocol_diamond_march_2022":
+        "https://raw.githubusercontent.com/lifinance/contracts/main/src/Facets/GenericSwapFacet.sol",
+    "lifi_protocol_diamond_july_2024":
+        "https://raw.githubusercontent.com/lifinance/contracts/main/src/Facets/GasZipFacet.sol",
+}
+
+
+def fetch_from_github(url: str) -> Optional[str]:
+    """Fetch raw Solidity source from a GitHub raw URL."""
+    try:
+        resp = requests.get(url, timeout=15, headers={"User-Agent": "BRIDGE-bench/1.0"})
+        if resp.status_code == 200 and "pragma solidity" in resp.text.lower():
+            return resp.text
+        return None
+    except Exception as e:
+        if verbose:
+            print(f"    GitHub fetch error: {e}")
+        return None
+
+
 def fetch_all_contracts(verbose: bool = True) -> dict:
     """
     Fetch all benchmark contracts and save to disk.
@@ -347,9 +396,28 @@ def fetch_all_contracts(verbose: bool = True) -> dict:
             stats["failed"].append({"name": name, "reason": f"Missing {chain.upper()} API key"})
             continue
 
-        # Fetch source code
+        # Fetch source code — try Etherscan first, then Sourcify, then GitHub
         source = fetch_contract_source(addr, chain, api_key)
         time.sleep(0.3)  # Rate limit: 5 req/sec
+
+        # Fallback 1: Sourcify
+        if not source:
+            if verbose:
+                print(f"   Etherscan failed, trying Sourcify...")
+            chain_id = 1 if chain == "ethereum" else 56
+            sol_source = fetch_from_sourcify(addr, chain_id)
+            if sol_source:
+                source = {"source_code": sol_source, "is_proxy": False, "proxy": "0"}
+            time.sleep(0.3)
+
+        # Fallback 2: GitHub
+        if not source and name in GITHUB_FALLBACK_URLS:
+            if verbose:
+                print(f"   Sourcify failed, trying GitHub...")
+            sol_source = fetch_from_github(GITHUB_FALLBACK_URLS[name])
+            if sol_source:
+                source = {"source_code": sol_source, "is_proxy": False, "proxy": "0"}
+            time.sleep(0.3)
 
         # Prepare output
         output = {

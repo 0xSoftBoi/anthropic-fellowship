@@ -25,6 +25,7 @@ import subprocess
 from pathlib import Path
 from dataclasses import dataclass, field
 from anthropic import Anthropic
+from agents.claude_analyzer import prepare_source_for_analysis
 
 
 SYSTEM_PROMPT = """You are an expert smart contract security auditor specializing in cross-chain bridge vulnerabilities. You have access to tools for analyzing contracts.
@@ -299,6 +300,9 @@ def run_agent(
     client = Anthropic()
     audit = AgentAudit(contract_name=contract_name)
 
+    # Use function extraction to handle large contracts
+    source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
+
     messages = [
         {
             "role": "user",
@@ -307,7 +311,7 @@ Contract name: {contract_name}
 
 Source code:
 ```solidity
-{source_code[:8000]}
+{source_for_analysis}
 ```
 
 Use the available tools to thoroughly analyze this contract:
