@@ -7,7 +7,7 @@
       "f1": 0,
       "tp": 0,
       "fp": 56,
-      "fn": 13
+      "fn": 19
     },
     "per_contract": {
       "poly_network_eth_cross_chain_manager": {
@@ -32,14 +32,16 @@
         "metrics": {
           "tp": 0,
           "fp": 10,
-          "fn": 3,
+          "fn": 5,
           "precision": 0.0,
           "recall": 0.0,
           "f1": 0,
           "missed": [
             "zero_root_initialization",
             "default_value_exploit",
-            "missing_upgrade_validation"
+            "missing_upgrade_validation",
+            "replay_attack",
+            "arbitrary_external_call"
           ],
           "false_positives": [
             "untrusted_external_call",
@@ -55,7 +57,7 @@
           ]
         },
         "n_findings": 10,
-        "n_gt": 3,
+        "n_gt": 5,
         "findings": [
           {
             "type": "untrusted_external_call",
@@ -108,6 +110,24 @@
             "confidence": 0.7
           }
         ]
+      },
+      "qubit_finance_bridge": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "zero_value_deposit",
+            "missing_input_validation"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 2,
+        "findings": []
       },
       "ronin_bridge_validator": {
         "metrics": {
@@ -491,6 +511,24 @@
         "n_findings": 0,
         "n_gt": 3,
         "findings": []
+      },
+      "allbridge_oracle_pool": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "flash_loan_price_manipulation",
+            "spot_price_dependency"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 2,
+        "findings": []
       }
     },
     "systematic_gaps": [
@@ -499,6 +537,10 @@
       "nomad_bridge_replica: zero_root_initialization",
       "nomad_bridge_replica: default_value_exploit",
       "nomad_bridge_replica: missing_upgrade_validation",
+      "nomad_bridge_replica: replay_attack",
+      "nomad_bridge_replica: arbitrary_external_call",
+      "qubit_finance_bridge: zero_value_deposit",
+      "qubit_finance_bridge: missing_input_validation",
       "ronin_bridge_validator: low_validator_threshold",
       "lifi_protocol_diamond_march_2022: arbitrary_external_call",
       "lifi_protocol_diamond_march_2022: infinite_approval_drain",
@@ -506,60 +548,84 @@
       "socket_gateway_registry: faulty_route_validation",
       "xbridge_approval_drain: approval_exploitation",
       "lifi_protocol_diamond_july_2024: arbitrary_external_call",
-      "lifi_protocol_diamond_july_2024: infinite_approval_drain"
+      "lifi_protocol_diamond_july_2024: infinite_approval_drain",
+      "allbridge_oracle_pool: flash_loan_price_manipulation",
+      "allbridge_oracle_pool: spot_price_dependency"
     ]
   },
-  "real_claude": {
-    "method": "claude",
+  "real_hybrid": {
+    "method": "hybrid",
     "overall": {
-      "precision": 0.1,
-      "recall": 0.23076923076923078,
-      "f1": 0.13953488372093023,
-      "tp": 3,
-      "fp": 27,
-      "fn": 10
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 29,
+      "fn": 19
     },
     "per_contract": {
       "poly_network_eth_cross_chain_manager": {
         "metrics": {
           "tp": 0,
-          "fp": 1,
+          "fp": 0,
           "fn": 2,
-          "precision": 0.0,
+          "precision": 0,
           "recall": 0.0,
           "f1": 0,
           "missed": [
             "unrestricted_cross_chain_call",
             "keeper_key_overwrite"
           ],
-          "false_positives": [
-            "empty_contract_body"
-          ]
+          "false_positives": []
         },
-        "n_findings": 1
+        "n_findings": 0,
+        "analysis_depth": "static_only"
       },
       "nomad_bridge_replica": {
         "metrics": {
-          "tp": 1,
-          "fp": 6,
-          "fn": 2,
-          "precision": 0.14285714285714285,
-          "recall": 0.3333333333333333,
-          "f1": 0.2,
+          "tp": 0,
+          "fp": 8,
+          "fn": 5,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
           "missed": [
+            "zero_root_initialization",
             "default_value_exploit",
-            "missing_upgrade_validation"
+            "missing_upgrade_validation",
+            "replay_attack",
+            "arbitrary_external_call"
           ],
           "false_positives": [
-            "message_authentication_bypass",
-            "arbitrary_external_call",
-            "cross_chain_double_spend",
-            "upgrade_risk",
-            "access_control_weakness",
-            "reentrancy"
+            "untrusted_external_call",
+            "missing_access_control",
+            "unused_signature_parameter",
+            "unprotected_initializer",
+            "reinitializable",
+            "zero_root_acceptance",
+            "unprotected_admin_function",
+            "duplicate_signature_acceptance"
           ]
         },
-        "n_findings": 7
+        "n_findings": 8,
+        "analysis_depth": "targeted"
+      },
+      "qubit_finance_bridge": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "zero_value_deposit",
+            "missing_input_validation"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "analysis_depth": "static_only"
       },
       "ronin_bridge_validator": {
         "metrics": {
@@ -574,7 +640,8 @@
           ],
           "false_positives": []
         },
-        "n_findings": 0
+        "n_findings": 0,
+        "analysis_depth": "static_only"
       },
       "orbit_chain_multisig": {
         "metrics": {
@@ -587,7 +654,8 @@
           "missed": [],
           "false_positives": []
         },
-        "n_findings": 0
+        "n_findings": 0,
+        "analysis_depth": "static_only"
       },
       "lifi_protocol_diamond_march_2022": {
         "metrics": {
@@ -603,57 +671,64 @@
           ],
           "false_positives": []
         },
-        "n_findings": 0
+        "n_findings": 0,
+        "analysis_depth": "static_only"
       },
       "socket_gateway_registry": {
         "metrics": {
-          "tp": 1,
-          "fp": 10,
-          "fn": 1,
-          "precision": 0.09090909090909091,
-          "recall": 0.5,
-          "f1": 0.15384615384615385,
+          "tp": 0,
+          "fp": 11,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
           "missed": [
+            "approval_exploitation",
             "faulty_route_validation"
           ],
           "false_positives": [
-            "infinite_loop_dos",
             "arbitrary_delegatecall",
-            "arbitrary_delegatecall",
-            "arbitrary_delegatecall",
-            "reentrancy",
-            "missing_input_validation",
-            "upgrade_risk",
-            "missing_zero_amount_validation",
-            "missing_receiver_validation",
-            "batch_controller_atomicity_risk"
+            "approval_drain",
+            "missing_access_control",
+            "unvalidated_external_call",
+            "untrusted_external_call",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "missing_reentrancy_guard",
+            "no_rate_limiting",
+            "unprotected_upgrade"
           ]
         },
-        "n_findings": 11
+        "n_findings": 11,
+        "analysis_depth": "targeted"
       },
       "xbridge_approval_drain": {
         "metrics": {
-          "tp": 1,
+          "tp": 0,
           "fp": 10,
-          "fn": 0,
-          "precision": 0.09090909090909091,
-          "recall": 1.0,
-          "f1": 0.16666666666666669,
-          "missed": [],
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "approval_exploitation"
+          ],
           "false_positives": [
-            "arbitrary_external_call",
-            "faulty_route_validation",
-            "message_authentication_bypass",
-            "zero_value_deposits",
+            "duplicate_signature_acceptance",
+            "approval_drain",
+            "untrusted_external_call",
+            "missing_signature_verification",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
             "reentrancy",
-            "upgrade_risk",
-            "cross_chain_double_spend",
-            "access_control",
-            "state_validation_failure",
-            "fee_bypass"
+            "no_rate_limiting",
+            "unprotected_upgrade"
           ]
         },
-        "n_findings": 11
+        "n_findings": 10,
+        "analysis_depth": "targeted"
       },
       "lifi_protocol_diamond_july_2024": {
         "metrics": {
@@ -669,7 +744,25 @@
           ],
           "false_positives": []
         },
-        "n_findings": 0
+        "n_findings": 0,
+        "analysis_depth": "static_only"
+      },
+      "allbridge_oracle_pool": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "flash_loan_price_manipulation",
+            "spot_price_dependency"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "analysis_depth": "static_only"
       }
     }
   }
