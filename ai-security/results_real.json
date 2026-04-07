@@ -7,7 +7,7 @@
       "f1": 0,
       "tp": 0,
       "fp": 56,
-      "fn": 17
+      "fn": 13
     },
     "per_contract": {
       "poly_network_eth_cross_chain_manager": {
@@ -113,14 +113,12 @@
         "metrics": {
           "tp": 0,
           "fp": 0,
-          "fn": 3,
+          "fn": 1,
           "precision": 0,
           "recall": 0.0,
           "f1": 0,
           "missed": [
-            "low_validator_threshold",
-            "no_anomaly_detection",
-            "social_engineering_vector"
+            "low_validator_threshold"
           ],
           "false_positives": []
         },
@@ -132,13 +130,11 @@
         "metrics": {
           "tp": 0,
           "fp": 0,
-          "fn": 1,
+          "fn": 0,
           "precision": 0,
-          "recall": 0.0,
+          "recall": 0,
           "f1": 0,
-          "missed": [
-            "multisig_key_compromise"
-          ],
+          "missed": [],
           "false_positives": []
         },
         "n_findings": 0,
@@ -482,14 +478,13 @@
         "metrics": {
           "tp": 0,
           "fp": 0,
-          "fn": 3,
+          "fn": 2,
           "precision": 0,
           "recall": 0.0,
           "f1": 0,
           "missed": [
             "arbitrary_external_call",
-            "infinite_approval_drain",
-            "recurring_vulnerability"
+            "infinite_approval_drain"
           ],
           "false_positives": []
         },
@@ -505,17 +500,13 @@
       "nomad_bridge_replica: default_value_exploit",
       "nomad_bridge_replica: missing_upgrade_validation",
       "ronin_bridge_validator: low_validator_threshold",
-      "ronin_bridge_validator: no_anomaly_detection",
-      "ronin_bridge_validator: social_engineering_vector",
-      "orbit_chain_multisig: multisig_key_compromise",
       "lifi_protocol_diamond_march_2022: arbitrary_external_call",
       "lifi_protocol_diamond_march_2022: infinite_approval_drain",
       "socket_gateway_registry: approval_exploitation",
       "socket_gateway_registry: faulty_route_validation",
       "xbridge_approval_drain: approval_exploitation",
       "lifi_protocol_diamond_july_2024: arbitrary_external_call",
-      "lifi_protocol_diamond_july_2024: infinite_approval_drain",
-      "lifi_protocol_diamond_july_2024: recurring_vulnerability"
+      "lifi_protocol_diamond_july_2024: infinite_approval_drain"
     ]
   }
 }

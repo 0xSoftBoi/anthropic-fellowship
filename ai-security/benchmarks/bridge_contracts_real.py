@@ -17,6 +17,16 @@ from pathlib import Path
 from typing import Optional
 
 
+# Vulnerabilities that cannot be detected via code analysis
+# These are operational/policy issues, not code patterns
+CODE_UNREACHABLE_VULN_TYPES = {
+    "social_engineering_vector",      # Key compromise via social engineering (not in code)
+    "no_anomaly_detection",           # Off-chain monitoring requirement
+    "multisig_key_compromise",        # Key management issue (not in code)
+    "recurring_vulnerability",        # Historical pattern (not detectable in current code)
+}
+
+
 # Map vulnerability details from bridge_bench.py to ground truth format
 VULNERABILITY_TAXONOMY = {
     "unrestricted_cross_chain_call": {

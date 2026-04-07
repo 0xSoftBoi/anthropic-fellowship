@@ -61,7 +61,24 @@ def fuzzy_match(finding_type: str, gt_type: str) -> bool:
     return g in TYPE_EQUIVALENCES.get(f, [f])
 
 
-def evaluate_findings(findings: list, gt_vulns: list) -> dict:
+def evaluate_findings(findings: list, gt_vulns: list, exclude_unreachable: bool = True) -> dict:
+    """
+    Evaluate findings against ground truth.
+
+    Args:
+        findings: List of detected vulnerabilities
+        gt_vulns: List of ground truth vulnerabilities
+        exclude_unreachable: If True, filter out code-unreachable vulnerabilities (off-chain issues)
+
+    Returns:
+        Dict with tp, fp, fn, precision, recall, f1, missed, false_positives
+    """
+    from benchmarks.bridge_contracts_real import CODE_UNREACHABLE_VULN_TYPES
+
+    # Filter ground truth to only code-detectable vulnerabilities
+    if exclude_unreachable:
+        gt_vulns = [g for g in gt_vulns if g["type"] not in CODE_UNREACHABLE_VULN_TYPES]
+
     gt_matched = set()
     finding_matched = set()
 
