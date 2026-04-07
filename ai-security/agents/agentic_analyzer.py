@@ -289,7 +289,7 @@ def run_agent(
     source_code: str,
     contract_name: str,
     max_turns: int = 10,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-20250514",  # Upgraded from haiku for multi-turn reasoning
 ) -> AgentAudit:
     """
     Run the agentic analyzer on a contract.
