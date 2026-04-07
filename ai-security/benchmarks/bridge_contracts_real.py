@@ -119,6 +119,11 @@ VULNERABILITY_TAXONOMY = {
         "severity": "critical",
         "description": "Bridge upgrade logic didn't validate state changes",
     },
+    "replay_attack": {
+        "type": "replay_attack",
+        "severity": "critical",
+        "description": "Message status updated after external call, enabling replay attacks",
+    },
 }
 
 
@@ -225,6 +230,8 @@ def load_real_contracts() -> list:
             "zero_root_initialization",
             "default_value_exploit",
             "missing_upgrade_validation",
+            "replay_attack",
+            "arbitrary_external_call",
         ],
         "qubit_finance_bridge": [
             "zero_value_deposit",

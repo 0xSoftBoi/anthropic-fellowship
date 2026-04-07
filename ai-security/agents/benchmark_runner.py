@@ -64,6 +64,8 @@ TYPE_EQUIVALENCES = {
     "missing_upgrade_validation": ["missing_upgrade_validation", "unprotected_upgrade"],
     "flash_loan_price_manipulation": ["flash_loan_price_manipulation", "spot_price_dependency", "flash_loan_exploitable"],
     "spot_price_dependency": ["spot_price_dependency", "flash_loan_price_manipulation", "spot_price_oracle"],
+    # Phase 5A: Added from Sonnet's real findings
+    "replay_attack": ["replay_attack", "message_replay", "status_update_reentrancy"],
 }
 
 
