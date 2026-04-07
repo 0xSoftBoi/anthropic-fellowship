@@ -290,12 +290,20 @@ def run_agent(
     contract_name: str,
     max_turns: int = 10,
     model: str = "claude-sonnet-4-20250514",  # Upgraded from haiku for multi-turn reasoning
+    context_hint: str = "",  # Optional: pre-filter findings from static tools
 ) -> AgentAudit:
     """
     Run the agentic analyzer on a contract.
 
     The agent iteratively uses tools to analyze the contract,
     submitting findings as it goes.
+
+    Args:
+        source_code: Solidity contract source
+        contract_name: Name for reporting
+        max_turns: Max analysis iterations (default 10)
+        model: Claude model to use (default Sonnet)
+        context_hint: Optional summary of static tool findings to focus analysis
     """
     client = Anthropic()
     audit = AgentAudit(contract_name=contract_name)
@@ -303,10 +311,8 @@ def run_agent(
     # Use function extraction to handle large contracts
     source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
 
-    messages = [
-        {
-            "role": "user",
-            "content": f"""Analyze this bridge contract for security vulnerabilities.
+    # Build the analysis prompt, including context_hint if provided
+    prompt = f"""Analyze this bridge contract for security vulnerabilities.
 Contract name: {contract_name}
 
 Source code:
@@ -319,7 +325,15 @@ Use the available tools to thoroughly analyze this contract:
 2. Run specific vulnerability checks
 3. Submit each finding you discover
 
-Be thorough — check all vulnerability categories.""",
+Be thorough — check all vulnerability categories."""
+
+    if context_hint:
+        prompt += f"\n\n{context_hint}"
+
+    messages = [
+        {
+            "role": "user",
+            "content": prompt,
         }
     ]
 

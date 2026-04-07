@@ -449,9 +449,11 @@ if __name__ == "__main__":
         source = Path(args.source).read_text()
     else:
         # Try to auto-load from benchmarks
-        from benchmarks.bridge_contracts_real import load_bridge_contracts
-        contracts = load_bridge_contracts()
-        source = contracts.get(args.contract, {}).get("source", "")
+        from benchmarks.bridge_contracts_real import load_real_contracts
+        contracts = load_real_contracts()
+        # contracts is a list, find by name
+        contract = next((c for c in contracts if c.get("name") == args.contract), None)
+        source = contract.get("source", "") if contract else ""
         if not source:
             print(f"Could not find contract {args.contract}")
             exit(1)
