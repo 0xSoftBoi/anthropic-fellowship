@@ -5,8 +5,8 @@ eth-abi
 eth-utils
 
 # Smart contract analysis
-# slither-analyzer  # install separately: pip install slither-analyzer
-# mythril           # install separately: pip install mythril
+slither-analyzer
+mythril
 
 # Data
 pandas

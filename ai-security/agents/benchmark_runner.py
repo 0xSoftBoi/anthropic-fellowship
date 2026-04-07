@@ -79,6 +79,8 @@ TYPE_EQUIVALENCES = {
     "liquidation_manipulation": ["liquidation_manipulation", "oracle_price_manipulation"],
     "interest_rate_oracle_abuse": ["interest_rate_oracle_abuse", "oracle_price_manipulation"],
     "bad_debt_accumulation": ["bad_debt_accumulation", "donation_attack_bad_debt"],
+    "missing_slippage_protection": ["missing_slippage_protection", "price_impact_manipulation"],
+    "price_impact_manipulation": ["price_impact_manipulation", "missing_slippage_protection"],
 }
 
 
@@ -347,6 +349,74 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
     }
 
 
+def run_hybrid_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
+    """
+    Run hybrid analysis benchmark: static pre-filter + targeted Sonnet analysis.
+
+    Args:
+        dataset: Dict of contract_name -> {source, ground_truth} (default: TEST_CONTRACTS)
+        dataset_name: Name for output display
+
+    Returns:
+        Results dict with metrics, or None if API key not set
+    """
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("\nSkipping hybrid analysis (set ANTHROPIC_API_KEY to enable)")
+        return None
+
+    if dataset is None:
+        dataset = TEST_CONTRACTS
+
+    from agents.hybrid_analyzer import run_hybrid_analysis
+
+    print(f"\n{'=' * 60}")
+    print(f"BRIDGE-bench: Hybrid (Static+Agentic) Analysis on {dataset_name}")
+    print("=" * 60)
+
+    results = {}
+    totals = {"tp": 0, "fp": 0, "fn": 0}
+
+    for name, data in dataset.items():
+        if isinstance(data, dict) and "source" in data:
+            source = data["source"]
+            gt_vulns = data["ground_truth"]["vulnerabilities"]
+        else:
+            continue
+
+        if source is None:
+            print(f"\n{name}: SKIPPED (source not available)")
+            continue
+
+        audit = run_hybrid_analysis(source, name)
+
+        # Convert findings to dict for evaluate_findings()
+        ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.combined_findings]
+        metrics = evaluate_findings(ai_findings, gt_vulns)
+
+        results[name] = {
+            "metrics": metrics,
+            "n_findings": len(ai_findings),
+            "analysis_depth": audit.analysis_depth,
+        }
+        for k in ["tp", "fp", "fn"]:
+            totals[k] += metrics[k]
+
+        print(f"\n{name} ({audit.analysis_depth}): P={metrics['precision']:.0%} R={metrics['recall']:.0%} F1={metrics['f1']:.0%}")
+
+    p = totals["tp"] / (totals["tp"] + totals["fp"]) if (totals["tp"] + totals["fp"]) > 0 else 0
+    r = totals["tp"] / (totals["tp"] + totals["fn"]) if (totals["tp"] + totals["fn"]) > 0 else 0
+    f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
+
+    print(f"\n{'=' * 60}")
+    print(f"HYBRID OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}")
+
+    return {
+        "method": "hybrid",
+        "overall": {"precision": p, "recall": r, "f1": f1, **totals},
+        "per_contract": results,
+    }
+
+
 def convert_real_contracts_to_dict(real_contracts: list) -> dict:
     """Convert list of real contracts to dict format for benchmark."""
     result = {}
@@ -383,6 +453,11 @@ if __name__ == "__main__":
         action="store_true",
         help="Use multi-turn agentic analysis instead of single-turn Claude",
     )
+    parser.add_argument(
+        "--hybrid",
+        action="store_true",
+        help="Use hybrid analysis (static pre-filter + targeted Sonnet)",
+    )
 
     args = parser.parse_args()
 
@@ -400,7 +475,21 @@ if __name__ == "__main__":
         results_all["synthetic_static"] = synthetic_static
 
         if not args.no_claude:
-            if args.agentic:
+            if args.hybrid:
+                synthetic_hybrid = run_hybrid_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
+                results_all["synthetic_hybrid"] = synthetic_hybrid
+
+                if synthetic_hybrid:
+                    print(f"\n{'=' * 60}")
+                    print("SYNTHETIC: Static v2 vs Hybrid")
+                    print("=" * 60)
+                    s = synthetic_static["overall"]
+                    h = synthetic_hybrid["overall"]
+                    print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
+                    print(f"  Hybrid:     P={h['precision']:.0%}  R={h['recall']:.0%}  F1={h['f1']:.0%}")
+                    delta = h["f1"] - s["f1"]
+                    print(f"  Delta F1:   {delta:+.0%}")
+            elif args.agentic:
                 synthetic_agentic = run_agentic_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
                 results_all["synthetic_agentic"] = synthetic_agentic
 
@@ -444,7 +533,21 @@ if __name__ == "__main__":
         results_all["real_static"] = real_static
 
         if not args.no_claude:
-            if args.agentic:
+            if args.hybrid:
+                real_hybrid = run_hybrid_benchmark(real_contracts_dict, "Real Verified Contracts")
+                results_all["real_hybrid"] = real_hybrid
+
+                if real_hybrid:
+                    print(f"\n{'=' * 60}")
+                    print("REAL: Static v2 vs Hybrid")
+                    print("=" * 60)
+                    s = real_static["overall"]
+                    h = real_hybrid["overall"]
+                    print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
+                    print(f"  Hybrid:     P={h['precision']:.0%}  R={h['recall']:.0%}  F1={h['f1']:.0%}")
+                    delta = h["f1"] - s["f1"]
+                    print(f"  Delta F1:   {delta:+.0%}")
+            elif args.agentic:
                 real_agentic = run_agentic_benchmark(real_contracts_dict, "Real Verified Contracts")
                 results_all["real_agentic"] = real_agentic
 
