@@ -76,7 +76,20 @@ Tested on the full 27-contract expanded dataset (56 vulnerabilities).
 - 8 false positives on clean contracts (SecureBridge, SecureMultisig)
 - Lower precision (44.5%) than static analyzer (48.5%)
 
-**Cost:** ~$0.50 per full benchmark run (20 Sonnet API calls)
+**Cost:** ~$0.50 per full benchmark run
+
+### v3 Final Results (29 contracts, 65 vulnerabilities)
+
+Including Drift Protocol ($285M, Apr 2026) and Circle CCTP bridge contracts.
+
+| Analyzer | F1 | Precision | Recall | TP | FP | FN |
+|----------|-----|-----------|--------|----|----|-----|
+| **Agent v2 (Claude)** | **60.3%** | 46.0% | **87.7%** | **57** | 67 | **8** |
+| Static Analyzer v2 | 37.8% | 45.7% | 32.3% | 21 | 25 | 44 |
+| Slither | 11.1% | 10.9% | 11.4% | 5 | 41 | 39 |
+
+**DriftStyle: 5/5 PERFECT** — agent found all governance + oracle vulnerabilities.
+**CCTPStyle: 3/4** — found rate limiting gaps, centralization, zero timelock.
 
 ## Dataset
 
