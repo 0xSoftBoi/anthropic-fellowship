@@ -27,6 +27,15 @@ BENCHMARK_DIR = Path(__file__).parent / "contracts"
 
 # Real bridge exploits from bridge_bench.py — 10 EVM exploits
 # Mapped with verified Etherscan/BSCScan addresses
+#
+# NOTE: Phase 3 Coverage (3/10 contracts have verified Etherscan source)
+# Contracts without verified source on Etherscan are placeholders for future work.
+# These would require either:
+# - Finding alternative verified addresses for the same exploits
+# - Using Sourcify or other contract databases
+# - Acquiring source from project repositories directly
+#
+# Current verified contracts: nomad_bridge_replica, socket_gateway_registry, xbridge_approval_drain
 CONTRACTS_TO_FETCH = [
     # ──────────────────────────────────────────────────────────────────
     # MESSAGE VALIDATION (Nomad, Poly Network)
@@ -40,6 +49,8 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "message_validation",
         "fork_block": 12_996_658,
         "description": "Unrestricted cross-chain calls allowed overwriting keeper keys",
+        "verified": False,
+        "note": "Source not verified on Etherscan (would need to source from Poly Network repo or Sourcify)",
     },
     {
         "name": "nomad_bridge_replica",
@@ -50,6 +61,7 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "message_validation",
         "fork_block": 15_259_100,
         "description": "Zero Merkle root initialization accepted any message",
+        "verified": True,
     },
 
     # ──────────────────────────────────────────────────────────────────
@@ -64,6 +76,8 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "input_validation",
         "fork_block": 14_090_169,
         "description": "Zero-value ETH deposit credited on BSC side",
+        "verified": False,
+        "note": "Source not verified on BSCScan",
     },
 
     # ──────────────────────────────────────────────────────────────────
@@ -78,6 +92,8 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "validator_governance",
         "fork_block": 14_442_834,
         "description": "5/9 validator keys compromised via social engineering",
+        "verified": False,
+        "note": "Source not verified on Etherscan (off-chain key compromise, not code vulnerability)",
     },
     {
         "name": "orbit_chain_multisig",
@@ -88,6 +104,8 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "validator_governance",
         "fork_block": 18_908_049,
         "description": "7/10 multisig keys compromised",
+        "verified": False,
+        "note": "Source not verified on Etherscan (multisig compromise, not code vulnerability)",
     },
 
     # ──────────────────────────────────────────────────────────────────
@@ -102,6 +120,8 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "approval_exploitation",
         "fork_block": 14_420_686,
         "description": "Arbitrary calldata drain of approvals in pre-bridge swap",
+        "verified": False,
+        "note": "Diamond proxy at this address; vulnerable SwapFacet implementation not verified",
     },
     {
         "name": "socket_gateway_registry",
@@ -112,6 +132,7 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "approval_exploitation",
         "fork_block": 19_021_453,
         "description": "Faulty route validation drained wallet approvals",
+        "verified": True,
     },
     {
         "name": "xbridge_approval_drain",
@@ -122,6 +143,7 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "approval_exploitation",
         "fork_block": 19_723_701,
         "description": "Bridge allowed draining tokens from approved wallets",
+        "verified": True,
     },
     {
         "name": "lifi_protocol_diamond_july_2024",
@@ -131,7 +153,9 @@ CONTRACTS_TO_FETCH = [
         "loss_usd": 10_000_000,
         "vuln_class": "approval_exploitation",
         "fork_block": 20_318_962,
-        "description": "Recurring arbitrary calldata vulnerability in swap facet",
+        "description": "Recurring arbitrary calldata vulnerability in GasZipFacet",
+        "verified": False,
+        "note": "Diamond proxy; GasZipFacet implementation not verified",
     },
 
     # ──────────────────────────────────────────────────────────────────
@@ -146,6 +170,8 @@ CONTRACTS_TO_FETCH = [
         "vuln_class": "oracle_manipulation",
         "fork_block": 26_982_067,
         "description": "Flash loan price manipulation via spot price dependency",
+        "verified": False,
+        "note": "Source not verified on BSCScan",
     },
 ]
 
