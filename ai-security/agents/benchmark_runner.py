@@ -306,8 +306,7 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
             print(f"\n{name}: SKIPPED (source not available)")
             continue
 
-        static = static_prescreen(source)
-        audit = run_agent(source, name, static)
+        audit = run_agent(source, name, max_turns=8)
 
         # Convert AgentFinding to dict for evaluate_findings()
         ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.findings]
