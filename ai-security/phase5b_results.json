@@ -1,0 +1,14 @@
+{
+  "contract": "curve_finance_reentrancy",
+  "findings_count": 1,
+  "findings": [
+    {
+      "type": "arbitrary_call_exploitation",
+      "severity": "critical",
+      "confidence": 0.95,
+      "location": "upgradeToAndCall function (line 260-262)"
+    }
+  ],
+  "tool_calls": 8,
+  "tokens": 145876
+}
