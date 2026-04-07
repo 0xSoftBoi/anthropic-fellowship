@@ -1,0 +1,22 @@
+{
+  "name": "platypus_flash_loan",
+  "address": "0x66a1e57f2250e046a41027c1c4345d92498aab9c",
+  "chain": "avalanche",
+  "exploit_date": "2023-02-15",
+  "loss_usd": 8500000,
+  "vuln_class": "flash_loan_collateral_inflation",
+  "fork_block": 9202262,
+  "description": "Flash loan enables collateral inflation and LP withdrawal exploit",
+  "verified": true,
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
+}

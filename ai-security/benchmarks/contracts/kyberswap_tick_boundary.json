@@ -1,0 +1,22 @@
+{
+  "name": "kyberswap_tick_boundary",
+  "address": "0x6131b5fae19ea4f9d964eac0408e37168b313f82",
+  "chain": "ethereum",
+  "exploit_date": "2023-11-22",
+  "loss_usd": 46000000,
+  "vuln_class": "tick_boundary_exploit",
+  "fork_block": 18538460,
+  "description": "Uniswap V3 clone with tick boundary arithmetic vulnerability",
+  "verified": true,
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
+}

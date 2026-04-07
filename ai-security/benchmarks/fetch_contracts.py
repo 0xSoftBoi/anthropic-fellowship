@@ -290,7 +290,7 @@ def fetch_contract_source(address: str, chain: str, api_key: str) -> dict | None
     Returns:
         Dict with source code and metadata, or None if fetch failed
     """
-    chain_ids = {"ethereum": "1", "bsc": "56"}
+    chain_ids = {"ethereum": "1", "bsc": "56", "avalanche": "43114"}
     chain_id = chain_ids.get(chain, "1")
 
     params = {
@@ -416,9 +416,13 @@ def fetch_from_github(url: str) -> Optional[str]:
         return None
 
 
-def fetch_all_contracts(verbose: bool = True) -> dict:
+def fetch_all_contracts(verbose: bool = True, dataset: str = "all") -> dict:
     """
-    Fetch all benchmark contracts and save to disk.
+    Fetch benchmark contracts and save to disk.
+
+    Args:
+        verbose: Print detailed output
+        dataset: "all" (bridges + DEX), "bridge" (bridges only), "defi" (DEX/lending only)
 
     Returns:
         Dict with fetch statistics: {total: int, fetched: int, failed: list}
@@ -432,9 +436,17 @@ def fetch_all_contracts(verbose: bool = True) -> dict:
 
     BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
 
-    stats = {"total": len(CONTRACTS_TO_FETCH), "fetched": 0, "failed": []}
+    # Filter contracts by dataset
+    if dataset == "bridge":
+        contracts = [c for c in CONTRACTS_TO_FETCH if c.get("vuln_class") not in ["donation_attack_bad_debt", "tick_boundary_exploit", "flash_loan_collateral_inflation", "oracle_price_manipulation", "reentrancy_in_dex_callback"]]
+    elif dataset == "defi":
+        contracts = [c for c in CONTRACTS_TO_FETCH if c.get("vuln_class") in ["donation_attack_bad_debt", "tick_boundary_exploit", "flash_loan_collateral_inflation", "oracle_price_manipulation", "reentrancy_in_dex_callback"]]
+    else:  # "all"
+        contracts = CONTRACTS_TO_FETCH
 
-    for contract in CONTRACTS_TO_FETCH:
+    stats = {"total": len(contracts), "fetched": 0, "failed": []}
+
+    for contract in contracts:
         name = contract["name"]
         addr = contract["address"]
         chain = contract["chain"]
@@ -457,7 +469,8 @@ def fetch_all_contracts(verbose: bool = True) -> dict:
         if not source:
             if verbose:
                 print(f"   Etherscan failed, trying Sourcify...")
-            chain_id = 1 if chain == "ethereum" else 56
+            chain_id_map = {"ethereum": 1, "bsc": 56, "avalanche": 43114}
+            chain_id = chain_id_map.get(chain, 1)
             sol_source = fetch_from_sourcify(addr, chain_id)
             if sol_source:
                 source = {"source_code": sol_source, "is_proxy": False, "proxy": "0"}
@@ -555,12 +568,22 @@ def analyze_benchmark_contracts():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Fetch real bridge exploit contracts from Etherscan/BSCScan"
+        description="Fetch real exploit contracts from Etherscan/BSCScan"
     )
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Fetch all 10 EVM exploits (default)",
+        help="Fetch all exploits (bridges + DEX/lending)",
+    )
+    parser.add_argument(
+        "--bridge",
+        action="store_true",
+        help="Fetch bridge exploits only",
+    )
+    parser.add_argument(
+        "--defi",
+        action="store_true",
+        help="Fetch DEX/lending exploits only (Phase 5B)",
     )
     parser.add_argument(
         "--analyze",
@@ -576,12 +599,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Determine dataset
+    if args.defi:
+        dataset = "defi"
+        title = "🔗 BRIDGE-bench: Fetching Phase 5B DEX/Lending exploit contracts"
+    elif args.bridge:
+        dataset = "bridge"
+        title = "🔗 BRIDGE-bench: Fetching bridge exploit contracts"
+    else:
+        dataset = "all"
+        title = "🔗 BRIDGE-bench: Fetching all exploit contracts"
+
     # Fetch contracts
     print(f"{'='*60}")
-    print("🔗 BRIDGE-bench: Fetching real exploit contracts")
+    print(title)
     print(f"{'='*60}\n")
 
-    fetch_all_contracts(verbose=args.verbose)
+    fetch_all_contracts(verbose=args.verbose, dataset=dataset)
 
     # Optionally run analyzer
     if args.analyze:

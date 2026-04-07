@@ -1,0 +1,22 @@
+{
+  "name": "euler_finance_donation_attack",
+  "address": "0x27cc3b579dd344dd408d8ac0b3bac7493b4331d8",
+  "chain": "ethereum",
+  "exploit_date": "2023-03-13",
+  "loss_usd": 197000000,
+  "vuln_class": "donation_attack_bad_debt",
+  "fork_block": 17016736,
+  "description": "Donation attack inflates asset price, enables bad debt accumulation",
+  "verified": true,
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
+}

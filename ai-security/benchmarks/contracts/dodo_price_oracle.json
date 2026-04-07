@@ -1,0 +1,22 @@
+{
+  "name": "dodo_price_oracle",
+  "address": "0x9ad32e3054268b849b84a0fdf30b5ff3396ada27",
+  "chain": "bsc",
+  "exploit_date": "2021-03-23",
+  "loss_usd": 3800000,
+  "vuln_class": "oracle_price_manipulation",
+  "fork_block": 5261101,
+  "description": "Spot price oracle vulnerability via reserves manipulation",
+  "verified": true,
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
+}
