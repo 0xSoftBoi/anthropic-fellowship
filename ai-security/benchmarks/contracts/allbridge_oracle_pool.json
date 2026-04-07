@@ -7,6 +7,17 @@
   "vuln_class": "oracle_manipulation",
   "fork_block": 26982067,
   "description": "Flash loan price manipulation via spot price dependency",
-  "source": null,
-  "fetched": false
+  "verified": false,
+  "note": "Source not verified on BSCScan",
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
 }

@@ -220,18 +220,17 @@ CONTRACTS_TO_FETCH = [
 
 def fetch_contract_source(address: str, chain: str, api_key: str) -> dict | None:
     """
-    Fetch verified contract source from Etherscan or BSCScan API (V2).
+    Fetch verified contract source from Etherscan API V2 (multichain support).
 
     Args:
         address: Contract address
         chain: "ethereum" or "bsc"
-        api_key: API key for the respective service
+        api_key: Etherscan API key (works for all chains via chainid param)
 
     Returns:
         Dict with source code and metadata, or None if fetch failed
     """
     chain_ids = {"ethereum": "1", "bsc": "56"}
-    api_url = ETHERSCAN_API if chain == "ethereum" else BSCSCAN_API
     chain_id = chain_ids.get(chain, "1")
 
     params = {
@@ -243,7 +242,7 @@ def fetch_contract_source(address: str, chain: str, api_key: str) -> dict | None
     }
 
     try:
-        resp = requests.get(api_url, params=params, timeout=30)
+        resp = requests.get(ETHERSCAN_API, params=params, timeout=30)
         data = resp.json()
 
         if data.get("status") != "1" or not data.get("result"):
@@ -364,15 +363,12 @@ def fetch_all_contracts(verbose: bool = True) -> dict:
     Returns:
         Dict with fetch statistics: {total: int, fetched: int, failed: list}
     """
-    eth_key = os.environ.get("ETHERSCAN_API_KEY", "")
-    bsc_key = os.environ.get("BSCSCAN_API_KEY", "")
+    api_key = os.environ.get("ETHERSCAN_API_KEY", "")
 
-    if not eth_key:
-        print("⚠️  WARNING: No ETHERSCAN_API_KEY set (Ethereum contracts will fail)")
+    if not api_key:
+        print("⚠️  WARNING: No ETHERSCAN_API_KEY set (all contracts will fail)")
         print("   Get a free key at https://etherscan.io/apis")
-    if not bsc_key:
-        print("⚠️  WARNING: No BSCSCAN_API_KEY set (BSC contracts will fail)")
-        print("   Get a free key at https://bscscan.com/apis")
+        print("   NOTE: Etherscan v2 API supports all chains (Ethereum, BSC, etc.) with chainid parameter")
 
     BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -388,12 +384,9 @@ def fetch_all_contracts(verbose: bool = True) -> dict:
             print(f"   Chain: {chain.upper()} | Block: {contract.get('fork_block', '?')}")
             print(f"   Loss: ${contract['loss_usd']:,}")
 
-        # Get appropriate API key
-        api_key = eth_key if chain == "ethereum" else bsc_key
-
         if not api_key:
-            print(f"   ⚠ Skipped (missing {chain.upper()} API key)")
-            stats["failed"].append({"name": name, "reason": f"Missing {chain.upper()} API key"})
+            print(f"   ⚠ Skipped (missing ETHERSCAN_API_KEY)")
+            stats["failed"].append({"name": name, "reason": "Missing ETHERSCAN_API_KEY"})
             continue
 
         # Fetch source code — try Etherscan first, then Sourcify, then GitHub

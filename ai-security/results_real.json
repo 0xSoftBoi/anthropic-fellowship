@@ -512,12 +512,12 @@
   "real_claude": {
     "method": "claude",
     "overall": {
-      "precision": 0.16,
-      "recall": 0.3076923076923077,
-      "f1": 0.2105263157894737,
-      "tp": 4,
-      "fp": 21,
-      "fn": 9
+      "precision": 0.1,
+      "recall": 0.23076923076923078,
+      "f1": 0.13953488372093023,
+      "tp": 3,
+      "fp": 27,
+      "fn": 10
     },
     "per_contract": {
       "poly_network_eth_cross_chain_manager": {
@@ -533,7 +533,7 @@
             "keeper_key_overwrite"
           ],
           "false_positives": [
-            "empty_contract_submission"
+            "empty_contract_body"
           ]
         },
         "n_findings": 1
@@ -541,23 +541,25 @@
       "nomad_bridge_replica": {
         "metrics": {
           "tp": 1,
-          "fp": 4,
+          "fp": 6,
           "fn": 2,
-          "precision": 0.2,
+          "precision": 0.14285714285714285,
           "recall": 0.3333333333333333,
-          "f1": 0.25,
+          "f1": 0.2,
           "missed": [
             "default_value_exploit",
             "missing_upgrade_validation"
           ],
           "false_positives": [
-            "cross_chain_double_spend",
+            "message_authentication_bypass",
             "arbitrary_external_call",
+            "cross_chain_double_spend",
             "upgrade_risk",
-            "access_control_weakness"
+            "access_control_weakness",
+            "reentrancy"
           ]
         },
-        "n_findings": 5
+        "n_findings": 7
       },
       "ronin_bridge_validator": {
         "metrics": {
@@ -605,47 +607,53 @@
       },
       "socket_gateway_registry": {
         "metrics": {
-          "tp": 2,
-          "fp": 7,
-          "fn": 0,
-          "precision": 0.2222222222222222,
-          "recall": 1.0,
-          "f1": 0.3636363636363636,
-          "missed": [],
+          "tp": 1,
+          "fp": 10,
+          "fn": 1,
+          "precision": 0.09090909090909091,
+          "recall": 0.5,
+          "f1": 0.15384615384615385,
+          "missed": [
+            "faulty_route_validation"
+          ],
           "false_positives": [
-            "arbitrary_external_call",
-            "arbitrary_external_call",
-            "arbitrary_external_call",
-            "infinite_loop",
-            "upgrade_risk",
+            "infinite_loop_dos",
+            "arbitrary_delegatecall",
+            "arbitrary_delegatecall",
+            "arbitrary_delegatecall",
             "reentrancy",
-            "zero_value_deposits"
+            "missing_input_validation",
+            "upgrade_risk",
+            "missing_zero_amount_validation",
+            "missing_receiver_validation",
+            "batch_controller_atomicity_risk"
           ]
         },
-        "n_findings": 9
+        "n_findings": 11
       },
       "xbridge_approval_drain": {
         "metrics": {
           "tp": 1,
-          "fp": 9,
+          "fp": 10,
           "fn": 0,
-          "precision": 0.1,
+          "precision": 0.09090909090909091,
           "recall": 1.0,
-          "f1": 0.18181818181818182,
+          "f1": 0.16666666666666669,
           "missed": [],
           "false_positives": [
+            "arbitrary_external_call",
             "faulty_route_validation",
-            "upgrade_risk",
             "message_authentication_bypass",
             "zero_value_deposits",
             "reentrancy",
-            "state_validation_failure",
-            "arbitrary_external_call",
+            "upgrade_risk",
             "cross_chain_double_spend",
-            "informational"
+            "access_control",
+            "state_validation_failure",
+            "fee_bypass"
           ]
         },
-        "n_findings": 10
+        "n_findings": 11
       },
       "lifi_protocol_diamond_july_2024": {
         "metrics": {

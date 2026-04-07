@@ -7,6 +7,17 @@
   "vuln_class": "input_validation",
   "fork_block": 14090169,
   "description": "Zero-value ETH deposit credited on BSC side",
-  "source": null,
-  "fetched": false
+  "verified": false,
+  "note": "Source not verified on BSCScan",
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
 }
