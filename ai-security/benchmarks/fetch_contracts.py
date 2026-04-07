@@ -217,7 +217,12 @@ def flatten_multi_file_contract(sol_source: str) -> str:
         return sol_source  # Already flat
 
     try:
-        files = json.loads(sol_source)
+        # Handle Etherscan's {{ }} wrapper (strip outer braces)
+        source_clean = sol_source
+        if source_clean.startswith("{{") and source_clean.endswith("}}"):
+            source_clean = source_clean[1:-1].strip()
+
+        files = json.loads(source_clean)
         if "sources" not in files:
             return sol_source  # Not standard multi-file format
 

@@ -7,6 +7,15 @@
   "vuln_class": "validator_governance",
   "fork_block": 14442834,
   "description": "5/9 validator keys compromised via social engineering",
-  "source": null,
-  "fetched": false
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
 }

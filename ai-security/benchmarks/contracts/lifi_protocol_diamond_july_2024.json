@@ -7,6 +7,15 @@
   "vuln_class": "approval_exploitation",
   "fork_block": 20318962,
   "description": "Recurring arbitrary calldata vulnerability in swap facet",
-  "source": null,
-  "fetched": false
+  "source": {
+    "contract_name": "",
+    "source_code": "",
+    "abi": "Contract source code not verified",
+    "compiler_version": "",
+    "optimization_used": "",
+    "proxy": "0",
+    "implementation": "",
+    "is_proxy": false
+  },
+  "fetched": true
 }
