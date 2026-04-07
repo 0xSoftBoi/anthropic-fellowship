@@ -215,6 +215,66 @@ CONTRACTS_TO_FETCH = [
         "description": "Cross-chain liquidity bridge targeting synthetic assets",
         "verified": True,
     },
+
+    # ──────────────────────────────────────────────────────────────────
+    # PHASE 5B: DEX/AMM/LENDING PROTOCOL EXPLOITS
+    # ──────────────────────────────────────────────────────────────────
+    {
+        "name": "euler_finance_donation_attack",
+        "address": "0x27cc3b579dd344dd408d8ac0b3bac7493b4331d8",
+        "chain": "ethereum",
+        "exploit_date": "2023-03-13",
+        "loss_usd": 197_000_000,
+        "vuln_class": "donation_attack_bad_debt",
+        "fork_block": 17_016_736,
+        "description": "Donation attack inflates asset price, enables bad debt accumulation",
+        "verified": True,
+    },
+    {
+        "name": "curve_finance_reentrancy",
+        "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",  # CRV token (vyper reentrancy context)
+        "chain": "ethereum",
+        "exploit_date": "2023-07-30",
+        "loss_usd": 70_000_000,
+        "vuln_class": "reentrancy_in_dex_callback",
+        "fork_block": 18_040_000,
+        "description": "Vyper compiler reentrancy check bypass in LP callbacks",
+        "verified": False,
+        "note": "Source not verified on Etherscan (exploit in Curve pool contracts, complex to fetch)",
+    },
+    {
+        "name": "kyberswap_tick_boundary",
+        "address": "0x6131b5fae19ea4f9d964eac0408e37168b313f82",  # Elastic router
+        "chain": "ethereum",
+        "exploit_date": "2023-11-22",
+        "loss_usd": 46_000_000,
+        "vuln_class": "tick_boundary_exploit",
+        "fork_block": 18_538_460,
+        "description": "Uniswap V3 clone with tick boundary arithmetic vulnerability",
+        "verified": True,
+    },
+    {
+        "name": "platypus_flash_loan",
+        "address": "0x66a1e57f2250e046a41027c1c4345d92498aab9c",
+        "chain": "avalanche",
+        "exploit_date": "2023-02-15",
+        "loss_usd": 8_500_000,
+        "vuln_class": "flash_loan_collateral_inflation",
+        "fork_block": 9_202_262,
+        "description": "Flash loan enables collateral inflation and LP withdrawal exploit",
+        "verified": True,
+    },
+    {
+        "name": "dodo_price_oracle",
+        "address": "0x9ad32e3054268b849b84a0fdf30b5ff3396ada27",  # DODO contract
+        "chain": "bsc",
+        "exploit_date": "2021-03-23",
+        "loss_usd": 3_800_000,
+        "vuln_class": "oracle_price_manipulation",
+        "fork_block": 5_261_101,
+        "description": "Spot price oracle vulnerability via reserves manipulation",
+        "verified": True,
+    },
 ]
 
 
