@@ -724,6 +724,256 @@ ALL_CONTRACTS.update({
 })
 
 
+# ─── Pattern 21: Drift-style Governance Takeover + Oracle Manipulation ─────
+# Real exploit: Drift Protocol, Apr 2026, $285M — attacker social-engineered
+# multisig signers into pre-signing nonce transactions, exploited 2/5 threshold
+# with zero timelock, created fake token with wash-traded price, used as
+# collateral at manipulated oracle prices, drained funds, bridged $232M USDC
+# via Circle CCTP from Solana to Ethereum. Attributed to DPRK.
+
+DRIFT_PATTERN = """
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IPriceOracle {
+    function getPrice(address token) external view returns (uint256);
+}
+
+contract DriftStyleVault {
+    address[] public councilMembers;
+    uint256 public threshold;
+    uint256 public timelockDelay;
+
+    IPriceOracle public oracle;
+    mapping(address => bool) public supportedCollateral;
+    mapping(address => mapping(address => uint256)) public collateralBalances;
+    mapping(address => uint256) public borrowedAmounts;
+
+    address public admin;
+    uint256 public totalDeposits;
+
+    // BUG 1: Low threshold (2 of 5) — social engineering 2 signers is feasible
+    // BUG 2: Zero timelock — no delay on governance actions
+    constructor(address[] memory _council, address _oracle) {
+        require(_council.length >= 2, "Need at least 2");
+        councilMembers = _council;
+        threshold = 2;           // BUG: Only 2/5 needed
+        timelockDelay = 0;       // BUG: No timelock
+        oracle = IPriceOracle(_oracle);
+        admin = msg.sender;
+    }
+
+    // BUG 3: Anyone can add collateral tokens — no whitelist governance
+    function addSupportedCollateral(address token) external {
+        // BUG: No council approval required
+        supportedCollateral[token] = true;
+    }
+
+    function depositCollateral(address token, uint256 amount) external {
+        require(supportedCollateral[token], "Not supported");
+        // Assume ERC20 transferFrom happens here
+        collateralBalances[msg.sender][token] += amount;
+    }
+
+    // BUG 4: Uses spot oracle price — manipulable with fake token + wash trading
+    function getCollateralValue(address user, address token) public view returns (uint256) {
+        uint256 balance = collateralBalances[user][token];
+        uint256 price = oracle.getPrice(token);  // BUG: trusts oracle blindly
+        return balance * price / 1e18;
+    }
+
+    // BUG 5: No withdrawal rate limiting — 31 withdrawals in 12 minutes
+    function borrow(address token, uint256 borrowAmount) external {
+        uint256 collateralValue = getCollateralValue(msg.sender, token);
+        require(collateralValue >= borrowAmount * 2, "Undercollateralized");
+        borrowedAmounts[msg.sender] += borrowAmount;
+
+        // Transfer borrowed funds
+        (bool success,) = msg.sender.call{value: borrowAmount}("");
+        require(success, "Transfer failed");
+    }
+
+    // BUG 6: Council migration with zero timelock — attacker can swap all members instantly
+    function migrateCouncil(
+        address[] memory newMembers,
+        uint256 newThreshold,
+        bytes[] memory signatures
+    ) external {
+        require(signatures.length >= threshold, "Insufficient sigs");
+        // BUG: No timelock delay — changes take effect immediately
+        // BUG: Pre-signed transactions via durable nonces can be replayed
+        councilMembers = newMembers;
+        threshold = newThreshold;
+    }
+
+    receive() external payable {
+        totalDeposits += msg.value;
+    }
+}
+"""
+
+DRIFT_GROUND_TRUTH = {
+    "vulnerabilities": [
+        {
+            "type": "low_multisig_threshold",
+            "severity": "critical",
+            "location": "constructor",
+            "description": "2/5 Security Council threshold — attacker only needs to compromise 2 signers",
+        },
+        {
+            "type": "zero_timelock",
+            "severity": "critical",
+            "location": "constructor/migrateCouncil",
+            "description": "No timelock on governance actions — changes take effect immediately",
+        },
+        {
+            "type": "oracle_manipulation_fake_token",
+            "severity": "critical",
+            "location": "getCollateralValue",
+            "description": "Blindly trusts oracle price — attacker can create fake token with wash-traded price history",
+        },
+        {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "location": "addSupportedCollateral",
+            "description": "Anyone can add collateral tokens without council approval — enables fake token attack",
+        },
+        {
+            "type": "no_rate_limiting",
+            "severity": "high",
+            "location": "borrow",
+            "description": "No withdrawal rate limiting — attacker executed 31 withdrawals in 12 minutes",
+        },
+    ],
+    "overall_risk": "critical",
+}
+
+ALL_CONTRACTS["DriftStyle"] = {
+    "source": DRIFT_PATTERN,
+    "ground_truth": DRIFT_GROUND_TRUTH,
+    "real_exploit": "Drift Protocol $285M, Apr 2026 (DPRK/Lazarus)",
+    "vuln_class": "governance_takeover",
+}
+
+
+# ─── Pattern 22: CCTP-style Bridge (Circle Cross-Chain Transfer Protocol) ──
+# The Drift attacker bridged $232M in stolen USDC via Circle CCTP.
+# Circle had ~6 hours to freeze but didn't. The contract-level issues:
+# single attester, no rate limiting, no amount caps, no timelock on rotation.
+
+CCTP_PATTERN = """
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+interface IERC20Burn {
+    function burn(uint256 amount) external;
+    function mint(address to, uint256 amount) external;
+    function transferFrom(address from, address to, uint256 amount) external returns (bool);
+}
+
+contract CCTPStyleBridge {
+    address public attester;
+    address public controller;
+    IERC20Burn public usdc;
+    uint32 public localDomain;
+    uint64 public nextNonce;
+    mapping(bytes32 => bool) public usedNonces;
+    mapping(uint32 => bool) public enabledDomains;
+    bool public paused;
+
+    constructor(address _usdc, address _attester, uint32 _domain) {
+        usdc = IERC20Burn(_usdc);
+        attester = _attester;
+        controller = msg.sender;
+        localDomain = _domain;
+    }
+
+    // BUG 1: No rate limiting — Drift attacker bridged $232M rapidly
+    function depositForBurn(uint256 amount, uint32 destDomain, address recipient) external {
+        require(!paused && amount > 0 && enabledDomains[destDomain]);
+        usdc.transferFrom(msg.sender, address(this), amount);
+        usdc.burn(amount);
+        nextNonce++;
+    }
+
+    // BUG 2: Single attester — compromise means full control
+    // BUG 3: No amount sanity check — could mint billions
+    function receiveMessage(bytes calldata message, bytes calldata attestation) external {
+        require(!paused);
+        (uint32 srcDomain, uint32 destDomain, uint64 nonce, , address recipient, uint256 amount)
+            = abi.decode(message, (uint32, uint32, uint64, address, address, uint256));
+        require(destDomain == localDomain);
+        bytes32 nonceKey = keccak256(abi.encodePacked(srcDomain, nonce));
+        require(!usedNonces[nonceKey]);
+        usedNonces[nonceKey] = true;
+
+        bytes32 ethHash = keccak256(abi.encodePacked(
+            "\\x19Ethereum Signed Message:\\n32", keccak256(message)
+        ));
+        require(_recover(ethHash, attestation) == attester, "Bad attestation");
+        usdc.mint(recipient, amount);
+    }
+
+    // BUG 4: No timelock on attester rotation
+    function rotateAttester(address newAttester) external {
+        require(msg.sender == controller);
+        attester = newAttester;
+    }
+
+    function enableDomain(uint32 domain) external {
+        require(msg.sender == controller);
+        enabledDomains[domain] = true;
+    }
+
+    function pause() external { require(msg.sender == controller); paused = true; }
+
+    function _recover(bytes32 hash, bytes memory sig) internal pure returns (address) {
+        require(sig.length == 65);
+        bytes32 r; bytes32 s; uint8 v;
+        assembly { r := mload(add(sig, 32)) s := mload(add(sig, 64)) v := byte(0, mload(add(sig, 96))) }
+        return ecrecover(hash, v, r, s);
+    }
+}
+"""
+
+CCTP_GROUND_TRUTH = {
+    "vulnerabilities": [
+        {
+            "type": "no_rate_limiting",
+            "severity": "critical",
+            "location": "depositForBurn",
+            "description": "No per-transfer or aggregate volume limits — Drift attacker bridged $232M rapidly",
+        },
+        {
+            "type": "centralization_risk",
+            "severity": "critical",
+            "location": "receiveMessage",
+            "description": "Single attester signature — compromise gives full control over minting",
+        },
+        {
+            "type": "no_amount_sanity_check",
+            "severity": "high",
+            "location": "receiveMessage",
+            "description": "No maximum mint amount — valid attestation can mint arbitrary amounts",
+        },
+        {
+            "type": "zero_timelock",
+            "severity": "critical",
+            "location": "rotateAttester",
+            "description": "Attester rotation takes effect immediately with no timelock or multisig",
+        },
+    ],
+    "overall_risk": "critical",
+}
+
+ALL_CONTRACTS["CCTPStyle"] = {
+    "source": CCTP_PATTERN,
+    "ground_truth": CCTP_GROUND_TRUTH,
+    "real_exploit": "Circle CCTP — used in Drift $285M bridge, Apr 2026",
+    "vuln_class": "bridge_centralization",
+}
+
+
 def get_stats():
     total_vulns = sum(
         len(d["ground_truth"]["vulnerabilities"]) for d in ALL_CONTRACTS.values()

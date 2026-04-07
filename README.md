@@ -34,6 +34,7 @@ tools systematically miss. These gaps represent $811M in historical losses.
 | XBridge | 2024-04 | $1.6M | Approval exploitation |
 | LiFi v1 | 2022-03 | $600K | Approval exploitation |
 | Allbridge | 2023-04 | $570K | Oracle manipulation |
+| Drift Protocol | 2026-04 | $285M | Governance takeover + oracle manipulation |
 
 ### Architecture: Detect → Patch → Verify
 

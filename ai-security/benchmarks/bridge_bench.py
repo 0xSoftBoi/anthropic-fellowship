@@ -252,6 +252,31 @@ BRIDGE_EXPLOITS = [
             {"type": "recurring_vulnerability", "severity": "critical"},
         ],
     ),
+    BridgeExploit(
+        name="Drift Protocol",
+        date="2026-04-01",
+        chain="Solana/Ethereum",
+        loss_usd=285_000_000,
+        vuln_class=BridgeVulnClass.VALIDATOR_GOVERNANCE,
+        detection_mode=DetectionMode.KEY_MANAGEMENT,
+        description="Largest exploit of 2026. Attacker social-engineered multisig signers "
+        "into pre-signing durable nonce transactions, then exploited a 2/5 Security "
+        "Council threshold with zero timelock. Created a fake token (CarbonVote Token) "
+        "with wash-traded price history, used it as collateral at manipulated oracle "
+        "prices, and drained $285M in 31 withdrawals over 12 minutes. $232M in USDC "
+        "bridged from Solana to Ethereum via Circle CCTP. Attributed to DPRK (Lazarus).",
+        fork_chain="solana",
+        fork_block=0,  # Solana — slot-based, not block-based
+        poc_file="",
+        attacker_address="",  # Solana address — TBD from on-chain analysis
+        vuln_details=[
+            {"type": "low_multisig_threshold", "severity": "critical"},
+            {"type": "zero_timelock", "severity": "critical"},
+            {"type": "oracle_manipulation_fake_token", "severity": "critical"},
+            {"type": "durable_nonce_presignature_abuse", "severity": "critical"},
+            {"type": "cctp_bridge_fund_movement", "severity": "high"},
+        ],
+    ),
 ]
 
 
