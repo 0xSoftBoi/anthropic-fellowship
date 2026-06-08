@@ -17,6 +17,7 @@ import json
 import os
 from pathlib import Path
 from anthropic import Anthropic
+from agents.claude_analyzer import MODEL
 
 
 PATCH_SYSTEM_PROMPT = """You are an expert Solidity smart contract developer specializing in bridge security.
@@ -42,7 +43,7 @@ def generate_patch(
     source_code: str,
     vulnerabilities: list[dict],
     contract_name: str = "Contract",
-    model: str = "claude-sonnet-4-20250514",
+    model: str = MODEL,
 ) -> str:
     """
     Generate a patched version of a vulnerable contract.
@@ -67,6 +68,7 @@ def generate_patch(
     response = client.messages.create(
         model=model,
         max_tokens=8192,
+        temperature=0,  # deterministic — reproducible patches
         system=PATCH_SYSTEM_PROMPT,
         messages=[{
             "role": "user",

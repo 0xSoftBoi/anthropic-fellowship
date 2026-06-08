@@ -25,7 +25,7 @@ import subprocess
 from pathlib import Path
 from dataclasses import dataclass, field
 from anthropic import Anthropic
-from agents.claude_analyzer import prepare_source_for_analysis
+from agents.claude_analyzer import prepare_source_for_analysis, MODEL
 
 
 SYSTEM_PROMPT = """You are an expert smart contract security auditor specializing in cross-chain bridge vulnerabilities. You have access to tools for analyzing contracts.
@@ -289,7 +289,7 @@ def run_agent(
     source_code: str,
     contract_name: str,
     max_turns: int = 10,
-    model: str = "claude-sonnet-4-20250514",  # Upgraded from haiku for multi-turn reasoning
+    model: str = MODEL,  # unified to claude_analyzer.MODEL (was claude-sonnet-4-20250514)
     context_hint: str = "",  # Optional: pre-filter findings from static tools
 ) -> AgentAudit:
     """
@@ -341,6 +341,7 @@ Be thorough — check all vulnerability categories."""
         response = client.messages.create(
             model=model,
             max_tokens=4096,
+            temperature=0,  # deterministic — benchmark runs must be reproducible
             system=SYSTEM_PROMPT,
             tools=TOOLS,
             messages=messages,

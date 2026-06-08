@@ -29,6 +29,7 @@ Usage:
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
@@ -74,8 +75,10 @@ def run_mythril_analysis(source_code: str) -> list[ToolFinding]:
     Gracefully handles if mythril is not installed.
     """
     try:
-        import mythril
+        import mythril  # noqa: F401
     except ImportError:
+        print("[hybrid] WARNING: mythril not installed — skipping symbolic execution "
+              "(this is a DEGRADED run; `pip install mythril`).", file=sys.stderr)
         return []
 
     findings = []
@@ -127,6 +130,9 @@ def run_slither_analysis(source_code: str) -> list[ToolFinding]:
     try:
         from slither import Slither
     except ImportError:
+        print("[hybrid] WARNING: slither not installed — skipping data-flow analysis "
+              "(this is a DEGRADED run; `pip install slither-analyzer` + a solc).",
+              file=sys.stderr)
         return []
 
     findings = []
@@ -149,8 +155,12 @@ def run_slither_analysis(source_code: str) -> list[ToolFinding]:
                         description=result.get('description', ''),
                         confidence=0.8,  # Slither is generally reliable
                     ))
-        except Exception:
-            pass  # Slither parsing error
+        except Exception as e:
+            # Slither couldn't compile/parse the contract (commonly: no matching solc,
+            # or imports it can't resolve). Surface it — a silent skip here is how a
+            # "ran Slither" claim becomes false.
+            print(f"[hybrid] WARNING: Slither failed to analyze ({e}); no Slither "
+                  f"findings for this contract.", file=sys.stderr)
 
         # Cleanup
         Path(temp_path).unlink()
@@ -241,8 +251,13 @@ def run_hybrid_analysis(
     result.tool_findings = tool_findings
     result.tools_run = list(set([f.tool for f in tool_findings]))
 
-    # Step 2: Aggregate findings (consensus boosting, deduplication)
-    aggregated = aggregate_tool_findings(tool_findings, min_consensus=1)
+    # Step 2: Aggregate findings. Keep only findings ≥2 tools agree on — this is the
+    # "consensus" pre-filter the design intends (was min_consensus=1, which disabled
+    # filtering entirely and let every single-tool finding through). NOTE: with only
+    # one tool actually producing findings (e.g. Slither/Mythril unavailable, see the
+    # warnings above), consensus≥2 yields nothing — that's a *degraded run*, not a
+    # clean result.
+    aggregated = aggregate_tool_findings(tool_findings, min_consensus=2)
 
     # Step 3: Filter by confidence threshold
     high_confidence_findings = [

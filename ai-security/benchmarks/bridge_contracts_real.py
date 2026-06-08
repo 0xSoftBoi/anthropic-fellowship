@@ -277,6 +277,13 @@ def load_real_contracts() -> list:
         if sol_path.exists():
             with open(sol_path, "r") as f:
                 source_code = f.read()
+            if not source_code.strip():
+                # File exists but is empty — the source was never fetched. The
+                # contract still gets "analyzed" (on an empty string) and scored as
+                # all-misses, which silently degrades the benchmark. Warn loudly.
+                import sys
+                print(f"[bench] WARNING: {contract_name}.sol is empty — no source to "
+                      f"analyze; its score is not meaningful.", file=sys.stderr)
         else:
             # If not fetched yet, source will be None
             source_code = None

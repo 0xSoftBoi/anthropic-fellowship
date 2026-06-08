@@ -1,0 +1,16 @@
+# Secrets
+.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Fetched contract source caches (re-fetchable via benchmarks/fetch_contracts.py)
+benchmarks/_cache/
+*.solc-cache
+
+# Note: results_*.json are committed on purpose (auditable benchmark artifacts).
