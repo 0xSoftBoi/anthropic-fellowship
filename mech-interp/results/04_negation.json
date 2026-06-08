@@ -1,0 +1,108 @@
+{
+  "model": "gpt2-small",
+  "battery": {
+    "rows": [
+      {
+        "target": "France",
+        "logit_pos": 16.93,
+        "logit_neg": 16.42,
+        "pct": -3.0
+      },
+      {
+        "target": "star",
+        "logit_pos": 12.38,
+        "logit_neg": 13.18,
+        "pct": 6.5
+      },
+      {
+        "target": "animals",
+        "logit_pos": 10.29,
+        "logit_neg": 11.81,
+        "pct": 14.8
+      },
+      {
+        "target": "language",
+        "logit_pos": 24.69,
+        "logit_neg": 24.21,
+        "pct": -1.9
+      },
+      {
+        "target": "the",
+        "logit_pos": 14.56,
+        "logit_neg": 15.0,
+        "pct": 3.0
+      },
+      {
+        "target": "four",
+        "logit_pos": 14.84,
+        "logit_neg": 16.29,
+        "pct": 9.8
+      }
+    ],
+    "boosts": 4,
+    "n": 6,
+    "mean_pct": 4.9
+  },
+  "attention_on_not": {
+    "top": {
+      "layer": 11,
+      "head": 8,
+      "weight": 37.7
+    },
+    "L11H8_pct": 37.7,
+    "not_index": 3
+  },
+  "france_projection": {
+    "pos_per_layer": [
+      0.6,
+      3.6,
+      4.4,
+      11.2,
+      11.7,
+      18.9,
+      32.0,
+      43.8,
+      90.6,
+      135.3,
+      186.2,
+      208.2
+    ],
+    "neg_per_layer": [
+      0.4,
+      3.3,
+      4.4,
+      11.9,
+      13.9,
+      19.9,
+      31.7,
+      38.8,
+      77.8,
+      119.4,
+      167.1,
+      195.4
+    ],
+    "L10": {
+      "pos": 186.2,
+      "neg": 167.1,
+      "delta": -19.1
+    }
+  },
+  "negation_patching": {
+    "gap": 0.5,
+    "recovery_pct_per_layer": [
+      130.6,
+      144.9,
+      111.5,
+      58.3,
+      22.2,
+      -31.7,
+      -34.7,
+      -44.6,
+      -44.3,
+      -32.9,
+      -14.7,
+      -12.2
+    ],
+    "L0": 130.6
+  }
+}
