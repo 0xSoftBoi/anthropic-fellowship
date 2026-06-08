@@ -2,6 +2,8 @@
 
 **tl;dr:** LLMs failing at negation is well-documented (Ettinger 2020, Truong et al. 2023, among others). I add mechanistic evidence from activation analysis showing *why* it happens in GPT-2 small: the negation signal is processed early (L0-2) but the factual lookup happens later (L9-10) with much higher bandwidth. The factual highway overwhelms the negation side road. Additionally, in 4/6 test cases, negation paradoxically *increases* the target logit — likely a distributional artifact of co-occurrence patterns in training data.
 
+> Every number here is computed by [`experiments/04_negation_in_factual_recall.py`](../experiments/04_negation_in_factual_recall.py) and saved to [`results/04_negation.json`](../results/04_negation.json) — run it to reproduce. (The attention head, patching recovery, and projection values were previously only asserted in comments; they're now produced by code.)
+
 ## What's Already Known
 
 This is well-studied territory. Key prior work:

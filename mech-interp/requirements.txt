@@ -1,13 +1,14 @@
-# Core
-torch>=2.0
+# Core — pinned to the versions that reproduce the experiment numbers
+# (see results/04_negation.json). transformer-lens has API drift, so exact-pinned.
+torch>=2.0,<3.0
+transformer-lens==2.18.0
 einops
 fancy_einsum
-transformer-lens
 sae-lens
 circuitsvis
 
 # Analysis
-numpy
+numpy>=1.26,<2.0
 pandas
 matplotlib
 plotly
