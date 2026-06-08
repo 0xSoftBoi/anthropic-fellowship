@@ -1,5 +1,9 @@
 # Core
-anthropic
+# Reproducibility note: LLM determinism comes from temperature=0 in the analyzers
+# (claude/agentic/patch) + a single MODEL constant. Slither also needs a matching
+# solc (e.g. via solc-select) to produce findings; without it the hybrid run is
+# degraded — the analyzers now warn loudly when a tool is unavailable.
+anthropic>=0.39
 web3>=6.0
 eth-abi
 eth-utils

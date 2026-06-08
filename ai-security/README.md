@@ -39,6 +39,18 @@ Confirmed Findings (high confidence, low false positives)
 | **Sonnet (Targeted)** | **~40%** | **$0.08** | **0** |
 | Sonnet (Full) | ~45% | $0.44 | 0 |
 
+> **Source availability / reproducing these numbers.** 11 of the 23 contracts
+> currently have **no source committed** (the `.sol` files are empty placeholders —
+> `allbridge_oracle_pool`, `dodo_price_oracle`, `euler_finance_donation_attack`,
+> `kyberswap_tick_boundary`, both `lifi_protocol_diamond_*`, `orbit_chain_multisig`,
+> `platypus_flash_loan`, `poly_network_eth_cross_chain_manager`, `qubit_finance_bridge`,
+> `ronin_bridge_validator`). Until those are fetched (`benchmarks/fetch_contracts.py`),
+> a run is **partial/degraded** — empty-source contracts are analyzed on an empty
+> string and the harness now warns when it hits one. The committed `results_real.json`
+> covers only the static + hybrid passes; the LLM rows here are not reproduced by a
+> committed result file. Treat the table as indicative pending a full re-run with all
+> sources present, Slither/Mythril installed, and `temperature=0` (now the default).
+
 ---
 
 ## Key Findings

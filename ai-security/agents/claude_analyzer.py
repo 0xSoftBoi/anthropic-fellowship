@@ -18,6 +18,10 @@ from dataclasses import dataclass, asdict
 from anthropic import Anthropic
 from agents.static_analyzer_v2 import _extract_function_body
 
+# Single source of truth for the model — keep every analyzer on the same one so
+# static-vs-LLM comparisons are apples-to-apples (was mixed across files).
+MODEL = "claude-sonnet-4-6"
+
 
 SYSTEM_PROMPT = """You are an expert smart contract security auditor analyzing Solidity for vulnerabilities.
 
@@ -201,8 +205,9 @@ Analyze this Solidity smart contract for security vulnerabilities:
 Provide your analysis as JSON."""
 
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model=MODEL,
         max_tokens=4096,
+        temperature=0,  # deterministic — benchmark runs must be reproducible
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
