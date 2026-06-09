@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use BRIDGE-bench, please cite it as below."
+title: "BRIDGE-bench: Measuring LLM Reasoning on Compositional Cross-Chain Bridge Exploits"
+type: software
+authors:
+  - family-names: Natsagdorj
+    given-names: Tsolmondorj
+    orcid: "https://orcid.org/0009-0009-6010-6273"
+date-released: 2026-06-09
+doi: 10.5281/zenodo.20604295
+url: "https://github.com/0xSoftBoi/anthropic-fellowship"
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.20604295
+    description: "Zenodo archive of BRIDGE-bench"
