@@ -149,8 +149,10 @@ GROUND_TRUTH = {
         "price_impact_manipulation",
     ],
     "platypus_finance_pool": [
+        # CORRECTED 2026-06: root cause is emergencyWithdraw solvency-check ordering
+        # (checks before accounting for USP debt), flash-loan assisted — not spot price.
+        "missing_solvency_check",
         "flash_loan_collateral_inflation",
-        "spot_price_dependency",
     ],
     "dodo_v1_oracle": [
         # CORRECTED 2026-06: unprotected init() (re-init via flash-loan callback), not oracle manip.
