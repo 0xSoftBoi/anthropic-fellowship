@@ -1,0 +1,27 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  benchmark-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-security
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test deps (no API key needed)
+        run: pip install pytest
+
+      - name: Dataset integrity
+        run: python -m benchmarks.validate_dataset
+
+      - name: Unit tests (eval logic + integrity)
+        run: python -m pytest tests/ -q
+
+      - name: Static benchmark smoke test (free, no model)
+        run: python -m agents.benchmark_runner --real --no-claude

@@ -1,5 +1,6 @@
 # Anthropic Fellows Portfolio
 
+[![CI](https://github.com/0xSoftBoi/anthropic-fellowship/actions/workflows/ci.yml/badge.svg)](https://github.com/0xSoftBoi/anthropic-fellowship/actions/workflows/ci.yml)
 [![Status: Active Research](https://img.shields.io/badge/status-active%20research-blue)]()
 [![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-green)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange)]()
