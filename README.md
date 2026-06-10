@@ -3,6 +3,9 @@
 [![Status: Active Research](https://img.shields.io/badge/status-active%20research-blue)]()
 [![Python: 3.10+](https://img.shields.io/badge/python-3.10%2B-green)]()
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange)]()
+[![Verified contracts: 24](https://img.shields.io/badge/verified%20contracts-24-blue)]()
+[![Domains: bridges · DEX · lending](https://img.shields.io/badge/domains-bridges%20%C2%B7%20DEX%20%C2%B7%20lending-8a2be2)]()
+[![Semantic F1: 35%](https://img.shields.io/badge/Opus%204.8%20semantic%20F1-35%25-success)]()
 
 > **Research on AI-assisted security analysis and mechanistic interpretability**  
 > Demonstrating that multi-turn LLM reasoning outperforms static analysis on real-world blockchain exploits.
@@ -24,6 +27,15 @@ both exact-string matching and an LLM-judge.
 | DEX/AMM | 5 | 7% | **21%** | 38% |
 | Lending | 3 | 0% | **40%** | 62% |
 | **All three** | **24** | **4%** | **35%** | **54%** |
+
+```mermaid
+xychart-beta
+    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match baseline (line)"
+    x-axis ["Bridges", "DEX/AMM", "Lending", "All 24"]
+    y-axis "F1 (%)" 0 --> 60
+    bar [37, 21, 40, 35]
+    line [4, 7, 0, 4]
+```
 
 The static/string-match baseline sits at ~4% F1; Opus 4.8 reaches **35% F1 / 54% recall**
 semantically — a ~9× lift from the same source, holding up across all three domains. The

@@ -16,19 +16,28 @@ Research demonstrating that compositional reasoning + multi-turn analysis beats 
 
 ---
 
-## The Solution
+## How it works
 
-**Multi-turn LLM reasoning with targeted pre-filtering:**
+```mermaid
+flowchart LR
+    SRC["Verified contract source<br/>(Blockscout / Sourcify,<br/>address confirmed on-chain)"]
+    SRC --> STATIC["Static analyzer v2<br/><i>pattern baseline, free</i>"]
+    SRC --> AGENT["Agentic analyzer<br/><i>multi-turn tool loop</i>"]
+    STATIC --> EVAL{{"Evaluate vs.<br/>ground truth"}}
+    AGENT --> EVAL
+    EVAL --> STR["String-match F1<br/><i>exact vuln-type</i>"]
+    EVAL --> SEM["Semantic F1<br/><i>LLM-as-judge</i>"]
+    SEM -.validated by.-> GOLD["validate_judge<br/>vs. 38-unit gold standard<br/><b>92% precision</b>"]
 
+    classDef paid fill:#fde68a,stroke:#b45309,color:#111;
+    classDef free fill:#bbf7d0,stroke:#15803d,color:#111;
+    class AGENT,SEM paid;
+    class STATIC,STR free;
 ```
-Source Code
-    ↓
-[Static Analysis] (tool findings) → consensus filter
-    ↓
-[Claude — Opus 4.8 / Sonnet] (multi-turn agentic loop with context hints)
-    ↓
-Confirmed Findings → scored by string-match AND an LLM-judge (semantic)
-```
+
+Every contract is analyzed two ways (static baseline + agentic LLM), and every LLM run is
+scored two ways (exact-string **and** a *validated* semantic judge) — so the gap between
+"found the bug" and "named it the way the label expects" is measured, not hidden.
 
 **Measured run (June 2026) on 16 real verified contracts with committed source:**
 
@@ -95,6 +104,15 @@ labeled vulnerabilities), then scored by the validated semantic judge:
 | DEX/AMM | 5 | 7% | **21%** | 38% |
 | Lending | 3 | 0% | **40%** | 62% |
 | **All three** | **24** | **4%** | **35%** | **54%** |
+
+```mermaid
+xychart-beta
+    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match baseline (line)"
+    x-axis ["Bridges", "DEX/AMM", "Lending", "All 24"]
+    y-axis "F1 (%)" 0 --> 60
+    bar [37, 21, 40, 35]
+    line [4, 7, 0, 4]
+```
 
 The thesis holds across domains: the static/string-match baseline sits at ~4% F1, while
 Opus 4.8 reaches **35% F1 / 54% recall** semantically — a ~9× lift from the same source.
@@ -178,19 +196,52 @@ python3 -m agents.validate_judge
 
 ## Architecture
 
-**Agents**
-- `agents/static_analyzer_v2.py` — pattern-based baseline (no API)
-- `agents/agentic_analyzer.py` — multi-turn LLM reasoning with a tool loop
-- `agents/hybrid_analyzer.py` — multi-tool consensus pre-filter + targeted LLM
-- `agents/benchmark_runner.py` — evaluation harness (`--real` / `--defi` / `--lending`, model-stamped output)
-- `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
-- `agents/validate_judge.py` — judge calibration vs. a hand-labeled gold standard
+```mermaid
+flowchart TB
+    subgraph data["Datasets — verified, on-chain-confirmed source"]
+        direction LR
+        B["bridge_contracts_real.py<br/>16 contracts"]
+        D["defi_contracts_real.py<br/>5 contracts"]
+        L["lending_contracts_real.py<br/>3 contracts"]
+        REG["bridge_bench.py<br/><i>full registry incl. off-chain</i>"]
+    end
 
-**Datasets & evaluation**
-- `benchmarks/{bridge,defi,lending}_contracts_real.py` — loaders (canonical format)
-- `benchmarks/bridge_bench.py` — full exploit registry incl. off-chain (loss-coverage)
-- `benchmarks/judge_gold_standard.json` — 38 hand-labeled judge decisions
-- `benchmarks/contracts/*.sol` — committed verified source
+    subgraph analyze["Analyzers"]
+        direction LR
+        SA["static_analyzer_v2<br/><i>free baseline</i>"]
+        AA["agentic_analyzer<br/><i>multi-turn tool loop</i>"]
+        HA["hybrid_analyzer<br/><i>consensus pre-filter + LLM</i>"]
+    end
+
+    subgraph score["Scoring"]
+        direction LR
+        BR["benchmark_runner<br/><i>--real / --defi / --lending</i>"]
+        SR["semantic_rescorer<br/><i>LLM-as-judge</i>"]
+        VJ["validate_judge<br/><i>vs. gold standard</i>"]
+    end
+
+    data --> analyze --> BR
+    BR -->|"results_*.json<br/>(metrics + findings + cost)"| SR
+    SR -->|"__rescored.json"| OUT["F1: string-match + semantic"]
+    GOLD["judge_gold_standard.json<br/>38 hand labels"] --> VJ -.calibrates.-> SR
+```
+
+**Key design choices**
+- **Two-axis scoring.** Exact-string F1 catches the literal match; a *validated* LLM-judge
+  catches semantically-correct compound names. Reporting both makes the evaluator's bias visible.
+- **Provenance everywhere.** Every `.sol` header records the verified address + chain + how it
+  was fetched; off-chain key-compromise hacks are quarantined in `bridge_bench.py`.
+- **Reproducible & budget-aware.** Per-contract token + dollar cost is persisted; `budget_run.py`
+  caps spend and saves after every contract.
+- **Model-agnostic.** `BENCH_MODEL` selects the model; results are stamped per model so baselines
+  are never overwritten.
+
+| Layer | Files |
+|-------|-------|
+| Datasets | `benchmarks/{bridge,defi,lending}_contracts_real.py`, `bridge_bench.py`, `contracts/*.sol` |
+| Analyzers | `agents/{static_analyzer_v2,agentic_analyzer,hybrid_analyzer}.py` |
+| Scoring | `agents/{benchmark_runner,semantic_rescorer,validate_judge,budget_run}.py` |
+| Gold standard | `benchmarks/judge_gold_standard.json` (38 hand-labeled decisions) |
 
 ---
 
