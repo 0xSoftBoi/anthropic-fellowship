@@ -116,6 +116,13 @@ TYPE_EQUIVALENCES = {
     "reward_accounting_bug": ["reward_accounting_bug", "incorrect_comparison_operator", "reward_distribution_error", "comp_distribution", "logic_error", "incorrect_distribution"],
     "incorrect_comparison_operator": ["incorrect_comparison_operator", "reward_accounting_bug", "off_by_one", "logic_error"],
     "unprotected_initializer": ["unprotected_initializer", "reinitialization", "missing_access_control", "unprotected_init", "reinitializable"],
+    "missing_input_validation": ["missing_input_validation", "input_validation", "insufficient_validation", "unvalidated_input", "missing_validation", "no_input_validation"],
+    # reverse-direction keys: fuzzy_match keys on the model's finding string, so the
+    # model's likely phrasings must each map onto the canonical ground-truth key.
+    "input_validation": ["input_validation", "missing_input_validation"],
+    "insufficient_validation": ["insufficient_validation", "missing_input_validation"],
+    "missing_validation": ["missing_validation", "missing_input_validation"],
+    "unvalidated_input": ["unvalidated_input", "missing_input_validation"],
 }
 
 

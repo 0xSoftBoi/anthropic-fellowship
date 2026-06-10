@@ -271,10 +271,20 @@ passes are free. Costs are dominated by the largest contracts (Penpie ~184 KB).
 
 ---
 
+## Reproduce & verify (no API key)
+
+```bash
+python -m benchmarks.validate_dataset   # dataset integrity (also runs in CI)
+python -m pytest tests/ -q              # eval-logic + integrity unit tests
+python -m agents.report                 # regenerate the results tables from committed JSON
+```
+
 ## Documentation
 
 - **[RESEARCH.md](docs/RESEARCH.md)** — full methodology and phase-by-phase findings (incl. Phase 7)
+- **[DATASHEET.md](docs/DATASHEET.md)** — Datasheet-for-Datasets: provenance, composition, limitations
 - **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
+- **[writeups/multi_domain_analysis.md](writeups/multi_domain_analysis.md)** — what Opus catches vs. misses, per contract
 - **[INDEX.md](docs/INDEX.md)** — documentation map
 
 ---
