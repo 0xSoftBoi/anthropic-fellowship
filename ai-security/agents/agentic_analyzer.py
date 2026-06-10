@@ -337,15 +337,21 @@ Be thorough — check all vulnerability categories."""
         }
     ]
 
+    nudged = False
     for turn in range(max_turns):
-        response = client.messages.create(
+        _params = dict(
             model=model,
             max_tokens=4096,
-            temperature=0,  # deterministic — benchmark runs must be reproducible
             system=SYSTEM_PROMPT,
             tools=TOOLS,
             messages=messages,
         )
+        # Some models (e.g. Fable) reject an explicit temperature override and
+        # require the default. Keep temperature=0 for models that support it so
+        # static-vs-LLM comparisons stay reproducible.
+        if not any(s in model for s in ("fable", "opus-4-8")):
+            _params["temperature"] = 0
+        response = client.messages.create(**_params)
 
         audit.total_tokens += response.usage.input_tokens + response.usage.output_tokens
 
@@ -359,6 +365,23 @@ Be thorough — check all vulnerability categories."""
             for block in assistant_content:
                 if hasattr(block, "text"):
                     audit.reasoning_trace.append(block.text)
+            # Some models (especially with extended thinking) answer in prose on
+            # the first turn without driving the tool loop. If we're about to
+            # finish with nothing recorded, nudge once to emit findings via the
+            # submit_finding tool. No-op for models that already submitted.
+            if not audit.findings and not nudged:
+                nudged = True
+                messages.append({
+                    "role": "user",
+                    "content": (
+                        "You ended without recording any findings. For EACH "
+                        "vulnerability you identified above, call the "
+                        "submit_finding tool now — one call per finding, with a "
+                        "snake_case vuln_type. If you genuinely found none, call "
+                        "submit_finding with vuln_type 'none'. Do not reply in prose."
+                    ),
+                })
+                continue
             break
 
         # Process tool calls

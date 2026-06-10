@@ -30,26 +30,57 @@ Source Code
 Confirmed Findings (high confidence, low false positives)
 ```
 
-**Results on 23 real exploits ($1.6B+ losses):**
+**Measured run (June 2026) on 16 real verified contracts with committed source:**
 
-| Approach | F1 Score | Cost/Contract | False Positives |
-|----------|----------|---------------|-----------------|
-| Static v2 | 0% | Free | 56 |
-| Multi-Tool Consensus | ~20% | $0.01 | <10 |
-| **Sonnet (Targeted)** | **~40%** | **$0.08** | **0** |
-| Sonnet (Full) | ~45% | $0.44 | 0 |
+Scored over the 16 real-source contracts (Opus run, `--real --agentic`):
 
-> **Source availability / reproducing these numbers.** 11 of the 23 contracts
-> currently have **no source committed** (the `.sol` files are empty placeholders —
-> `allbridge_oracle_pool`, `dodo_price_oracle`, `euler_finance_donation_attack`,
-> `kyberswap_tick_boundary`, both `lifi_protocol_diamond_*`, `orbit_chain_multisig`,
-> `platypus_flash_loan`, `poly_network_eth_cross_chain_manager`, `qubit_finance_bridge`,
-> `ronin_bridge_validator`). Until those are fetched (`benchmarks/fetch_contracts.py`),
-> a run is **partial/degraded** — empty-source contracts are analyzed on an empty
-> string and the harness now warns when it hits one. The committed `results_real.json`
-> covers only the static + hybrid passes; the LLM rows here are not reproduced by a
-> committed result file. Treat the table as indicative pending a full re-run with all
-> sources present, Slither/Mythril installed, and `temperature=0` (now the default).
+| Approach | Precision | Recall | F1 | TP / FP / FN |
+|----------|-----------|--------|----|--------------|
+| Static v2 | 4% | 7% | **5%** | 3 / 80 / 38 |
+| **Opus 4.8 — string-match scoring** | 4% | 7% | **5%** | 3 / 80 / 38 |
+| **Opus 4.8 — semantic-judge scoring** | 28% | **56%** | **37%** | 23 / 60 / 18 |
+| Fable 5 agentic | — | — | n/a | **refuses** the task (`stop_reason: refusal`) |
+| Sonnet 4.6 (historical, unreproduced) | — | — | ~40–45% | original claim; never committed |
+
+> **Why two Opus rows.** The benchmark's evaluator does near-exact string matching on
+> vuln-type names. Opus 4.8 emits **compound, descriptive** finding names (e.g.
+> `"arbitrary_external_call / approval_drain"`, `"forged_deposit_event /
+> unauthenticated_memo"`, `"solvency_check_bypass"`, `"missing_message_source_validation"`)
+> that are semantically correct but score as false positives — collapsing recall to 7%.
+> `semantic_rescorer.py` (an LLM-as-judge, default Haiku) recomputes F1 from the
+> **already-saved findings with no model re-run** (38 judge calls, ~17k tokens, ~$0.02):
+> recall rises to **56%**, F1 to **37%**, with a correct root-cause hit on **15 of 16
+> contracts** (only `sonne` is a genuine miss; the judge stays conservative on
+> `nomad`/`penpie`, so it is not rubber-stamping). The residual false positives are
+> mostly real-but-unlabeled observations (centralization, missing timelocks). This is
+> the **ground-truth/scoring methodology problem** (Key Findings #2) reproduced at
+> frontier-model scale: the model is far better than the matcher reports.
+
+> **The judge is calibrated.** `agents/validate_judge.py` scores the Haiku judge against
+> a frozen 38-unit hand-labeled gold standard (`benchmarks/judge_gold_standard.json`):
+> **82% accuracy, 92% precision, 83% recall, Cohen's κ = 0.54, 97% run-to-run unanimous.**
+> High precision ⇒ the judge rarely fabricates a match, so it does not inflate the model;
+> its errors are conservative under-credits, making the **37% a lower bound**. The
+> residual disagreement (moderate κ) sits almost entirely on labels flagged *borderline*
+> in the gold file — genuine ambiguity, not judge noise.
+
+> **Two model-specific findings from this run.**
+> 1. **Fable 5 declines the task.** The newest model returns `stop_reason: refusal`
+>    with empty output on smart-contract vulnerability-analysis prompts, across the
+>    agentic harness, a single-turn JSON path, and an explicit *authorized
+>    post-incident defensive audit* system prompt. Sonnet/Opus do not. A model that
+>    refuses adversarial-code analysis cannot be benchmarked here as-is — itself a
+>    citable result about safety-tuning vs. defensive-security utility.
+> 2. **Newer models reject `temperature`.** Both `claude-fable-5` and
+>    `claude-opus-4-8` 400 on an explicit `temperature` override; the analyzers now
+>    omit it for those models and keep `temperature=0` only where supported.
+
+> **Dataset status.** 16 of 20 registered contracts now have **real verified source**
+> committed (fetched from Blockscout/Sourcify, addresses confirmed on-chain), up from
+> 3. Remaining empties (`poly_network`, `ronin`, `orbit`, `lifi_march_2022`) are either
+> verified only on Etherscan (needs a key) or off-chain key-compromise hacks with no
+> source-level bug to detect. Select a model with `BENCH_MODEL` (`sonnet` default,
+> `opus`, `haiku`, `fable`); non-default models write `results_real__<model>.json`.
 
 ---
 
@@ -112,10 +143,19 @@ python3 agents/benchmark_runner.py --real --hybrid
 
 ### 4. Run Pure Agentic Analysis (Full Reasoning)
 ```bash
-python3 agents/benchmark_runner.py --real --agentic
+# pick the model with BENCH_MODEL (sonnet default, opus, haiku, fable)
+BENCH_MODEL=opus python3 agents/benchmark_runner.py --real --agentic
+# non-default models save to results_real__<model>.json
 ```
 
-### 5. Test Single Contract
+### 5. Semantic re-score (LLM-as-judge, no model re-run)
+```bash
+# Recompute F1 from saved findings, crediting semantically-correct compound names.
+python3 -m agents.semantic_rescorer results_real__claude-opus-4-8.json
+# writes results_real__claude-opus-4-8__rescored.json
+```
+
+### 6. Test Single Contract
 ```bash
 PYTHONPATH=. python3 agents/hybrid_analyzer.py --contract nomad_bridge_replica
 ```

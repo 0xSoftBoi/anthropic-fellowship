@@ -24,8 +24,10 @@ from enum import Enum
 
 class BridgeVulnClass(Enum):
     """Bridge-specific vulnerability taxonomy."""
-    MESSAGE_VALIDATION = "message_validation"        # Nomad, Poly Network
+    MESSAGE_VALIDATION = "message_validation"        # Nomad, Poly Network, CrossCurve
     SIGNATURE_VERIFICATION = "signature_verification" # Wormhole
+    PROOF_VERIFICATION = "proof_verification"          # Hyperbridge (MMR bounds check)
+    OFF_CHAIN_VERIFIER = "off_chain_verifier"          # KelpDAO (DVN/oracle compromise)
     VALIDATOR_GOVERNANCE = "validator_governance"      # Ronin, Harmony, Orbit
     INPUT_VALIDATION = "input_validation"              # Qubit
     APPROVAL_EXPLOITATION = "approval_exploitation"    # LiFi, Socket, XBridge
@@ -250,6 +252,142 @@ BRIDGE_EXPLOITS = [
             {"type": "arbitrary_external_call", "severity": "critical"},
             {"type": "infinite_approval_drain", "severity": "critical"},
             {"type": "recurring_vulnerability", "severity": "critical"},
+        ],
+    ),
+
+    # --- Added 2026-06: major bridge incidents since the original report ---
+    # Sourced from public post-mortems (The Block, Chainalysis, OpenZeppelin,
+    # Halborn, DARKNAVY, Cantina). Fork data left empty where no DefiHackLabs
+    # PoC / verified address+block has been published yet — these are
+    # source/reasoning-mode entries until a fork harness is wired up.
+
+    BridgeExploit(
+        name="Force Bridge",
+        date="2025-06-01",
+        chain="Nervos/Ethereum",
+        loss_usd=3_000_000,
+        vuln_class=BridgeVulnClass.VALIDATOR_GOVERNANCE,
+        detection_mode=DetectionMode.KEY_MANAGEMENT,
+        description="Cross-chain bridge on the Nervos Network drained of USDT, "
+        "ETH, USDC, DAI and WBTC, all converted to ETH and funneled through "
+        "Tornado Cash. Loss traced to compromise of bridge validator/operator "
+        "credentials rather than a source-level contract flaw.",
+        vuln_details=[
+            {"type": "validator_credential_compromise", "severity": "critical"},
+        ],
+    ),
+    BridgeExploit(
+        name="CrossCurve (EYWA)",
+        date="2026-01-31",
+        chain="Ethereum/Arbitrum",
+        loss_usd=3_000_000,
+        vuln_class=BridgeVulnClass.MESSAGE_VALIDATION,
+        detection_mode=DetectionMode.STATIC_SOURCE,
+        description="ReceiverAxelar.expressExecute was public and never verified "
+        "that the incoming message originated from the Axelar Gateway — its only "
+        "check was commandId uniqueness. Anyone could call it with a fabricated "
+        "payload, causing PortalV2 to unlock tokens on the destination chain with "
+        "no matching source deposit. The bug sat below the Axelar/LayerZero/EYWA "
+        "verification layers, so multi-layer consensus gave no protection.",
+        vuln_details=[
+            {"type": "unauthenticated_message_handler", "severity": "critical"},
+            {"type": "missing_gateway_origin_check", "severity": "critical"},
+            {"type": "forged_cross_chain_message", "severity": "critical"},
+        ],
+    ),
+    BridgeExploit(
+        name="Hyperbridge (TokenGateway)",
+        date="2026-04-13",
+        chain="Ethereum/Polkadot/Base/BNB/Arbitrum",
+        loss_usd=2_500_000,
+        vuln_class=BridgeVulnClass.PROOF_VERIFICATION,
+        detection_mode=DetectionMode.LLM_REASONING,
+        description="ISMP message path had a missing bounds check in the Merkle "
+        "Mountain Range (MMR) proof verifier: a forged PostRequest with an "
+        "out-of-bounds leaf index bypassed verification, and a zero-second "
+        "challenge period let it execute immediately. The forged governance "
+        "message reassigned admin rights over the bridged DOT contract to the "
+        "attacker, who minted 1B DOT. Realized loss capped near $0.24M-$2.5M by "
+        "thin pool liquidity; native Polkadot DOT was never affected.",
+        vuln_details=[
+            {"type": "mmr_missing_bounds_check", "severity": "critical"},
+            {"type": "proof_replay", "severity": "critical"},
+            {"type": "zero_challenge_period", "severity": "high"},
+            {"type": "unbounded_mint_authority", "severity": "critical"},
+        ],
+    ),
+    BridgeExploit(
+        name="IoTeX ioTube",
+        date="2026-02-01",
+        chain="IoTeX/Ethereum",
+        loss_usd=4_400_000,
+        vuln_class=BridgeVulnClass.VALIDATOR_GOVERNANCE,
+        detection_mode=DetectionMode.KEY_MANAGEMENT,
+        description="ioTube relied on a single validator owner key for critical "
+        "Ethereum-side contracts. Compromise of that one key was a single point "
+        "of failure that let the attacker authorize fraudulent withdrawals.",
+        vuln_details=[
+            {"type": "single_validator_key", "severity": "critical"},
+            {"type": "single_point_of_failure", "severity": "critical"},
+        ],
+    ),
+    BridgeExploit(
+        name="KelpDAO rsETH Bridge",
+        date="2026-04-18",
+        chain="Ethereum/LayerZero (20+ chains)",
+        loss_usd=292_000_000,
+        vuln_class=BridgeVulnClass.OFF_CHAIN_VERIFIER,
+        detection_mode=DetectionMode.RUNTIME_MONITORING,
+        description="rsETH's LayerZero adapter was configured with a single "
+        "verifier (the LayerZero Labs DVN acting 1-of-1). Attackers (DPRK / "
+        "TraderTraitor) socially engineered a LayerZero dev, poisoned internal "
+        "RPC nodes, and DDoSed external ones so the DVN failed over to the "
+        "compromised path. The DVN then attested to a fabricated lock of 116,500 "
+        "rsETH that never happened, minting ~$292M of unbacked rsETH; ~89.5k was "
+        "deposited to Aave to borrow $190M WETH. The on-chain detectable flaw is "
+        "the 1/1 verifier config for high-value messages; the exploit itself was "
+        "off-chain infra compromise.",
+        vuln_details=[
+            {"type": "single_dvn_verifier", "severity": "critical"},
+            {"type": "off_chain_verifier_compromise", "severity": "critical"},
+            {"type": "forged_lock_attestation", "severity": "critical"},
+        ],
+    ),
+    BridgeExploit(
+        name="Verus-Ethereum Bridge",
+        date="2026-05-18",
+        chain="Verus/Ethereum",
+        loss_usd=11_580_000,
+        vuln_class=BridgeVulnClass.MESSAGE_VALIDATION,
+        detection_mode=DetectionMode.LLM_REASONING,
+        description="Active exploit (flagged by Blockaid) drained ~$11.58M from "
+        "the Verus-Ethereum bridge within minutes via crafted bridge messages "
+        "that the Ethereum-side contract accepted as valid. Public post-mortem "
+        "detail was limited at time of entry; classified as message-validation "
+        "pending a confirmed root-cause write-up.",
+        vuln_details=[
+            {"type": "message_validation_flaw", "severity": "critical"},
+        ],
+    ),
+    BridgeExploit(
+        name="Humanity Protocol",
+        date="2026-06-08",
+        chain="Ethereum/BSC",
+        loss_usd=36_000_000,
+        vuln_class=BridgeVulnClass.UPGRADE_MECHANISM,
+        detection_mode=DetectionMode.KEY_MANAGEMENT,
+        description="Compromised employee laptop yielded 3-of-6 Gnosis Safe owner "
+        "keys controlling the Hyperlane bridge ProxyAdmin. Attacker transferred "
+        "ProxyAdmin ownership to their own wallet, upgraded the bridge/token "
+        "contract to a malicious implementation, and minted ~447M $H across "
+        "Ethereum and BSC (~$36M sold). Off-chain key compromise + privileged "
+        "proxy upgrade — not a source-level contract bug, per the team's own "
+        "statement. Loss-coverage entry only; excluded from the source-detection "
+        "eval (no code-level flaw to detect).",
+        vuln_details=[
+            {"type": "proxy_admin_key_compromise", "severity": "critical"},
+            {"type": "malicious_upgrade", "severity": "critical"},
+            {"type": "multisig_threshold_compromise", "severity": "critical"},
         ],
     ),
 ]

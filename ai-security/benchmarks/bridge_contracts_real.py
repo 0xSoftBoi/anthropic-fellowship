@@ -124,6 +124,89 @@ VULNERABILITY_TAXONOMY = {
         "severity": "critical",
         "description": "Message status updated after external call, enabling replay attacks",
     },
+    # ── 2026 additions (CrossCurve, Hyperbridge) ──
+    "missing_gateway_origin_check": {
+        "type": "missing_gateway_origin_check",
+        "severity": "critical",
+        "description": "Cross-chain message handler never verified the message came from the bridge gateway",
+    },
+    "unauthenticated_message_handler": {
+        "type": "unauthenticated_message_handler",
+        "severity": "critical",
+        "description": "Permissionless entrypoint reached privileged execution without authenticating the caller/source",
+    },
+    "forged_cross_chain_message": {
+        "type": "forged_cross_chain_message",
+        "severity": "critical",
+        "description": "Spoofed cross-chain payload accepted as legitimate, unlocking/minting unbacked assets",
+    },
+    "mmr_missing_bounds_check": {
+        "type": "mmr_missing_bounds_check",
+        "severity": "critical",
+        "description": "Merkle Mountain Range proof verification lacked a bounds check, allowing forged leaves",
+    },
+    "unbounded_mint_authority": {
+        "type": "unbounded_mint_authority",
+        "severity": "critical",
+        "description": "Governance/admin path could reassign mint authority over bridged assets without strong origin checks",
+    },
+    # ── 2024-2025 DeFi additions (Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra) ──
+    "reentrancy": {
+        "type": "reentrancy",
+        "severity": "critical",
+        "description": "External call made before state finalized, allowing re-entrant calls to manipulate accounting",
+    },
+    "untrusted_external_call": {
+        "type": "untrusted_external_call",
+        "severity": "critical",
+        "description": "Call into attacker-controlled contract during a sensitive flow (e.g. permissionless-registered token)",
+    },
+    "unvalidated_callback": {
+        "type": "unvalidated_callback",
+        "severity": "critical",
+        "description": "Flashloan/swap callback executed attacker-supplied parameters without validation",
+    },
+    "exchange_rate_manipulation": {
+        "type": "exchange_rate_manipulation",
+        "severity": "critical",
+        "description": "Empty/low-supply lending market exchange rate manipulated via direct donation",
+    },
+    "rounding_error": {
+        "type": "rounding_error",
+        "severity": "high",
+        "description": "Precision/rounding in redeem or share math let attacker extract more than deposited",
+    },
+    "empty_market_donation": {
+        "type": "empty_market_donation",
+        "severity": "high",
+        "description": "First-depositor/donation attack on a freshly created market with no supply guard",
+    },
+    "missing_solvency_check": {
+        "type": "missing_solvency_check",
+        "severity": "critical",
+        "description": "Solvency/collateralization check skipped on a borrow path, enabling undercollateralized debt",
+    },
+    "state_flag_reset": {
+        "type": "state_flag_reset",
+        "severity": "critical",
+        "description": "A security flag (e.g. needsSolvencyCheck) reset by a later action, bypassing an end-of-call check",
+    },
+    "logic_error": {
+        "type": "logic_error",
+        "severity": "high",
+        "description": "Control-flow/logic flaw in a multi-action dispatcher leading to skipped validation",
+    },
+    # ── bridge aggregator / router additions (THORChain, Rubic) ──
+    "event_spoofing": {
+        "type": "event_spoofing",
+        "severity": "critical",
+        "description": "Off-chain observer trusts an on-chain event/memo an attacker can forge to trigger a payout",
+    },
+    "improper_whitelist": {
+        "type": "improper_whitelist",
+        "severity": "critical",
+        "description": "Router whitelist included token contracts, so an arbitrary call could invoke transferFrom",
+    },
 }
 
 
@@ -218,6 +301,99 @@ def load_real_contracts() -> list:
             "vuln_class": "oracle_manipulation",
             "chain": "bsc",
         },
+        # ── 2026 additions: real verified source committed (Blockscout), source-detectable ──
+        "crosscurve_receiveraxelar": {
+            "loss_usd": 3_000_000,
+            "fork_block": 0,  # exploit tx 0x37d9b911...; pre-attack fork block TBD
+            "fork_chain": "mainnet",
+            "exploit_date": "2026-01-31",
+            "vuln_class": "message_validation",
+            "chain": "ethereum",
+            "address": "0xB2185950F5A0A46687ac331916508aadA202e063",
+        },
+        "hyperbridge_tokengateway": {
+            "loss_usd": 2_500_000,
+            "fork_block": 0,  # exploit 2026-04-13 03:55 UTC; pre-attack fork block TBD
+            "fork_chain": "mainnet",
+            "exploit_date": "2026-04-13",
+            "vuln_class": "proof_verification",
+            "chain": "ethereum",
+            "address": "0xFd413e3AFe560182C4471F4d143A96d3e259B6dE",
+        },
+        # ── 2024-2025 DeFi exploits: real verified source committed (Blockscout) ──
+        "penpie_pendlestaking": {
+            "loss_usd": 27_000_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2024-09-03",
+            "vuln_class": "reentrancy",
+            "chain": "ethereum",
+            "address": "0x86A499D84E355D2Cb41851d91425c86Eb2758627",
+        },
+        "seneca_chamber": {
+            "loss_usd": 6_400_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2024-02-28",
+            "vuln_class": "arbitrary_external_call",
+            "chain": "ethereum",
+            "address": "0x45e15d1e4F92f28A916F4f2971Ad9adc278e148B",
+        },
+        "prisma_migratetrovezap": {
+            "loss_usd": 11_600_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2024-03-28",
+            "vuln_class": "input_validation",
+            "chain": "ethereum",
+            "address": "0xcC7218100da61441905e0c327749972e3CBee9EE",
+        },
+        "sonne_soVELO_cerc20": {
+            "loss_usd": 20_000_000,
+            "fork_block": 0,
+            "fork_chain": "optimism",
+            "exploit_date": "2024-05-15",
+            "vuln_class": "exchange_rate_manipulation",
+            "chain": "optimism",
+            "address": "0xe3b81318B1b6776F0877c3770AfDdFf97b9f5fE5",
+        },
+        "dough_connector_paraswap": {
+            "loss_usd": 2_000_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2024-07-12",
+            "vuln_class": "arbitrary_external_call",
+            "chain": "ethereum",
+            "address": "0x9f54e8eAa9658316Bb8006E03FFF1cb191AafBE6",
+        },
+        "abracadabra_cauldronv4": {
+            "loss_usd": 1_800_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2025-10-04",
+            "vuln_class": "logic_error",
+            "chain": "ethereum",
+            "address": "0x5E70F7AcB8ec0231c00220d11c74dC2B23187103",
+        },
+        # ── bridge router/aggregator exploits: verified source committed (Blockscout) ──
+        "thorchain_router": {
+            "loss_usd": 8_000_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2021-07-23",
+            "vuln_class": "message_validation",
+            "chain": "ethereum",
+            "address": "0xC145990E84155416144C532E31f89B840Ca8c2cE",
+        },
+        "rubic_proxy": {
+            "loss_usd": 1_400_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2022-12-25",
+            "vuln_class": "approval_exploitation",
+            "chain": "ethereum",
+            "address": "0x3332241a5a4eCb4c28239A9731ad45De7f000333",
+        },
     }
 
     # Vulnerability details from bridge_bench.py
@@ -264,6 +440,53 @@ def load_real_contracts() -> list:
         "allbridge_oracle_pool": [
             "flash_loan_price_manipulation",
             "spot_price_dependency",
+        ],
+        "crosscurve_receiveraxelar": [
+            "missing_gateway_origin_check",
+            "unauthenticated_message_handler",
+            "forged_cross_chain_message",
+        ],
+        "hyperbridge_tokengateway": [
+            "mmr_missing_bounds_check",
+            "unbounded_mint_authority",
+            "forged_cross_chain_message",
+        ],
+        "penpie_pendlestaking": [
+            "reentrancy",
+            "untrusted_external_call",
+        ],
+        "seneca_chamber": [
+            "arbitrary_external_call",
+            "missing_input_validation",
+        ],
+        "prisma_migratetrovezap": [
+            "unvalidated_callback",
+            "missing_input_validation",
+        ],
+        "sonne_soVELO_cerc20": [
+            "exchange_rate_manipulation",
+            "rounding_error",
+            "empty_market_donation",
+        ],
+        "dough_connector_paraswap": [
+            "arbitrary_external_call",
+            "unvalidated_callback",
+            "missing_input_validation",
+        ],
+        "abracadabra_cauldronv4": [
+            "missing_solvency_check",
+            "state_flag_reset",
+            "logic_error",
+        ],
+        "thorchain_router": [
+            "event_spoofing",
+            "arbitrary_external_call",
+            "reentrancy",
+        ],
+        "rubic_proxy": [
+            "improper_whitelist",
+            "arbitrary_external_call",
+            "approval_exploitation",
         ],
     }
 

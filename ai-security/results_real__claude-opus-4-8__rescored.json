@@ -1,0 +1,326 @@
+{
+  "judge_model": "claude-haiku-4-5-20251001",
+  "judge_calls": 38,
+  "judge_tokens": 16849,
+  "overall_string_match": {
+    "precision": 0.03614457831325301,
+    "recall": 0.07317073170731707,
+    "f1": 0.04838709677419355,
+    "tp": 3,
+    "fp": 80,
+    "fn": 38
+  },
+  "overall_semantic": {
+    "precision": 0.27710843373493976,
+    "recall": 0.5609756097560976,
+    "f1": 0.3709677419354839,
+    "tp": 23,
+    "fp": 60,
+    "fn": 18
+  },
+  "per_contract": {
+    "nomad_bridge_replica": {
+      "tp": 1,
+      "fp": 3,
+      "fn": 4,
+      "precision": 0.25,
+      "recall": 0.2,
+      "f1": 0.22222222222222224,
+      "promoted": [],
+      "still_missed": [
+        "zero_root_initialization",
+        "default_value_exploit",
+        "missing_upgrade_validation",
+        "replay_attack"
+      ]
+    },
+    "qubit_finance_bridge": {
+      "tp": 1,
+      "fp": 7,
+      "fn": 1,
+      "precision": 0.125,
+      "recall": 0.5,
+      "f1": 0.2,
+      "promoted": [
+        {
+          "gt": "missing_input_validation",
+          "matched_finding": "7. no_message_replay_or_proof_validation_in_handler",
+          "why": "Missing validation of bridge input parameters (replay/proof validation in a bridge handler) is a missing input validation issue at the bridge layer, matching the ground-truth category."
+        }
+      ],
+      "still_missed": [
+        "zero_value_deposit"
+      ]
+    },
+    "socket_gateway_registry": {
+      "tp": 2,
+      "fp": 3,
+      "fn": 0,
+      "precision": 0.4,
+      "recall": 1.0,
+      "f1": 0.5714285714285715,
+      "promoted": [
+        {
+          "gt": "approval_exploitation",
+          "matched_finding": "arbitrary_delegatecall_approval_drain",
+          "why": "This finding captures the same root cause: exploitation of user token approvals through a mechanism (delegatecall) that allows unauthorized use of approved tokens, matching the ground-truth approval_exploitation vulnerability."
+        },
+        {
+          "gt": "faulty_route_validation",
+          "matched_finding": "unvalidated_route_registration",
+          "why": "Unvalidated route registration captures the same root cause as faulty route validation\u2014insufficient validation of bridge routes that enables attacks."
+        }
+      ],
+      "still_missed": []
+    },
+    "xbridge_approval_drain": {
+      "tp": 1,
+      "fp": 5,
+      "fn": 0,
+      "precision": 0.16666666666666666,
+      "recall": 1.0,
+      "f1": 0.2857142857142857,
+      "promoted": [
+        {
+          "gt": "approval_exploitation",
+          "matched_finding": "0. approval_drain / arbitrary_token_listing",
+          "why": "approval_drain directly matches approval_exploitation (exploiting user token approvals), and arbitrary_token_listing describes the mechanism of allowing unauthorized token operations through approvals."
+        }
+      ],
+      "still_missed": []
+    },
+    "lifi_protocol_diamond_july_2024": {
+      "tp": 1,
+      "fp": 1,
+      "fn": 1,
+      "precision": 0.5,
+      "recall": 0.5,
+      "f1": 0.5,
+      "promoted": [
+        {
+          "gt": "arbitrary_external_call",
+          "matched_finding": "arbitrary_external_call / approval_drain",
+          "why": "Both describe arbitrary external calls with user-supplied data; approval_drain is a specific instantiation of the arbitrary_external_call vulnerability mechanism."
+        }
+      ],
+      "still_missed": [
+        "infinite_approval_drain"
+      ]
+    },
+    "allbridge_oracle_pool": {
+      "tp": 1,
+      "fp": 5,
+      "fn": 1,
+      "precision": 0.16666666666666666,
+      "recall": 0.5,
+      "f1": 0.25,
+      "promoted": [
+        {
+          "gt": "flash_loan_price_manipulation",
+          "matched_finding": "missing_slippage_protection",
+          "why": "Missing slippage protection is the root-cause mechanism that enables flash loan price manipulation attacks, as it allows attackers to execute large trades without price protection and then manipulate prices via flash loans."
+        }
+      ],
+      "still_missed": [
+        "spot_price_dependency"
+      ]
+    },
+    "crosscurve_receiveraxelar": {
+      "tp": 2,
+      "fp": 3,
+      "fn": 1,
+      "precision": 0.4,
+      "recall": 0.6666666666666666,
+      "f1": 0.5,
+      "promoted": [
+        {
+          "gt": "missing_gateway_origin_check",
+          "matched_finding": "missing_message_source_validation",
+          "why": "Missing message source validation is synonymous with missing gateway origin check\u2014both refer to failure to verify the sender/origin of cross-chain messages."
+        },
+        {
+          "gt": "unauthenticated_message_handler",
+          "matched_finding": "weak_source_authentication",
+          "why": "Weak source authentication is a synonym for unauthenticated message handler \u2014 both describe insufficient validation of caller/source identity before granting privileged execution."
+        }
+      ],
+      "still_missed": [
+        "forged_cross_chain_message"
+      ]
+    },
+    "hyperbridge_tokengateway": {
+      "tp": 1,
+      "fp": 7,
+      "fn": 2,
+      "precision": 0.125,
+      "recall": 0.3333333333333333,
+      "f1": 0.18181818181818182,
+      "promoted": [
+        {
+          "gt": "unbounded_mint_authority",
+          "matched_finding": "missing_proof_validation_trust / governance_authentication_weakness",
+          "why": "Both refer to governance/admin paths lacking proper validation mechanisms; the finding captures the weak authentication that allows unauthorized reassignment of mint authority."
+        }
+      ],
+      "still_missed": [
+        "mmr_missing_bounds_check",
+        "forged_cross_chain_message"
+      ]
+    },
+    "penpie_pendlestaking": {
+      "tp": 1,
+      "fp": 4,
+      "fn": 1,
+      "precision": 0.2,
+      "recall": 0.5,
+      "f1": 0.28571428571428575,
+      "promoted": [],
+      "still_missed": [
+        "untrusted_external_call"
+      ]
+    },
+    "seneca_chamber": {
+      "tp": 1,
+      "fp": 3,
+      "fn": 1,
+      "precision": 0.25,
+      "recall": 0.5,
+      "f1": 0.3333333333333333,
+      "promoted": [
+        {
+          "gt": "arbitrary_external_call",
+          "matched_finding": "arbitrary_external_call / approval_drain",
+          "why": "Finding 0 directly names 'arbitrary_external_call', which is the exact root-cause mechanism of the ground-truth vulnerability (bridge allowing arbitrary external calls with user-supplied calldata)."
+        }
+      ],
+      "still_missed": [
+        "missing_input_validation"
+      ]
+    },
+    "prisma_migratetrovezap": {
+      "tp": 2,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1": 0.6666666666666666,
+      "promoted": [
+        {
+          "gt": "unvalidated_callback",
+          "matched_finding": "unchecked_token_argument_in_callback",
+          "why": "Both refer to the same root cause: callback execution without validating attacker-supplied parameters (specifically the token argument), enabling exploitation through unvalidated callback inputs."
+        },
+        {
+          "gt": "missing_input_validation",
+          "matched_finding": "missing_maxFeePercentage_and_input_validation",
+          "why": "This finding directly addresses missing input validation, which is the core mechanism of the ground-truth vulnerability concerning insufficient validation of bridge input parameters."
+        }
+      ],
+      "still_missed": []
+    },
+    "sonne_soVELO_cerc20": {
+      "tp": 0,
+      "fp": 2,
+      "fn": 3,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "promoted": [],
+      "still_missed": [
+        "exchange_rate_manipulation",
+        "rounding_error",
+        "empty_market_donation"
+      ]
+    },
+    "dough_connector_paraswap": {
+      "tp": 2,
+      "fp": 2,
+      "fn": 1,
+      "precision": 0.5,
+      "recall": 0.6666666666666666,
+      "f1": 0.5714285714285715,
+      "promoted": [
+        {
+          "gt": "arbitrary_external_call",
+          "matched_finding": "approval_drain_arbitrary_call",
+          "why": "Approval drain with arbitrary call is a compound name describing the same root-cause mechanism: arbitrary external calls with user-supplied calldata that can drain approvals/funds."
+        },
+        {
+          "gt": "unvalidated_callback",
+          "matched_finding": "missing_validation_flashloan_callback",
+          "why": "Both refer to the same root cause: flashloan callback parameters are executed without validation, allowing attacker-controlled behavior."
+        }
+      ],
+      "still_missed": [
+        "missing_input_validation"
+      ]
+    },
+    "abracadabra_cauldronv4": {
+      "tp": 2,
+      "fp": 2,
+      "fn": 1,
+      "precision": 0.5,
+      "recall": 0.6666666666666666,
+      "f1": 0.5714285714285715,
+      "promoted": [
+        {
+          "gt": "missing_solvency_check",
+          "matched_finding": "solvency_check_bypass",
+          "why": "Solvency_check_bypass describes bypassing/skipping solvency checks, which is the same root-cause mechanism as missing_solvency_check that enables undercollateralized debt."
+        },
+        {
+          "gt": "state_flag_reset",
+          "matched_finding": "state_flag_corruption",
+          "why": "state_flag_corruption captures the same root cause as state_flag_reset: improper manipulation of a security flag that bypasses intended checks, though using a broader term."
+        }
+      ],
+      "still_missed": [
+        "logic_error"
+      ]
+    },
+    "thorchain_router": {
+      "tp": 3,
+      "fp": 6,
+      "fn": 0,
+      "precision": 0.3333333333333333,
+      "recall": 1.0,
+      "f1": 0.5,
+      "promoted": [
+        {
+          "gt": "event_spoofing",
+          "matched_finding": "forged_deposit_event / unauthenticated_memo",
+          "why": "This finding directly matches the event_spoofing vulnerability: an attacker forging a deposit event (unauthenticated memo) that an off-chain observer trusts to trigger a payout is the exact mechanism described in the ground-truth issue."
+        },
+        {
+          "gt": "arbitrary_external_call",
+          "matched_finding": "arbitrary_external_call / approval_drain",
+          "why": "Finding 1 directly matches the ground-truth arbitrary_external_call vulnerability; 'approval_drain' is a specific manifestation/consequence of arbitrary external calls with user-supplied calldata."
+        }
+      ],
+      "still_missed": []
+    },
+    "rubic_proxy": {
+      "tp": 2,
+      "fp": 5,
+      "fn": 1,
+      "precision": 0.2857142857142857,
+      "recall": 0.6666666666666666,
+      "f1": 0.4,
+      "promoted": [
+        {
+          "gt": "improper_whitelist",
+          "matched_finding": "arbitrary_call_approval_drain",
+          "why": "Both refer to the same root cause: improper whitelist allowing arbitrary calls to token contracts that can invoke transferFrom, enabling approval/token drainage."
+        },
+        {
+          "gt": "approval_exploitation",
+          "matched_finding": "infinite_approval_standing_allowance",
+          "why": "Infinite approval standing allowance is a direct mechanism enabling approval exploitation\u2014it allows a bridge to retain and exploit user token approvals indefinitely without restriction."
+        }
+      ],
+      "still_missed": [
+        "arbitrary_external_call"
+      ]
+    }
+  }
+}

@@ -13,6 +13,7 @@ AI agents add value over existing tools.
 """
 
 import json
+import os
 import re
 from dataclasses import dataclass, asdict
 from anthropic import Anthropic
@@ -20,7 +21,15 @@ from agents.static_analyzer_v2 import _extract_function_body
 
 # Single source of truth for the model — keep every analyzer on the same one so
 # static-vs-LLM comparisons are apples-to-apples (was mixed across files).
-MODEL = "claude-sonnet-4-6"
+# Override per-run with BENCH_MODEL, e.g. BENCH_MODEL=claude-fable-5 to evaluate
+# Fable 5 on BRIDGE-bench against the committed Sonnet baseline.
+MODELS = {
+    "sonnet": "claude-sonnet-4-6",
+    "opus": "claude-opus-4-8",
+    "haiku": "claude-haiku-4-5-20251001",
+    "fable": "claude-fable-5",
+}
+MODEL = MODELS.get(os.environ.get("BENCH_MODEL", ""), os.environ.get("BENCH_MODEL") or "claude-sonnet-4-6")
 
 
 SYSTEM_PROMPT = """You are an expert smart contract security auditor analyzing Solidity for vulnerabilities.
@@ -204,13 +213,16 @@ Analyze this Solidity smart contract for security vulnerabilities:
 
 Provide your analysis as JSON."""
 
-    response = client.messages.create(
+    _params = dict(
         model=MODEL,
         max_tokens=4096,
-        temperature=0,  # deterministic — benchmark runs must be reproducible
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": user_prompt}],
     )
+    # Fable and similar models reject an explicit temperature; keep it for others.
+    if not any(s in MODEL for s in ("fable", "opus-4-8")):
+        _params["temperature"] = 0
+    response = client.messages.create(**_params)
 
     # Parse response
     response_text = response.content[0].text

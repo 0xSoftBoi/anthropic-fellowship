@@ -1,0 +1,2036 @@
+{
+  "real_static": {
+    "method": "static_v2",
+    "overall": {
+      "precision": 0.005291005291005291,
+      "recall": 0.021739130434782608,
+      "f1": 0.008510638297872339,
+      "tp": 1,
+      "fp": 188,
+      "fn": 45
+    },
+    "per_contract": {
+      "poly_network_eth_cross_chain_manager": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "unrestricted_cross_chain_call",
+            "keeper_key_overwrite"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 2,
+        "findings": []
+      },
+      "nomad_bridge_replica": {
+        "metrics": {
+          "tp": 1,
+          "fp": 9,
+          "fn": 4,
+          "precision": 0.1,
+          "recall": 0.2,
+          "f1": 0.13333333333333333,
+          "missed": [
+            "zero_root_initialization",
+            "default_value_exploit",
+            "missing_upgrade_validation",
+            "replay_attack"
+          ],
+          "false_positives": [
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "unused_signature_parameter",
+            "unprotected_initializer",
+            "reinitializable",
+            "zero_root_acceptance",
+            "unprotected_admin_function",
+            "duplicate_signature_acceptance"
+          ]
+        },
+        "n_findings": 10,
+        "n_gt": 5,
+        "findings": [
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unused_signature_parameter",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "zero_root_acceptance",
+            "severity": "critical",
+            "confidence": 0.6
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "duplicate_signature_acceptance",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "qubit_finance_bridge": {
+        "metrics": {
+          "tp": 0,
+          "fp": 15,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "zero_value_deposit",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 15,
+        "n_gt": 2,
+        "findings": [
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "ronin_bridge_validator": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 1,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "low_validator_threshold"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 3,
+        "findings": []
+      },
+      "orbit_chain_multisig": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "missed": [],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 1,
+        "findings": []
+      },
+      "lifi_protocol_diamond_march_2022": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "infinite_approval_drain"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 2,
+        "findings": []
+      },
+      "socket_gateway_registry": {
+        "metrics": {
+          "tp": 0,
+          "fp": 11,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "approval_exploitation",
+            "faulty_route_validation"
+          ],
+          "false_positives": [
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "missing_reentrancy_guard",
+            "no_rate_limiting",
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 11,
+        "n_gt": 2,
+        "findings": [
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "missing_reentrancy_guard",
+            "severity": "medium",
+            "confidence": 0.6
+          },
+          {
+            "type": "no_rate_limiting",
+            "severity": "high",
+            "confidence": 0.6
+          },
+          {
+            "type": "unprotected_upgrade",
+            "severity": "high",
+            "confidence": 0.6
+          }
+        ]
+      },
+      "xbridge_approval_drain": {
+        "metrics": {
+          "tp": 0,
+          "fp": 35,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "approval_exploitation"
+          ],
+          "false_positives": [
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "missing_signature_verification",
+            "missing_signature_verification",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "reentrancy",
+            "duplicate_signature_acceptance",
+            "no_rate_limiting",
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 35,
+        "n_gt": 1,
+        "findings": [
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "reentrancy",
+            "severity": "high",
+            "confidence": 0.8
+          },
+          {
+            "type": "duplicate_signature_acceptance",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "no_rate_limiting",
+            "severity": "high",
+            "confidence": 0.6
+          },
+          {
+            "type": "unprotected_upgrade",
+            "severity": "high",
+            "confidence": 0.6
+          }
+        ]
+      },
+      "lifi_protocol_diamond_july_2024": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "infinite_approval_drain"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 3,
+        "findings": []
+      },
+      "allbridge_oracle_pool": {
+        "metrics": {
+          "tp": 0,
+          "fp": 15,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "flash_loan_price_manipulation",
+            "spot_price_dependency"
+          ],
+          "false_positives": [
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "missing_signature_verification",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "no_rate_limiting",
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 15,
+        "n_gt": 2,
+        "findings": [
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "no_rate_limiting",
+            "severity": "high",
+            "confidence": 0.6
+          },
+          {
+            "type": "unprotected_upgrade",
+            "severity": "high",
+            "confidence": 0.6
+          }
+        ]
+      },
+      "crosscurve_receiveraxelar": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_gateway_origin_check",
+            "unauthenticated_message_handler",
+            "forged_cross_chain_message"
+          ],
+          "false_positives": [
+            "missing_signature_verification",
+            "missing_signature_verification",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 4,
+        "n_gt": 3,
+        "findings": [
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "hyperbridge_tokengateway": {
+        "metrics": {
+          "tp": 0,
+          "fp": 3,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "mmr_missing_bounds_check",
+            "unbounded_mint_authority",
+            "forged_cross_chain_message"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "missing_reentrancy_guard"
+          ]
+        },
+        "n_findings": 3,
+        "n_gt": 3,
+        "findings": [
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "missing_reentrancy_guard",
+            "severity": "medium",
+            "confidence": 0.6
+          }
+        ]
+      },
+      "penpie_pendlestaking": {
+        "metrics": {
+          "tp": 0,
+          "fp": 30,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "reentrancy",
+            "untrusted_external_call"
+          ],
+          "false_positives": [
+            "missing_signature_verification",
+            "missing_signature_verification",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 30,
+        "n_gt": 2,
+        "findings": [
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "seneca_chamber": {
+        "metrics": {
+          "tp": 0,
+          "fp": 10,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "unprotected_initializer",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "missing_reentrancy_guard",
+            "no_rate_limiting"
+          ]
+        },
+        "n_findings": 10,
+        "n_gt": 2,
+        "findings": [
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "missing_reentrancy_guard",
+            "severity": "medium",
+            "confidence": 0.6
+          },
+          {
+            "type": "no_rate_limiting",
+            "severity": "high",
+            "confidence": 0.6
+          }
+        ]
+      },
+      "prisma_migratetrovezap": {
+        "metrics": {
+          "tp": 0,
+          "fp": 14,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "unvalidated_callback",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "untrusted_external_call",
+            "missing_signature_verification",
+            "missing_signature_verification",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "no_rate_limiting",
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 14,
+        "n_gt": 2,
+        "findings": [
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "untrusted_external_call",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "missing_signature_verification",
+            "severity": "critical",
+            "confidence": 0.5
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "no_rate_limiting",
+            "severity": "high",
+            "confidence": 0.6
+          },
+          {
+            "type": "unprotected_upgrade",
+            "severity": "high",
+            "confidence": 0.6
+          }
+        ]
+      },
+      "sonne_soVELO_cerc20": {
+        "metrics": {
+          "tp": 0,
+          "fp": 14,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "exchange_rate_manipulation",
+            "rounding_error",
+            "empty_market_donation"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 14,
+        "n_gt": 3,
+        "findings": [
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "dough_connector_paraswap": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "unvalidated_callback",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "spot_price_oracle"
+          ]
+        },
+        "n_findings": 5,
+        "n_gt": 3,
+        "findings": [
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "spot_price_oracle",
+            "severity": "critical",
+            "confidence": 0.9
+          }
+        ]
+      },
+      "abracadabra_cauldronv4": {
+        "metrics": {
+          "tp": 0,
+          "fp": 12,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_solvency_check",
+            "state_flag_reset",
+            "logic_error"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "missing_reentrancy_guard",
+            "no_rate_limiting"
+          ]
+        },
+        "n_findings": 12,
+        "n_gt": 3,
+        "findings": [
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "missing_reentrancy_guard",
+            "severity": "medium",
+            "confidence": 0.6
+          },
+          {
+            "type": "no_rate_limiting",
+            "severity": "high",
+            "confidence": 0.6
+          }
+        ]
+      },
+      "thorchain_router": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "event_spoofing",
+            "arbitrary_external_call",
+            "reentrancy"
+          ],
+          "false_positives": [
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 4,
+        "n_gt": 3,
+        "findings": [
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "rubic_proxy": {
+        "metrics": {
+          "tp": 0,
+          "fp": 7,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "improper_whitelist",
+            "arbitrary_external_call",
+            "approval_exploitation"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 7,
+        "n_gt": 3,
+        "findings": [
+          {
+            "type": "unprotected_initializer",
+            "severity": "critical",
+            "confidence": 0.9
+          },
+          {
+            "type": "reinitializable",
+            "severity": "critical",
+            "confidence": 0.8
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      }
+    },
+    "systematic_gaps": [
+      "poly_network_eth_cross_chain_manager: unrestricted_cross_chain_call",
+      "poly_network_eth_cross_chain_manager: keeper_key_overwrite",
+      "nomad_bridge_replica: zero_root_initialization",
+      "nomad_bridge_replica: default_value_exploit",
+      "nomad_bridge_replica: missing_upgrade_validation",
+      "nomad_bridge_replica: replay_attack",
+      "qubit_finance_bridge: zero_value_deposit",
+      "qubit_finance_bridge: missing_input_validation",
+      "ronin_bridge_validator: low_validator_threshold",
+      "lifi_protocol_diamond_march_2022: arbitrary_external_call",
+      "lifi_protocol_diamond_march_2022: infinite_approval_drain",
+      "socket_gateway_registry: approval_exploitation",
+      "socket_gateway_registry: faulty_route_validation",
+      "xbridge_approval_drain: approval_exploitation",
+      "lifi_protocol_diamond_july_2024: arbitrary_external_call",
+      "lifi_protocol_diamond_july_2024: infinite_approval_drain",
+      "allbridge_oracle_pool: flash_loan_price_manipulation",
+      "allbridge_oracle_pool: spot_price_dependency",
+      "crosscurve_receiveraxelar: missing_gateway_origin_check",
+      "crosscurve_receiveraxelar: unauthenticated_message_handler",
+      "crosscurve_receiveraxelar: forged_cross_chain_message",
+      "hyperbridge_tokengateway: mmr_missing_bounds_check",
+      "hyperbridge_tokengateway: unbounded_mint_authority",
+      "hyperbridge_tokengateway: forged_cross_chain_message",
+      "penpie_pendlestaking: reentrancy",
+      "penpie_pendlestaking: untrusted_external_call",
+      "seneca_chamber: arbitrary_external_call",
+      "seneca_chamber: missing_input_validation",
+      "prisma_migratetrovezap: unvalidated_callback",
+      "prisma_migratetrovezap: missing_input_validation",
+      "sonne_soVELO_cerc20: exchange_rate_manipulation",
+      "sonne_soVELO_cerc20: rounding_error",
+      "sonne_soVELO_cerc20: empty_market_donation",
+      "dough_connector_paraswap: arbitrary_external_call",
+      "dough_connector_paraswap: unvalidated_callback",
+      "dough_connector_paraswap: missing_input_validation",
+      "abracadabra_cauldronv4: missing_solvency_check",
+      "abracadabra_cauldronv4: state_flag_reset",
+      "abracadabra_cauldronv4: logic_error",
+      "thorchain_router: event_spoofing",
+      "thorchain_router: arbitrary_external_call",
+      "thorchain_router: reentrancy",
+      "rubic_proxy: improper_whitelist",
+      "rubic_proxy: arbitrary_external_call",
+      "rubic_proxy: approval_exploitation"
+    ]
+  },
+  "real_agentic": {
+    "method": "agentic",
+    "overall": {
+      "precision": 0.031578947368421054,
+      "recall": 0.06521739130434782,
+      "f1": 0.0425531914893617,
+      "tp": 3,
+      "fp": 92,
+      "fn": 43
+    },
+    "per_contract": {
+      "poly_network_eth_cross_chain_manager": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "unrestricted_cross_chain_call",
+            "keeper_key_overwrite"
+          ],
+          "false_positives": [
+            "arbitrary_external_call_privilege_escalation",
+            "function_selector_collision",
+            "missing_call_target_whitelist",
+            "privileged_storage_owned_by_message_executor",
+            "missing_timelock_on_admin_and_upgrade"
+          ]
+        },
+        "n_findings": 5
+      },
+      "nomad_bridge_replica": {
+        "metrics": {
+          "tp": 1,
+          "fp": 3,
+          "fn": 4,
+          "precision": 0.25,
+          "recall": 0.2,
+          "f1": 0.22222222222222224,
+          "missed": [
+            "zero_root_initialization",
+            "default_value_exploit",
+            "missing_upgrade_validation",
+            "replay_attack"
+          ],
+          "false_positives": [
+            "message_proof_bypass",
+            "missing_access_control",
+            "reentrancy_guard_state_coupling"
+          ]
+        },
+        "n_findings": 4
+      },
+      "qubit_finance_bridge": {
+        "metrics": {
+          "tp": 0,
+          "fp": 8,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "zero_value_deposit",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "missing_balance_validation / no-op token transfer (zero/EOA address)",
+            "no_balance_check_on_low_level_transfer",
+            "missing_event_and_no_op_depositETH",
+            "unvalidated_external_call_to_delegator",
+            "centralization / no_timelock_on_critical_config",
+            "withdrawal_fee_underflow_griefing",
+            "unprotected_initializer_frontrun",
+            "no_message_replay_or_proof_validation_in_handler"
+          ]
+        },
+        "n_findings": 8
+      },
+      "ronin_bridge_validator": {
+        "metrics": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "low_validator_threshold"
+          ],
+          "false_positives": [
+            "none"
+          ]
+        },
+        "n_findings": 1
+      },
+      "orbit_chain_multisig": {
+        "metrics": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0,
+          "f1": 0,
+          "missed": [],
+          "false_positives": [
+            "none"
+          ]
+        },
+        "n_findings": 1
+      },
+      "lifi_protocol_diamond_march_2022": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "infinite_approval_drain"
+          ],
+          "false_positives": [
+            "arbitrary_external_call_approval_drain",
+            "missing_access_control",
+            "msg_value_reuse_in_loop",
+            "reentrancy",
+            "missing_slippage_minreturn_validation"
+          ]
+        },
+        "n_findings": 5
+      },
+      "socket_gateway_registry": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "approval_exploitation",
+            "faulty_route_validation"
+          ],
+          "false_positives": [
+            "arbitrary_delegatecall_approval_drain",
+            "infinite_loop_dos",
+            "missing_msg_value_validation",
+            "unvalidated_route_registration",
+            "missing_access_control"
+          ]
+        },
+        "n_findings": 5
+      },
+      "xbridge_approval_drain": {
+        "metrics": {
+          "tp": 0,
+          "fp": 6,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "approval_exploitation"
+          ],
+          "false_positives": [
+            "approval_drain / arbitrary_token_listing",
+            "signature_verification / replay across contracts and chains",
+            "validator_governance / no_threshold_no_timelock",
+            "reentrancy / withdraw lacks nonReentrant and CEI violation",
+            "missing_access_control / unrestricted listToken",
+            "unused_replay_protection_mapping / nonce only keyed by user"
+          ]
+        },
+        "n_findings": 6
+      },
+      "lifi_protocol_diamond_july_2024": {
+        "metrics": {
+          "tp": 0,
+          "fp": 2,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "infinite_approval_drain"
+          ],
+          "false_positives": [
+            "arbitrary_external_call / approval_drain",
+            "insufficient_call_validation"
+          ]
+        },
+        "n_findings": 2
+      },
+      "allbridge_oracle_pool": {
+        "metrics": {
+          "tp": 0,
+          "fp": 6,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "flash_loan_price_manipulation",
+            "spot_price_dependency"
+          ],
+          "false_positives": [
+            "missing_slippage_protection",
+            "accounting_inconsistency_precision",
+            "fee_on_fee_calculation_order",
+            "unprotected_external_self_call",
+            "first_depositor_inflation_lp_rounding",
+            "unchecked_underflow_risk"
+          ]
+        },
+        "n_findings": 6
+      },
+      "crosscurve_receiveraxelar": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_gateway_origin_check",
+            "unauthenticated_message_handler",
+            "forged_cross_chain_message"
+          ],
+          "false_positives": [
+            "missing_message_source_validation",
+            "weak_source_authentication",
+            "empty_payload_underflow_dos",
+            "missing_length_validation_data_branch",
+            "single_admin_no_timelock"
+          ]
+        },
+        "n_findings": 5
+      },
+      "hyperbridge_tokengateway": {
+        "metrics": {
+          "tp": 0,
+          "fp": 8,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "mmr_missing_bounds_check",
+            "unbounded_mint_authority",
+            "forged_cross_chain_message"
+          ],
+          "false_positives": [
+            "missing_proof_validation_trust / governance_authentication_weakness",
+            "mutable_host_address",
+            "cross_chain_replay / missing_nonce_check",
+            "arbitrary_external_call / approval_drain_via_dispatcher",
+            "authentication_bypass_via_self_from",
+            "unprotected_initialization_frontrun / no_zero_check",
+            "native_token_accounting / WETH_wrap_mismatch",
+            "missing_reentrancy_guard"
+          ]
+        },
+        "n_findings": 8
+      },
+      "penpie_pendlestaking": {
+        "metrics": {
+          "tp": 1,
+          "fp": 4,
+          "fn": 1,
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "missed": [
+            "untrusted_external_call"
+          ],
+          "false_positives": [
+            "missing_access_control",
+            "missing_access_control",
+            "input_validation",
+            "missing_slippage_reentrancy_guard"
+          ]
+        },
+        "n_findings": 5
+      },
+      "seneca_chamber": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "arbitrary_external_call / approval_drain",
+            "unauthenticated_signature_relay",
+            "unprotected_initialization_parameters",
+            "oracle_trust / configurable_price_source"
+          ]
+        },
+        "n_findings": 4
+      },
+      "prisma_migratetrovezap": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "unvalidated_callback",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "unvalidated_flashloan_callback_initiator",
+            "collateral_balance_mismatch_no_accounting",
+            "unchecked_token_argument_in_callback",
+            "missing_maxFeePercentage_and_input_validation"
+          ]
+        },
+        "n_findings": 4
+      },
+      "sonne_soVELO_cerc20": {
+        "metrics": {
+          "tp": 0,
+          "fp": 2,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "exchange_rate_manipulation",
+            "rounding_error",
+            "empty_market_donation"
+          ],
+          "false_positives": [
+            "checked_arithmetic_dependency",
+            "trusted_external_call_dependency"
+          ]
+        },
+        "n_findings": 2
+      },
+      "dough_connector_paraswap": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "arbitrary_external_call",
+            "unvalidated_callback",
+            "missing_input_validation"
+          ],
+          "false_positives": [
+            "approval_drain_arbitrary_call",
+            "missing_validation_flashloan_callback",
+            "arbitrary_recipient_fund_withdrawal",
+            "missing_slippage_protection"
+          ]
+        },
+        "n_findings": 4
+      },
+      "abracadabra_cauldronv4": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_solvency_check",
+            "state_flag_reset",
+            "logic_error"
+          ],
+          "false_positives": [
+            "solvency_check_bypass",
+            "arbitrary_external_call",
+            "state_flag_corruption",
+            "privileged_owner_borrow"
+          ]
+        },
+        "n_findings": 4
+      },
+      "thorchain_router": {
+        "metrics": {
+          "tp": 1,
+          "fp": 8,
+          "fn": 2,
+          "precision": 0.1111111111111111,
+          "recall": 0.3333333333333333,
+          "f1": 0.16666666666666666,
+          "missed": [
+            "event_spoofing",
+            "arbitrary_external_call"
+          ],
+          "false_positives": [
+            "low_level_call_return_not_checked / silent_failure",
+            "forged_deposit_event / unauthenticated_memo",
+            "arbitrary_external_call / approval_drain",
+            "missing_access_control",
+            "eth_accounting_mismatch",
+            "unchecked_external_call_value_transfer",
+            "rune_amount_not_validated",
+            "missing_validator_governance_and_timelock"
+          ]
+        },
+        "n_findings": 9
+      },
+      "rubic_proxy": {
+        "metrics": {
+          "tp": 0,
+          "fp": 7,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "improper_whitelist",
+            "arbitrary_external_call",
+            "approval_exploitation"
+          ],
+          "false_positives": [
+            "arbitrary_call_approval_drain",
+            "infinite_approval_standing_allowance",
+            "fee_accounting_bug",
+            "no_minmax_token_amount_validation",
+            "single_admin_no_timelock",
+            "insufficient_balance_check_and_native_value_mismatch",
+            "constructor_initializer_proxy_inconsistency"
+          ]
+        },
+        "n_findings": 7
+      }
+    }
+  }
+}
