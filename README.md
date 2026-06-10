@@ -11,66 +11,45 @@
 
 ## 🎯 Current Focus: Multi-Domain Vulnerability Detection
 
-**Core Thesis:** Static analysis tools fail on real contracts (0% F1) because they can't reason about compositional attack vectors. LLMs with targeted pre-filtering achieve **~40% F1** on **23 real exploits worth $1.6B+** across three DeFi domains.
+**Core question:** can an LLM with a tool-use loop find vulnerabilities in *real* deployed
+contracts that pattern-based static analysis misses? **BRIDGE-bench** is the benchmark built
+to answer it — real, verified, on-chain source across bridges, DEX, and lending, scored by
+both exact-string matching and an LLM-judge.
 
-### Live Results
+### Measured results (Opus 4.8, June 2026 — 16 verified bridge contracts)
 
-| Domain | Contracts | Losses | Best F1 | Status |
-|--------|-----------|--------|---------|--------|
-| **Bridges** | 10 exploits | $1.2B | ~40% | ✅ Complete |
-| **DEX/AMM** | 5 exploits | $327M | TBD | 🔄 In Progress |
-| **Lending** | 3 exploits | $410M | TBD | 🔄 In Progress |
+| Scoring | Precision | Recall | F1 |
+|---------|-----------|--------|----|
+| Static baseline | 4% | 7% | **5%** |
+| Opus 4.8 — exact-string | 4% | 7% | **5%** |
+| **Opus 4.8 — semantic judge** | 28% | **56%** | **37%** |
 
-### Approach Comparison
+Opus identifies the correct root cause on **15 of 16** contracts; the exact-string matcher
+hides this because the model writes *compound* finding names. An LLM-judge — itself
+**validated at 92% precision / Cohen's κ = 0.54** against a hand-labeled gold standard —
+recovers the real signal. Two notable model findings from the run: **Fable 5 refuses** the
+task entirely (`stop_reason: refusal`), and newer models reject the `temperature` parameter.
 
-```
-╔════════════════════════════════════════════════════════════════════╗
-║                      Cost vs Accuracy Frontier                     ║
-╠════════════════════════════════════════════════════════════════════╣
-║                                                                    ║
-║  F1    45% │              ⭐ Full Sonnet ($0.44)                  ║
-║  Score    │             ╱                                         ║
-║       40% │    ⭐ Hybrid ($0.08)                                  ║
-║           │   ╱                                                   ║
-║       20% │  Multi-Tool ($0.01)                                  ║
-║           │ ╱                                                    ║
-║        0% │ Static v2 (Free)                                    ║
-║           │                                                      ║
-║           └──────────────────────────────────────────────────    ║
-║             Free      $0.01      $0.08      $0.44               ║
-║                        Cost per Contract                         ║
-╚════════════════════════════════════════════════════════════════════╝
-```
-
-**Why we're using Hybrid (Recommended):**
-- 40% F1 (same as full Sonnet reasoning)
-- 80% cheaper ($0.08 vs $0.44)
-- Pre-filters with 3 static tools → 90% less false positives
-- Production-ready cost-accuracy tradeoff
+> Full numbers, the judge-validation report, and the DEX/lending data-quality audit are in
+> [`ai-security/`](./ai-security). This is research, not a product — the limitations are
+> documented honestly.
 
 ---
 
-## 🔍 What Makes This Different
+## 🔍 What Makes This Rigorous
 
-### 1. **Compositional Reasoning**
-Pattern matching can't detect: flash loan → oracle manipulation → reentrancy (3-step exploit).  
-LLMs trace the attack path. That's why **0% → 40% F1**.
+**1. Real, verified source.** 21 contracts across three domains, each fetched from
+Blockscout/Sourcify with the address confirmed on-chain — not synthetic snippets.
 
-### 2. **Ground Truth Methodology**
-Most benchmarks only capture historically *exploited* vulnerabilities.  
-We expanded ground truth to include all *detectable* security issues.  
-→ Converts "0% F1 with real findings" into meaningful metrics.
+**2. Two-axis scoring.** Exact-string F1 *and* an LLM-judge semantic F1, so the gap between
+"named the bug correctly" and "named it the way the label expects" is measured, not hidden.
 
-### 3. **Multi-Domain Generalization**
-Same prompt works for bridges, DEX, lending.  
-No domain-specific retraining needed.  
-→ One system, three domains, consistent performance.
+**3. The judge is validated.** Calibrated against a frozen 38-unit hand-labeled gold standard
+(92% precision, 97% run-to-run stable) — the semantic number ships with a stated error profile.
 
-### 4. **Multi-Tool Consensus Pre-Filter**
-Single static analyzer: 56 false positives  
-3-tool consensus (Slither + Mythril + custom): <10 false positives  
-LLM on filtered findings: 0 false positives  
-→ Reduces token waste 80% while keeping accuracy.
+**4. Data quality is audited.** A post-mortem-by-post-mortem audit caught mislabeled exploits
+(non-existent events, market events miscalled code bugs) and the lending set was *rebuilt*
+around verified source bugs before any F1 was reported.
 
 ---
 
@@ -82,37 +61,34 @@ LLM on filtered findings: 0 false positives
 
 ```bash
 cd ai-security
-python3 -m venv venv
-source venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # Python 3.10+
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
-export ETHERSCAN_API_KEY=...  # Free from etherscan.io
 
-# Run static analyzer (free baseline)
-python3 agents/benchmark_runner.py --real
+# Static baseline (free, no API)
+python3 -m agents.benchmark_runner --real
 
-# Run hybrid analyzer (recommended for production)
-python3 agents/benchmark_runner.py --real --hybrid
+# Agentic run — choose the model; non-default models write results_real__<model>.json
+BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --agentic
 
-# Run pure agentic (research mode, most expensive)
-python3 agents/benchmark_runner.py --real --agentic
-
-# Test single contract
-PYTHONPATH=. python3 agents/hybrid_analyzer.py --contract nomad_bridge_replica
+# Other domains, then semantic re-score + validate the judge (no model re-run)
+BENCH_MODEL=opus python3 -m agents.benchmark_runner --defi --lending --agentic
+python3 -m agents.semantic_rescorer results_real__claude-opus-4-8.json
+python3 -m agents.validate_judge
 ```
 
 **Key Files:**
-- `agents/hybrid_analyzer.py` — Multi-tool pre-filter + Sonnet (recommended)
-- `agents/agentic_analyzer.py` — Multi-turn reasoning with tool-use
-- `agents/static_analyzer_v2.py` — Pattern matching baseline
-- `benchmarks/bridge_contracts_real.py` — 10 bridge exploits + ground truth
-- `benchmarks/defi_contracts_real.py` — 5 DEX contracts
-- `benchmarks/lending_contracts_real.py` — 3 lending contracts
+- `agents/agentic_analyzer.py` — multi-turn LLM reasoning with a tool loop
+- `agents/static_analyzer_v2.py` — pattern-matching baseline (no API)
+- `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
+- `agents/validate_judge.py` — judge calibration vs. the gold standard
+- `benchmarks/{bridge,defi,lending}_contracts_real.py` — datasets (16 / 2 / 3 source-committed)
+- `benchmarks/judge_gold_standard.json` — 38 hand-labeled judge decisions
 
 **Documentation:**
-- **[Full Research](./ai-security/docs/RESEARCH.md)** — Detailed methodology, charts, all results
-- **[Phase 4 Results](./ai-security/docs/PHASE4_RESULTS.md)** — Bridge validation (Nomad, Socket, Poly Network, etc.)
-- **[Documentation Index](./ai-security/docs/INDEX.md)** — Navigation hub
+- **[ai-security/README](./ai-security/README.md)** — results, quick start, honest limitations
+- **[Research Deep Dive](./ai-security/docs/RESEARCH.md)** — methodology, Phases 4–7
+- **[Data-Quality Audit](./ai-security/docs/DATA_QUALITY.md)** — DEX/lending label corrections
 
 ---
 

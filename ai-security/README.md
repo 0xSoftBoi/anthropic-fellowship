@@ -23,11 +23,11 @@ Research demonstrating that compositional reasoning + multi-turn analysis beats 
 ```
 Source Code
     ↓
-[Static Analysis] (10 tool findings) → consensus filter
+[Static Analysis] (tool findings) → consensus filter
     ↓
-[Claude Sonnet] (8-turn agentic loop with context hints)
+[Claude — Opus 4.8 / Sonnet] (multi-turn agentic loop with context hints)
     ↓
-Confirmed Findings (high confidence, low false positives)
+Confirmed Findings → scored by string-match AND an LLM-judge (semantic)
 ```
 
 **Measured run (June 2026) on 16 real verified contracts with committed source:**
@@ -86,212 +86,126 @@ Scored over the 16 real-source contracts (Opus run, `--real --agentic`):
 
 ## Key Findings
 
-### 1. Compositional Vulnerabilities Require Multi-Turn Reasoning
-Flash loan + oracle manipulation + reentrancy = 3-step exploit. LLMs trace these paths; pattern matchers cannot.
+**1. Compositional vulnerabilities require multi-turn reasoning.** Flash loan + oracle
+manipulation + reentrancy is a single multi-step exploit path. On real contracts the
+static baseline scores ~1–5% F1; an agentic LLM reading the same source identifies the
+actual root cause on **15 of 16** bridge contracts (see the results table above).
 
-**Example:** Nomad Bridge — Sonnet identified `message_replay` (from cross-contract call flow) + `arbitrary_external_call` (unchecked recipient). Static tools flagged generic patterns only.
+**2. The evaluator, not the model, is often the bottleneck.** Exact-string scoring rated
+Opus 4.8 at 5% F1; an LLM-judge that scores *semantic* equivalence — validated against a
+hand-labeled gold standard at 92% precision — recovers **37% F1 / 56% recall**. Benchmarks
+that match vuln names literally systematically understate strong models.
 
-### 2. Ground Truth Matters
-Benchmarks capturing only *historically exploited* vulnerabilities miss detectable security issues. Expanding ground truth from exploit-centric to audit-centric:
+**3. Frontier models disagree on whether to do the task at all.** Opus 4.8 engages;
+**Fable 5 refuses** smart-contract vulnerability analysis (`stop_reason: refusal`) across
+every prompt framing tried. Safety tuning vs. defensive-security utility is a real tension.
 
-- **Before:** Expected [zero_root, default_value] → Found [replay, arbitrary_call] → F1: 0%
-- **After:** Expected [zero_root, default_value, replay, arbitrary_call, missing_upgrade] → Found [replay, arbitrary_call] → F1: 40%
-
-### 3. Multi-Tool Consensus Filters False Positives
-Combining static_v2 + Mythril + Slither:
-- Single tool: 56 false positives
-- 2+ tool agreement: <10 false positives
-- Sonnet (on filtered findings): 0 false positives
-
-### 4. Multi-Domain Generalization Works
-Same prompt + reasoning architecture works across bridges, DEX, and lending — no domain-specific retraining needed.
+**4. Dataset quality is a first-class problem.** A post-mortem audit
+([docs/DATA_QUALITY.md](docs/DATA_QUALITY.md)) found the original DEX/lending labels were
+partly wrong (non-existent events, market/oracle events mislabeled as code bugs, conflated
+hacks). The lending domain was rebuilt around verified source bugs before any number was
+reported — generalization claims are only as good as the labels behind them.
 
 ---
 
-## Domains Covered
+## Datasets (verified, source-committed)
 
-### Bridges (10 exploits, $1.2B)
-Nomad, Poly Network, Qubit, Socket, XBridge, Ronin, Orbit, LiFi, Allbridge, Synapse
+All source is fetched from public verifiers (Blockscout / Sourcify) with **every address
+confirmed on-chain**. "Source" = a real verified contract committed to `benchmarks/contracts/`.
 
-### DEX/AMM (5 exploits, $327M)
-Euler Finance, Kyberswap, Curve, Platypus, DODO
+| Domain | Loader | Source-committed | Examples |
+|--------|--------|------------------|----------|
+| **Bridges** | `bridge_contracts_real.py` | **16 / 20** | Nomad, Qubit, Socket, XBridge, LiFi, Allbridge, THORChain, Rubic, CrossCurve, Hyperbridge, Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra |
+| **DEX/AMM** | `defi_contracts_real.py` | 2 / 5 | Euler (verified module), Curve (Vyper stand-in) |
+| **Lending** | `lending_contracts_real.py` | **3 / 3** | Onyx oPEPE (rounding), Compound P062 (reward-accounting), Cream crAMP (ERC-777 reentrancy) |
 
-### Lending (3 exploits, $410M)
-Venus, Cream, Compound
+A separate registry, `bridge_bench.py`, tracks **off-chain** mega-hacks (Ronin, KelpDAO,
+Humanity Protocol, …) for loss-coverage only — they have no source-level bug to detect and
+are excluded from the F1 eval. See [DATA_QUALITY.md](docs/DATA_QUALITY.md) for what was
+corrected and what remains to fetch (KyberSwap, Platypus, DODO).
 
 ---
 
 ## Quick Start
 
-### 1. Setup
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+# 1. Setup (Python 3.10+)
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-...
-```
 
-### 2. Run Static Analysis (Free)
-```bash
-python3 agents/benchmark_runner.py --real
-```
+# 2. Static baseline (free, no API)
+python3 -m agents.benchmark_runner --real
 
-### 3. Run Hybrid Analysis (Multi-Tool Pre-Filter + Sonnet)
-```bash
-python3 agents/benchmark_runner.py --real --hybrid
-```
+# 3. Agentic run — pick the model with BENCH_MODEL (sonnet default, opus, haiku, fable)
+#    Non-default models write results_real__<model>.json (baselines never clobbered)
+BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --agentic
 
-### 4. Run Pure Agentic Analysis (Full Reasoning)
-```bash
-# pick the model with BENCH_MODEL (sonnet default, opus, haiku, fable)
-BENCH_MODEL=opus python3 agents/benchmark_runner.py --real --agentic
-# non-default models save to results_real__<model>.json
-```
+# 4. Other domains (same evaluation path)
+BENCH_MODEL=opus python3 -m agents.benchmark_runner --defi --lending --agentic
 
-### 5. Semantic re-score (LLM-as-judge, no model re-run)
-```bash
-# Recompute F1 from saved findings, crediting semantically-correct compound names.
+# 5. Semantic re-score (LLM-as-judge; recomputes F1 from saved findings, no model re-run)
 python3 -m agents.semantic_rescorer results_real__claude-opus-4-8.json
-# writes results_real__claude-opus-4-8__rescored.json
-```
 
-### 6. Test Single Contract
-```bash
-PYTHONPATH=. python3 agents/hybrid_analyzer.py --contract nomad_bridge_replica
+# 6. Validate the judge against the frozen gold standard
+python3 -m agents.validate_judge
 ```
 
 ---
 
 ## Architecture
 
-**Core Components:**
+**Agents**
+- `agents/static_analyzer_v2.py` — pattern-based baseline (no API)
+- `agents/agentic_analyzer.py` — multi-turn LLM reasoning with a tool loop
+- `agents/hybrid_analyzer.py` — multi-tool consensus pre-filter + targeted LLM
+- `agents/benchmark_runner.py` — evaluation harness (`--real` / `--defi` / `--lending`, model-stamped output)
+- `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
+- `agents/validate_judge.py` — judge calibration vs. a hand-labeled gold standard
 
-- `agents/static_analyzer_v2.py` — Pattern-based baseline (bridge-specific rules)
-- `agents/agentic_analyzer.py` — Multi-turn Sonnet reasoning (8-10 turns per contract)
-- `agents/hybrid_analyzer.py` — Multi-tool consensus + targeted Sonnet (cost-optimized)
-- `agents/benchmark_runner.py` — Evaluation harness (static + hybrid + agentic)
-
-**Datasets:**
-
-- `benchmarks/bridge_contracts_real.py` — 10 bridge exploits + ground truth
-- `benchmarks/defi_contracts_real.py` — 5 DEX contracts + taxonomy
-- `benchmarks/lending_contracts_real.py` — 3 lending contracts + taxonomy
-- `benchmarks/test_contracts.py` — Synthetic patterns (baseline)
-
-**Tools:**
-
-- `benchmarks/fetch_contracts.py` — Etherscan v2 multichain API (chainid parameter)
-- Supports: Ethereum, BSC, Avalanche, Polygon, Arbitrum
+**Datasets & evaluation**
+- `benchmarks/{bridge,defi,lending}_contracts_real.py` — loaders (canonical format)
+- `benchmarks/bridge_bench.py` — full exploit registry incl. off-chain (loss-coverage)
+- `benchmarks/judge_gold_standard.json` — 38 hand-labeled judge decisions
+- `benchmarks/contracts/*.sol` — committed verified source
 
 ---
 
-## Cost-Accuracy Frontier
+## Reproducing the headline run
 
-| Method | Cost | Accuracy | Use Case |
-|--------|------|----------|----------|
-| Static | Free | 0% F1 | Baseline, no budget |
-| Multi-Tool | $0.01 | ~20% F1 | Fast pre-filtering, quick feedback |
-| **Hybrid** | **$0.08** | **~40% F1** | **Production: cost-effective, high accuracy** |
-| Full Sonnet | $0.44 | ~45% F1 | Research, maximum accuracy |
+The committed `results_real__claude-opus-4-8.json` (+ `__rescored.json`) is the Opus 4.8
+agentic pass over the 16 bridge contracts. `results_defi_lending*.json` are the static
+multi-domain passes. To regenerate from scratch you need an API key with credit; static
+passes are free. Costs are dominated by the largest contracts (Penpie ~184 KB).
 
 ---
 
-## Methodology
+## Honest limitations
 
-1. **Load** real verified contracts from Etherscan/BSCScan
-2. **Run** static analysis (baseline)
-3. **Run** multi-tool consensus (medium cost, better precision)
-4. **Run** Sonnet agentic (high cost, high precision) with targeted context
-5. **Evaluate** F1 against expanded ground truth
-6. **Compare** cost vs accuracy across approaches
-
-All metrics in JSON format. Costs tracked per contract.
-
----
-
-## Research Phases
-
-| Phase | Status | Focus | Output |
-|-------|--------|-------|--------|
-| 4 | ✓ Complete | Bridge contracts validation | [PHASE4_RESULTS.md](docs/PHASE4_RESULTS.md) |
-| 5A | ✓ Complete | Ground truth expansion | Nomad/Socket vuln expansion |
-| 5B | 🔄 In Progress | DEX multi-domain | Curve, Kyberswap, DODO |
-| 5C | 🔄 In Progress | Lending generalization | Compound, Venus, Cream |
-| 6 | ✓ Complete | Hybrid analysis | Multi-tool consensus pipeline |
+- **Ground truth is hand-authored** (single annotator). The gold standard and fuzzy
+  equivalences encode the author's judgment; a second labeler would let us report
+  inter-human agreement.
+- **The semantic judge is moderate-κ** (0.54) though high-precision (92%); the 37% F1 is a
+  conservative lower bound, not a point estimate.
+- **DEX is incomplete** (2/5 source); some exploited contracts are unverified on-chain or
+  need explorer API keys. The lending Cream positive uses a post-hack *patched* impl.
+- **No committed Sonnet baseline** on the full set yet, so the Opus number lacks a same-set
+  head-to-head.
+- **Token cost is not yet persisted** per run.
 
 ---
 
-## Key Insights
+## Documentation
 
-- **Compositional reasoning > pattern matching** on real code with complex attack paths
-- **Ground truth methodology** is critical — expand from exploit-centric to audit-centric
-- **Pre-filtering with multi-tool consensus** reduces token waste 40% while keeping accuracy
-- **LLM cost scales linearly** with turn count; targeted context (not raw code snippets) is key
-- **No domain retraining needed** — same prompt works across bridges, DEX, lending
-
----
-
-## Limitations
-
-- Ground truth often incomplete (depends on available audits)
-- High false positive rate without pre-filtering (mitigated by hybrid approach)
-- Requires API calls (not fully local)
-- Scales with contract complexity (complex protocols need more turns)
-
----
-
-## Full Documentation
-
-For detailed research methodology, results, and phase-by-phase progress, see:
-
-- **[Research Deep Dive](docs/RESEARCH.md)** — Complete findings, charts, methodology
-- **[Phase 4 Results](docs/PHASE4_RESULTS.md)** — Bridge validation results
-- **[Phase 3 Status](docs/PHASE3_STATUS.md)** — Baseline static analysis
-
----
-
-## Usage Examples
-
-### Compare Hybrid vs Agentic on Single Contract
-```bash
-PYTHONPATH=. python3 agents/hybrid_analyzer.py --contract nomad_bridge_replica --compare
-```
-
-Output shows cost savings and finding differences between approaches.
-
-### Run on Custom Contract
-```bash
-PYTHONPATH=. python3 agents/hybrid_analyzer.py --contract MyBridge --source ./path/to/MyBridge.sol
-```
-
-### Benchmark All Bridge Contracts
-```bash
-python3 agents/benchmark_runner.py --real --hybrid > results.json
-python3 agents/benchmark_runner.py --real --agentic >> results.json
-```
-
----
-
-## Citation
-
-If using this research:
-
-```bibtex
-@research{ai_security_llm_contracts,
-  title={AI Security Research: LLM-Driven Smart Contract Vulnerability Detection},
-  author={0xSoftBoi},
-  year={2026},
-  url={https://github.com/0xSoftBoi/ai-security}
-}
-```
+- **[RESEARCH.md](docs/RESEARCH.md)** — full methodology and phase-by-phase findings (incl. Phase 7)
+- **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
+- **[INDEX.md](docs/INDEX.md)** — documentation map
 
 ---
 
 ## License
 
-MIT — See LICENSE file
+MIT — see LICENSE.
 
----
-
-**Last Updated:** April 7, 2026  
-**Status:** Phase 6 Complete, Phase 5B/5C In Progress
+**Status:** bridges complete (16 verified contracts, validated semantic rescorer); DEX
+partial; lending rebuilt. Last updated June 2026.
