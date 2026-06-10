@@ -38,7 +38,7 @@ task entirely (`stop_reason: refusal`), and newer models reject the `temperature
 
 ## 🔍 What Makes This Rigorous
 
-**1. Real, verified source.** 21 contracts across three domains, each fetched from
+**1. Real, verified source.** 24 contracts across three domains, each fetched from
 Blockscout/Sourcify with the address confirmed on-chain — not synthetic snippets.
 
 **2. Two-axis scoring.** Exact-string F1 *and* an LLM-judge semantic F1, so the gap between
@@ -82,7 +82,7 @@ python3 -m agents.validate_judge
 - `agents/static_analyzer_v2.py` — pattern-matching baseline (no API)
 - `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
 - `agents/validate_judge.py` — judge calibration vs. the gold standard
-- `benchmarks/{bridge,defi,lending}_contracts_real.py` — datasets (16 / 2 / 3 source-committed)
+- `benchmarks/{bridge,defi,lending}_contracts_real.py` — datasets (16 / 5 / 3 source-committed)
 - `benchmarks/judge_gold_standard.json` — 38 hand-labeled judge decisions
 
 **Documentation:**

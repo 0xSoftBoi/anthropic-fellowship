@@ -116,8 +116,10 @@ confirmed on-chain**. "Source" = a real verified contract committed to `benchmar
 | Domain | Loader | Source-committed | Examples |
 |--------|--------|------------------|----------|
 | **Bridges** | `bridge_contracts_real.py` | **16 / 20** | Nomad, Qubit, Socket, XBridge, LiFi, Allbridge, THORChain, Rubic, CrossCurve, Hyperbridge, Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra |
-| **DEX/AMM** | `defi_contracts_real.py` | 2 / 5 | Euler (verified module), Curve (Vyper stand-in) |
+| **DEX/AMM** | `defi_contracts_real.py` | **5 / 5** | Euler (missing solvency check), KyberSwap (tick precision), Platypus (solvency ordering), DODO (unprotected init), Curve (Vyper stand-in) |
 | **Lending** | `lending_contracts_real.py` | **3 / 3** | Onyx oPEPE (rounding), Compound P062 (reward-accounting), Cream crAMP (ERC-777 reentrancy) |
+
+**24 verified, correctly-labeled source contracts** across three domains.
 
 A separate registry, `bridge_bench.py`, tracks **off-chain** mega-hacks (Ronin, KelpDAO,
 Humanity Protocol, …) for loss-coverage only — they have no source-level bug to detect and
@@ -187,11 +189,13 @@ passes are free. Costs are dominated by the largest contracts (Penpie ~184 KB).
   inter-human agreement.
 - **The semantic judge is moderate-κ** (0.54) though high-precision (92%); the 37% F1 is a
   conservative lower bound, not a point estimate.
-- **DEX is incomplete** (2/5 source); some exploited contracts are unverified on-chain or
-  need explorer API keys. The lending Cream positive uses a post-hack *patched* impl.
+- **Some DEX source is a faithful stand-in, not the exploited instance**: KyberSwap uses a
+  verified same-implementation pool (Optimism, pre-patch) and DODO uses the verified clone
+  template, because the exploited factory-deployed instances are unverified on-chain. Curve
+  is a Vyper bug with no Solidity equivalent. The lending Cream positive uses a post-hack
+  *patched* impl (a softer positive).
 - **No committed Sonnet baseline** on the full set yet, so the Opus number lacks a same-set
-  head-to-head.
-- **Token cost is not yet persisted** per run.
+  head-to-head; and the committed Opus run covers bridges only (DEX/lending not yet run).
 
 ---
 

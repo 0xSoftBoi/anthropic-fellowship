@@ -122,31 +122,33 @@ def judge_match(client, gt_key, gt_desc, candidate_findings):
 
 
 def rescore_contract(client, name, metrics, log):
-    """Recompute metrics for one contract using the judge. Returns new metrics dict."""
+    """Recompute metrics for one contract using the judge. Returns new metrics dict.
+
+    Order-independent: every missed ground-truth is judged against the FULL finding
+    pool (no consumption), so the result doesn't depend on iteration order and matches
+    how validate_judge measured the judge (per-decision, full pool). A finding that
+    legitimately covers two related ground-truth tags can satisfy both; for FP
+    accounting a finding is "used" once any ground-truth matches it.
+    """
     tp = metrics["tp"]
     missed = list(metrics.get("missed", []))
     fps = list(metrics.get("false_positives", []))
 
     promoted = []
+    used_findings = set()
     for gt in missed:
         gt_desc = _TAXONOMY.get(gt, {}).get("description", gt)
-        matched, finding, why, used = judge_match(client, gt, gt_desc, fps)
+        matched, finding, why, used = judge_match(client, gt, gt_desc, fps)  # full pool every call
         log["judge_tokens"] += used
         log["judge_calls"] += 1
-        if matched and finding in fps:
+        if matched:
             tp += 1
-            fps.remove(finding)
             promoted.append({"gt": gt, "matched_finding": finding, "why": why})
-        elif matched and finding is not None:
-            # judge matched but returned a paraphrase of the finding; match by best effort
-            tp += 1
-            # consume the closest finding (first remaining) to keep accounting consistent
-            if fps:
-                fps.pop(0)
-            promoted.append({"gt": gt, "matched_finding": finding, "why": why})
+            if finding in fps:
+                used_findings.add(finding)
 
     fn = len(missed) - len(promoted)
-    fp = len(fps)
+    fp = len([f for f in fps if f not in used_findings])
     precision = tp / (tp + fp) if (tp + fp) else 0.0
     recall = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0

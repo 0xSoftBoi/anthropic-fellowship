@@ -14,7 +14,7 @@
 ## Datasets
 
 - `benchmarks/bridge_contracts_real.py` — bridge exploits (16/20 source-committed)
-- `benchmarks/defi_contracts_real.py` — DEX/AMM (2/5 source-committed)
+- `benchmarks/defi_contracts_real.py` — DEX/AMM (5/5 source-committed)
 - `benchmarks/lending_contracts_real.py` — lending (3/3 source-committed, rebuilt)
 - `benchmarks/bridge_bench.py` — full exploit registry incl. off-chain (loss-coverage)
 - `benchmarks/judge_gold_standard.json` — 38 hand-labeled judge decisions
@@ -80,8 +80,8 @@ python3 -m agents.validate_judge
 Nomad, Qubit, Socket, XBridge, LiFi, Allbridge, THORChain, Rubic, CrossCurve, Hyperbridge,
 Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra
 
-### DEX/AMM (2 source-committed)
-Euler (verified module), Curve (Vyper stand-in). KyberSwap / Platypus / DODO pending fetch.
+### DEX/AMM (5 source-committed)
+Euler (solvency check), KyberSwap (tick precision), Platypus (solvency ordering), DODO (unprotected init), Curve (Vyper stand-in)
 
 ### Lending (3 source-committed, rebuilt)
 Onyx oPEPE (rounding/donation), Compound P062 (reward-accounting), Cream crAMP (ERC-777 reentrancy)
@@ -115,7 +115,7 @@ Source Code
 |-------|--------|-------|
 | **Phase 4: Bridges** | ✓ Complete | thesis validated on bridge domain |
 | **Phase 5A: Ground Truth** | ✓ Complete | exploit-centric → audit-centric labels |
-| **Phase 5B: DEX** | ◑ Partial | wired + Euler committed; 3 fetches pending (see DATA_QUALITY.md) |
+| **Phase 5B: DEX** | ✓ Complete | 5/5 verified source (Routescan/Sourcify/template); labels corrected |
 | **Phase 5C: Lending** | ✓ Rebuilt | dropped mislabeled entries; 3 verified source bugs committed |
 | **Phase 6: Hybrid** | ✓ Complete | multi-tool consensus pipeline |
 | **Phase 7: Expansion + Opus run** | ✓ Complete | 16 bridge contracts, Opus run, validated semantic rescorer |

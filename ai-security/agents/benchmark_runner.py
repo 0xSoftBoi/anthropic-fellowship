@@ -364,22 +364,33 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
         ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.findings]
         metrics = evaluate_findings(ai_findings, gt_vulns)
 
-        results[name] = {"metrics": metrics, "n_findings": len(ai_findings)}
+        # Persist tokens/tool-calls (cost) and the raw finding types so a run is fully
+        # auditable and re-scorable offline without re-invoking the model.
+        results[name] = {
+            "metrics": metrics,
+            "n_findings": len(ai_findings),
+            "tokens": getattr(audit, "total_tokens", 0),
+            "tool_calls": getattr(audit, "tool_calls_made", 0),
+            "findings": [f["type"] for f in ai_findings],
+        }
         for k in ["tp", "fp", "fn"]:
             totals[k] += metrics[k]
 
-        print(f"\n{name}: P={metrics['precision']:.0%} R={metrics['recall']:.0%} F1={metrics['f1']:.0%}")
+        print(f"\n{name}: P={metrics['precision']:.0%} R={metrics['recall']:.0%} "
+              f"F1={metrics['f1']:.0%}  ({results[name]['tokens']:,} tok)")
 
     p = totals["tp"] / (totals["tp"] + totals["fp"]) if (totals["tp"] + totals["fp"]) > 0 else 0
     r = totals["tp"] / (totals["tp"] + totals["fn"]) if (totals["tp"] + totals["fn"]) > 0 else 0
     f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
+    total_tokens = sum(v.get("tokens", 0) for v in results.values())
 
     print(f"\n{'=' * 60}")
-    print(f"AGENTIC OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}")
+    print(f"AGENTIC OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}  total {total_tokens:,} tokens")
 
     return {
         "method": "agentic",
         "overall": {"precision": p, "recall": r, "f1": f1, **totals},
+        "total_tokens": total_tokens,
         "per_contract": results,
     }
 

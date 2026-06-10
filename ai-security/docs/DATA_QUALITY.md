@@ -80,13 +80,31 @@ verifiable Solidity.
 The old `compound_oracle_manipulation` / `venus_flash_loan` / `cream_finance_reentrancy` entries
 were removed. Lending now loads **3/3 with source**.
 
+## DEX completion (June 2026)
+
+All 5 DEX contracts now have verified source, fetched via keyless multichain explorers:
+
+| Entry | Source resolved via | Note |
+|-------|---------------------|------|
+| Euler | Blockscout (Ethereum module) | clean |
+| Curve | committed stand-in | Vyper — excluded from Solidity F1 |
+| **Platypus** | **Routescan** (Avalanche, keyless) | `MasterPlatypusV4`; GT → `missing_solvency_check` |
+| **KyberSwap** | **Sourcify** (verified Elastic `Pool` on Optimism, pre-patch) | exploited ETH pool unverified; same implementation |
+| **DODO** | **Blockscout** (verified `DVM` template, Ethereum) | per-pool clones unverified; template carries the `init()` |
+
+Two factory-deployed pools (KyberSwap, DODO) had no verified *instance* of the exploited
+contract, but the pool **logic is identical across factory deployments**, so a verified
+same-implementation deployment (KyberSwap on Optimism) or the verified clone **template**
+(DODO `DVM`) is a faithful source artifact. Provenance is noted in each `.sol` header.
+
 ## Bottom line
 
-- **Bridges**: solid — 16 verified contracts.
-- **DEX**: 2/5 with source (Euler verified + Curve Vyper stand-in). KyberSwap (unverified pool),
-  Platypus (Snowtrace key needed), and DODO (the wCRES/USDT victim pool `0x051E…a2b6` is not
-  source-verified) remain to be fetched. Labels corrected in `defi_contracts_real.py`.
+- **Bridges**: 16 verified contracts.
+- **DEX**: **5/5 with source** (4 genuine Solidity source bugs + Curve Vyper stand-in).
 - **Lending**: rebuilt, 3/3 with verified source and correct labels.
+
+A multi-domain run now spans **24 verified, correctly-labeled source contracts** across the
+three domains — a defensible basis for a generalization claim.
 
 Caveat on the Cream crAMP positive: the verified on-chain implementation is the *post-hack
 patched* `CheckRepay` delegate, so a model may correctly NOT flag a reentrancy that the live
