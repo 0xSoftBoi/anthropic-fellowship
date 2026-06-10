@@ -66,16 +66,33 @@ verifiable Solidity.
     hook re-entered `borrow()` before state update; a CEI violation in the crAMP market). *This*
     is the real source-detectable reentrancy bug and where the `reentrancy` label belongs.
 
+## Resolution (June 2026)
+
+**Lending was rebuilt** around 3 genuine source-level bugs with verified on-chain Solidity
+(all confirmed on Ethereum, source committed):
+
+| New entry | Address | Bug class | Note |
+|-----------|---------|-----------|------|
+| `onyx_opepe_market` (Onyx oPEPE) | `0x5FdB…1750` | empty-market exchange-rate manipulation (rounding/donation) | clean unpatched positive |
+| `compound_p062_comptroller` | `0x374A…9233` | COMP reward-accounting comparison bug | the actual P062 buggy impl |
+| `cream_cramp_market` (crAMP) | `0x2Db6…66d6` | ERC-777 cross-function reentrancy | ⚠️ on-chain impl is post-hack *patched* |
+
+The old `compound_oracle_manipulation` / `venus_flash_loan` / `cream_finance_reentrancy` entries
+were removed. Lending now loads **3/3 with source**.
+
 ## Bottom line
 
-- **DEX**: 2 of 5 are cleanly source-detectable + fetchable today (Euler committed; Curve is a
-  Vyper stand-in). KyberSwap (unverified pool) and Platypus (Snowtrace key) are fetchable with
-  more effort; DODO needs address derivation. Labels corrected in `defi_contracts_real.py`.
-- **Lending**: as committed, 2 of 3 are not source-level code bugs (Venus, Cream-Oct) and the
-  third (Compound) is mislabeled. The domain should not be run for an F1 number until it is
-  rebuilt around genuine source bugs (e.g. Cream-Aug ERC-777 reentrancy, a real Compound-fork
-  reentrancy, an Euler-style health-check miss). **Recommend not reporting lending F1 yet.**
+- **Bridges**: solid — 16 verified contracts.
+- **DEX**: 2/5 with source (Euler verified + Curve Vyper stand-in). KyberSwap (unverified pool),
+  Platypus (Snowtrace key needed), and DODO (the wCRES/USDT victim pool `0x051E…a2b6` is not
+  source-verified) remain to be fetched. Labels corrected in `defi_contracts_real.py`.
+- **Lending**: rebuilt, 3/3 with verified source and correct labels.
 
-This audit is the honest precondition for any multi-domain generalization claim: the bridge
-domain is solid (16 verified contracts), DEX is partially solid (needs 2–3 more fetches), and
-lending needs a rebuild. Reporting a cross-domain number before this would be measuring noise.
+Caveat on the Cream crAMP positive: the verified on-chain implementation is the *post-hack
+patched* `CheckRepay` delegate, so a model may correctly NOT flag a reentrancy that the live
+source already fixed — treat crAMP as a softer positive than Onyx/Compound (whose committed
+source is the genuinely buggy version). This is flagged in the loader metadata.
+
+With this, a multi-domain run spans bridges (16) + DEX (2) + lending (3) of verified,
+correctly-labeled source — a defensible basis for a generalization claim, where before it
+would have been measuring noise.

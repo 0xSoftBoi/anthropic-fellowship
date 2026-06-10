@@ -107,6 +107,15 @@ TYPE_EQUIVALENCES = {
     "logic_error": ["logic_error", "state_flag_reset", "missing_solvency_check", "insufficient_validation"],
     "event_spoofing": ["event_spoofing", "forged_event", "spoofed_deposit", "input_validation", "message_forgery"],
     "improper_whitelist": ["improper_whitelist", "arbitrary_external_call", "approval_exploitation", "unchecked_user_calldata", "missing_input_validation"],
+    # DEX/lending domain (Euler, Onyx, Compound P062, Cream crAMP)
+    "missing_solvency_check": ["missing_solvency_check", "solvency_check_bypass", "missing_health_check", "donate_to_reserves", "skipped_solvency_check"],
+    "exchange_rate_manipulation": ["exchange_rate_manipulation", "empty_market_donation", "rounding_error", "donation_attack", "donation_attack_bad_debt", "first_depositor", "share_inflation", "integer_truncation"],
+    "empty_market_donation": ["empty_market_donation", "donation_attack", "donation_attack_bad_debt", "exchange_rate_manipulation", "first_depositor"],
+    "erc777_callback": ["erc777_callback", "reentrancy", "cross_function_reentrancy", "token_hook_reentrancy", "tokens_received_hook"],
+    "cross_function_reentrancy": ["cross_function_reentrancy", "reentrancy", "erc777_callback", "cei_violation"],
+    "reward_accounting_bug": ["reward_accounting_bug", "incorrect_comparison_operator", "reward_distribution_error", "comp_distribution", "logic_error", "incorrect_distribution"],
+    "incorrect_comparison_operator": ["incorrect_comparison_operator", "reward_accounting_bug", "off_by_one", "logic_error"],
+    "unprotected_initializer": ["unprotected_initializer", "reinitialization", "missing_access_control", "unprotected_init", "reinitializable"],
 }
 
 
