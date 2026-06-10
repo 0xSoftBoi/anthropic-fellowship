@@ -16,19 +16,22 @@ contracts that pattern-based static analysis misses? **BRIDGE-bench** is the ben
 to answer it — real, verified, on-chain source across bridges, DEX, and lending, scored by
 both exact-string matching and an LLM-judge.
 
-### Measured results (Opus 4.8, June 2026 — 16 verified bridge contracts)
+### Measured results (Opus 4.8, June 2026 — 24 verified contracts, 3 domains)
 
-| Scoring | Precision | Recall | F1 |
-|---------|-----------|--------|----|
-| Static baseline | 4% | 7% | **5%** |
-| Opus 4.8 — exact-string | 4% | 7% | **5%** |
-| **Opus 4.8 — semantic judge** | 28% | **56%** | **37%** |
+| Domain | Contracts | String-match F1 | **Semantic F1** | Recall |
+|--------|-----------|-----------------|-----------------|--------|
+| Bridges | 16 | 4% | **37%** | 56% |
+| DEX/AMM | 5 | 7% | **21%** | 38% |
+| Lending | 3 | 0% | **40%** | 62% |
+| **All three** | **24** | **4%** | **35%** | **54%** |
 
-Opus identifies the correct root cause on **15 of 16** contracts; the exact-string matcher
-hides this because the model writes *compound* finding names. An LLM-judge — itself
-**validated at 92% precision / Cohen's κ = 0.54** against a hand-labeled gold standard —
-recovers the real signal. Two notable model findings from the run: **Fable 5 refuses** the
-task entirely (`stop_reason: refusal`), and newer models reject the `temperature` parameter.
+The static/string-match baseline sits at ~4% F1; Opus 4.8 reaches **35% F1 / 54% recall**
+semantically — a ~9× lift from the same source, holding up across all three domains. The
+exact-string matcher hides this because the model writes *compound* finding names; an
+LLM-judge — itself **validated at 92% precision / Cohen's κ = 0.54** against a hand-labeled
+gold standard — recovers the real signal. Two notable model findings: **Fable 5 refuses**
+the task entirely (`stop_reason: refusal`), and newer models reject the `temperature`
+parameter. (DEX+lending compute: $16.29, budget-capped.)
 
 > Full numbers, the judge-validation report, and the DEX/lending data-quality audit are in
 > [`ai-security/`](./ai-security). This is research, not a product — the limitations are

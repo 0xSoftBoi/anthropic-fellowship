@@ -1,0 +1,156 @@
+{
+  "judge_model": "claude-haiku-4-5-20251001",
+  "judge_calls": 15,
+  "judge_tokens": 6858,
+  "overall_string_match": {
+    "precision": 0.02857142857142857,
+    "recall": 0.0625,
+    "f1": 0.0392156862745098,
+    "tp": 1,
+    "fp": 34,
+    "fn": 15
+  },
+  "overall_semantic": {
+    "precision": 0.21621621621621623,
+    "recall": 0.5,
+    "f1": 0.3018867924528302,
+    "tp": 8,
+    "fp": 29,
+    "fn": 8
+  },
+  "per_contract": {
+    "curve_finance_vyper_reentrancy": {
+      "tp": 0,
+      "fp": 4,
+      "fn": 1,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "promoted": [],
+      "still_missed": [
+        "reentrancy_in_dex_callback"
+      ]
+    },
+    "euler_finance_lending": {
+      "tp": 1,
+      "fp": 4,
+      "fn": 1,
+      "precision": 0.2,
+      "recall": 0.5,
+      "f1": 0.28571428571428575,
+      "promoted": [],
+      "still_missed": [
+        "donation_attack_bad_debt"
+      ]
+    },
+    "platypus_finance_pool": {
+      "tp": 1,
+      "fp": 3,
+      "fn": 1,
+      "precision": 0.25,
+      "recall": 0.5,
+      "f1": 0.3333333333333333,
+      "promoted": [
+        {
+          "gt": "missing_solvency_check",
+          "matched_finding": "missing_solvency_check_on_migrate",
+          "why": "Finding 2 directly names 'missing_solvency_check' in the same context as the ground truth, referring to a privileged/state-changing operation (migrate) that skips account health validation."
+        }
+      ],
+      "still_missed": [
+        "flash_loan_collateral_inflation"
+      ]
+    },
+    "dodo_v1_oracle": {
+      "tp": 1,
+      "fp": 4,
+      "fn": 0,
+      "precision": 0.2,
+      "recall": 1.0,
+      "f1": 0.33333333333333337,
+      "promoted": [
+        {
+          "gt": "unprotected_initializer",
+          "matched_finding": "unprotected_initialization",
+          "why": "Finding 0 ('unprotected_initialization') is a direct synonym/paraphrase of the ground-truth 'unprotected_initializer'\u2014both describe the same root-cause mechanism: an init() function lacking access control allowing state takeover."
+        }
+      ],
+      "still_missed": []
+    },
+    "kyberswap_elastic_swap": {
+      "tp": 0,
+      "fp": 2,
+      "fn": 2,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "promoted": [],
+      "still_missed": [
+        "tick_boundary_exploit",
+        "price_impact_manipulation"
+      ]
+    },
+    "onyx_opepe_market": {
+      "tp": 3,
+      "fp": 4,
+      "fn": 0,
+      "precision": 0.42857142857142855,
+      "recall": 1.0,
+      "f1": 0.6,
+      "promoted": [
+        {
+          "gt": "exchange_rate_manipulation",
+          "matched_finding": "exchange_rate_manipulation_empty_market",
+          "why": "Both refer to the same root-cause mechanism: manipulating cToken/oToken exchange rates through donations on low-supply markets, differing only in naming specificity."
+        },
+        {
+          "gt": "rounding_error",
+          "matched_finding": "rounding_truncation_in_mint_redeem",
+          "why": "Finding 1 directly names the root-cause mechanism (rounding truncation in mint/redeem) that matches the ground-truth integer truncation in share math allowing extraction of excess value."
+        },
+        {
+          "gt": "empty_market_donation",
+          "matched_finding": "exchange_rate_manipulation_empty_market",
+          "why": "Both refer to the same root cause: manipulating the exchange rate in an empty market through initial deposits/donations, enabling the first-depositor attack."
+        }
+      ],
+      "still_missed": []
+    },
+    "cream_cramp_market": {
+      "tp": 2,
+      "fp": 4,
+      "fn": 1,
+      "precision": 0.3333333333333333,
+      "recall": 0.6666666666666666,
+      "f1": 0.4444444444444444,
+      "promoted": [
+        {
+          "gt": "reentrancy",
+          "matched_finding": "cross_contract_reentrancy",
+          "why": "Cross-contract reentrancy describes the same root cause: an external call before state finalization that allows re-entry to manipulate accounting, whether via ERC-777 hooks or other callback mechanisms."
+        },
+        {
+          "gt": "erc777_callback",
+          "matched_finding": "cross_contract_reentrancy",
+          "why": "ERC-777 tokensReceived hook re-entry is a form of cross-contract reentrancy where the hook callback allows re-entrance into the market contract during token transfer, violating checks-effects-interactions."
+        }
+      ],
+      "still_missed": [
+        "cross_function_reentrancy"
+      ]
+    },
+    "compound_p062_comptroller": {
+      "tp": 0,
+      "fp": 4,
+      "fn": 2,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "promoted": [],
+      "still_missed": [
+        "reward_accounting_bug",
+        "incorrect_comparison_operator"
+      ]
+    }
+  }
+}

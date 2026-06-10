@@ -84,6 +84,27 @@ Scored over the 16 real-source contracts (Opus run, `--real --agentic`):
 
 ---
 
+## Multi-domain result (Opus 4.8, semantic-judge scoring)
+
+The same agentic harness, run across **24 verified contracts in three domains** (57
+labeled vulnerabilities), then scored by the validated semantic judge:
+
+| Domain | Contracts | String-match F1 | **Semantic F1** | Semantic recall |
+|--------|-----------|-----------------|-----------------|-----------------|
+| Bridges | 16 | 4% | **37%** | 56% |
+| DEX/AMM | 5 | 7% | **21%** | 38% |
+| Lending | 3 | 0% | **40%** | 62% |
+| **All three** | **24** | **4%** | **35%** | **54%** |
+
+The thesis holds across domains: the static/string-match baseline sits at ~4% F1, while
+Opus 4.8 reaches **35% F1 / 54% recall** semantically — a ~9× lift from the same source.
+DEX is the hardest domain (Curve is a Vyper compiler bug invisible to a Solidity reader;
+KyberSwap is a subtle tick-precision bug). Cost of the DEX+lending pass: **$16.29** (Opus
+4.8 agentic, 8 contracts, budget-capped at $20 via `agents/budget_run.py`; per-contract
+token cost and dollar amounts are persisted in the result files).
+
+---
+
 ## Key Findings
 
 **1. Compositional vulnerabilities require multi-turn reasoning.** Flash loan + oracle

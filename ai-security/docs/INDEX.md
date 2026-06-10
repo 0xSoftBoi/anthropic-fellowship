@@ -29,16 +29,18 @@
 - `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
 - `agents/validate_judge.py` — judge calibration vs. the gold standard
 
-## Key Results (Opus 4.8, June 2026 — 16 verified bridge contracts)
+## Key Results (Opus 4.8, June 2026 — 24 verified contracts, 3 domains)
 
-| Scoring | Precision | Recall | F1 |
-|---------|-----------|--------|----|
-| Static baseline | 4% | 7% | **5%** |
-| Opus 4.8 — exact-string | 4% | 7% | **5%** |
-| **Opus 4.8 — semantic judge** | 28% | **56%** | **37%** |
+| Domain | Contracts | String-match F1 | Semantic F1 | Recall |
+|--------|-----------|-----------------|-------------|--------|
+| Bridges | 16 | 4% | **37%** | 56% |
+| DEX/AMM | 5 | 7% | **21%** | 38% |
+| Lending | 3 | 0% | **40%** | 62% |
+| **All three** | **24** | **4%** | **35%** | **54%** |
 
 Judge validated at **92% precision / κ = 0.54** vs. a hand-labeled gold standard.
-Fable 5 **refuses** the task. See [RESEARCH.md](RESEARCH.md) and [DATA_QUALITY.md](DATA_QUALITY.md).
+Fable 5 **refuses** the task. DEX+lending compute: $16.29 (budget-capped).
+See [RESEARCH.md](RESEARCH.md) and [DATA_QUALITY.md](DATA_QUALITY.md).
 
 ### Why LLMs Win
 

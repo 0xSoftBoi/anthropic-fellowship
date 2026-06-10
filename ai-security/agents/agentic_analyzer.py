@@ -189,6 +189,8 @@ class AgentAudit:
     findings: list[AgentFinding] = field(default_factory=list)
     tool_calls_made: int = 0
     total_tokens: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
     reasoning_trace: list[str] = field(default_factory=list)
 
 
@@ -353,6 +355,8 @@ Be thorough — check all vulnerability categories."""
             _params["temperature"] = 0
         response = client.messages.create(**_params)
 
+        audit.input_tokens += response.usage.input_tokens
+        audit.output_tokens += response.usage.output_tokens
         audit.total_tokens += response.usage.input_tokens + response.usage.output_tokens
 
         # Process response
