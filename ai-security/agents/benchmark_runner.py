@@ -31,6 +31,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agents.static_analyzer_v2 import analyze_static, StaticFinding
 from benchmarks.test_contracts import TEST_CONTRACTS
 from benchmarks.bridge_contracts_real import load_real_contracts
+from benchmarks.defi_contracts_real import load_defi_contracts
+from benchmarks.lending_contracts_real import load_lending_contracts
 
 
 # Fuzzy type matching for evaluation
@@ -105,6 +107,15 @@ TYPE_EQUIVALENCES = {
     "logic_error": ["logic_error", "state_flag_reset", "missing_solvency_check", "insufficient_validation"],
     "event_spoofing": ["event_spoofing", "forged_event", "spoofed_deposit", "input_validation", "message_forgery"],
     "improper_whitelist": ["improper_whitelist", "arbitrary_external_call", "approval_exploitation", "unchecked_user_calldata", "missing_input_validation"],
+    # DEX/lending domain (Euler, Onyx, Compound P062, Cream crAMP)
+    "missing_solvency_check": ["missing_solvency_check", "solvency_check_bypass", "missing_health_check", "donate_to_reserves", "skipped_solvency_check"],
+    "exchange_rate_manipulation": ["exchange_rate_manipulation", "empty_market_donation", "rounding_error", "donation_attack", "donation_attack_bad_debt", "first_depositor", "share_inflation", "integer_truncation"],
+    "empty_market_donation": ["empty_market_donation", "donation_attack", "donation_attack_bad_debt", "exchange_rate_manipulation", "first_depositor"],
+    "erc777_callback": ["erc777_callback", "reentrancy", "cross_function_reentrancy", "token_hook_reentrancy", "tokens_received_hook"],
+    "cross_function_reentrancy": ["cross_function_reentrancy", "reentrancy", "erc777_callback", "cei_violation"],
+    "reward_accounting_bug": ["reward_accounting_bug", "incorrect_comparison_operator", "reward_distribution_error", "comp_distribution", "logic_error", "incorrect_distribution"],
+    "incorrect_comparison_operator": ["incorrect_comparison_operator", "reward_accounting_bug", "off_by_one", "logic_error"],
+    "unprotected_initializer": ["unprotected_initializer", "reinitialization", "missing_access_control", "unprotected_init", "reinitializable"],
 }
 
 
@@ -353,22 +364,33 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
         ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.findings]
         metrics = evaluate_findings(ai_findings, gt_vulns)
 
-        results[name] = {"metrics": metrics, "n_findings": len(ai_findings)}
+        # Persist tokens/tool-calls (cost) and the raw finding types so a run is fully
+        # auditable and re-scorable offline without re-invoking the model.
+        results[name] = {
+            "metrics": metrics,
+            "n_findings": len(ai_findings),
+            "tokens": getattr(audit, "total_tokens", 0),
+            "tool_calls": getattr(audit, "tool_calls_made", 0),
+            "findings": [f["type"] for f in ai_findings],
+        }
         for k in ["tp", "fp", "fn"]:
             totals[k] += metrics[k]
 
-        print(f"\n{name}: P={metrics['precision']:.0%} R={metrics['recall']:.0%} F1={metrics['f1']:.0%}")
+        print(f"\n{name}: P={metrics['precision']:.0%} R={metrics['recall']:.0%} "
+              f"F1={metrics['f1']:.0%}  ({results[name]['tokens']:,} tok)")
 
     p = totals["tp"] / (totals["tp"] + totals["fp"]) if (totals["tp"] + totals["fp"]) > 0 else 0
     r = totals["tp"] / (totals["tp"] + totals["fn"]) if (totals["tp"] + totals["fn"]) > 0 else 0
     f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
+    total_tokens = sum(v.get("tokens", 0) for v in results.values())
 
     print(f"\n{'=' * 60}")
-    print(f"AGENTIC OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}")
+    print(f"AGENTIC OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}  total {total_tokens:,} tokens")
 
     return {
         "method": "agentic",
         "overall": {"precision": p, "recall": r, "f1": f1, **totals},
+        "total_tokens": total_tokens,
         "per_contract": results,
     }
 
@@ -453,6 +475,35 @@ def convert_real_contracts_to_dict(real_contracts: list) -> dict:
     return result
 
 
+def run_domain(dataset_list, label, args, results_all):
+    """Run static + the selected LLM mode over one domain dataset (real/defi/lending).
+
+    Stores results under <label>_static and <label>_<mode>. Shared by every domain so
+    bridges, DEX, and lending go through one identical evaluation path.
+    """
+    dset = convert_real_contracts_to_dict(dataset_list)
+    loaded = sum(1 for c in dataset_list if (c.get("source") or "").strip())
+    print(f"\n{'='*60}\n{label}: {loaded}/{len(dataset_list)} contracts have source\n{'='*60}")
+
+    static = run_static_benchmark(dset, label)
+    results_all[f"{label}_static"] = static
+    if args.no_claude:
+        return
+
+    if args.hybrid:
+        mode, fn = "hybrid", run_hybrid_benchmark
+    elif args.agentic:
+        mode, fn = "agentic", run_agentic_benchmark
+    else:
+        mode, fn = "claude", run_claude_benchmark
+    res = fn(dset, label)
+    results_all[f"{label}_{mode}"] = res
+    if res:
+        s, c = static["overall"], res["overall"]
+        print(f"\n{label}: Static F1={s['f1']:.0%}  {mode.title()} F1={c['f1']:.0%}  "
+              f"Delta={c['f1']-s['f1']:+.0%}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="BRIDGE-bench: Cross-chain bridge vulnerability detection benchmark"
@@ -460,7 +511,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--real",
         action="store_true",
-        help="Run against real verified contracts from Etherscan/BSCScan",
+        help="Run against real verified bridge contracts",
+    )
+    parser.add_argument(
+        "--defi",
+        action="store_true",
+        help="Run against the DEX/AMM dataset (benchmarks/defi_contracts_real.py)",
+    )
+    parser.add_argument(
+        "--lending",
+        action="store_true",
+        help="Run against the lending dataset (benchmarks/lending_contracts_real.py)",
     )
     parser.add_argument(
         "--compare",
@@ -486,7 +547,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Determine which dataset(s) to run
-    run_synthetic = not args.real or args.compare
+    run_synthetic = (not args.real and not args.defi and not args.lending) or args.compare
     run_real = args.real or args.compare
 
     results_all = {}
@@ -601,6 +662,14 @@ if __name__ == "__main__":
                     print(f"  Delta F1:   {delta:+.0%}")
 
     # ──────────────────────────────────────────────────────────────────
+    # Run DEX / lending domains (same evaluation path as bridges)
+    # ──────────────────────────────────────────────────────────────────
+    if args.defi:
+        run_domain(load_defi_contracts(), "defi", args, results_all)
+    if args.lending:
+        run_domain(load_lending_contracts(), "lending", args, results_all)
+
+    # ──────────────────────────────────────────────────────────────────
     # Save results
     # ──────────────────────────────────────────────────────────────────
     if args.compare and "synthetic_static" in results_all and "real_static" in results_all:
@@ -628,7 +697,11 @@ if __name__ == "__main__":
     # (e.g. BENCH_MODEL=fable) doesn't clobber the committed Sonnet baseline.
     from agents.claude_analyzer import MODEL as _RUN_MODEL
     _model_tag = "" if _RUN_MODEL == "claude-sonnet-4-6" else "__" + _RUN_MODEL.replace("/", "-")
-    if args.real and not args.compare:
+    if (args.defi or args.lending) and not args.real and not args.compare:
+        _dom = "defi" if args.defi else ""
+        _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"
+        output_filename = f"results_{_dom}{_model_tag}.json"
+    elif args.real and not args.compare:
         output_filename = f"results_real{_model_tag}.json"
     else:
         output_filename = f"results{_model_tag}.json"

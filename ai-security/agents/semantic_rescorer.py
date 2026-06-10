@@ -43,20 +43,27 @@ from pathlib import Path
 from anthropic import Anthropic
 
 from benchmarks.bridge_contracts_real import VULNERABILITY_TAXONOMY, load_real_contracts
+from benchmarks.defi_contracts_real import load_defi_contracts
+from benchmarks.lending_contracts_real import load_lending_contracts
+from benchmarks.defi_contracts_real import DEX_VULNERABILITY_TAXONOMY
+from benchmarks.lending_contracts_real import LENDING_VULNERABILITY_TAXONOMY
+
+# Merge per-domain taxonomies so the judge gets a description for any ground-truth key.
+_TAXONOMY = {**VULNERABILITY_TAXONOMY, **DEX_VULNERABILITY_TAXONOMY, **LENDING_VULNERABILITY_TAXONOMY}
 
 
 def real_source_contracts():
-    """Names of contracts that have real committed source (not empty placeholders).
+    """Names of contracts (any domain) that have real committed source.
 
-    Empty-source contracts are analyzed on an empty string, so any 'findings' are
-    meaningless; we exclude them from both the string-match and semantic totals so
-    the comparison is apples-to-apples over genuinely evaluable contracts.
+    Empty-source placeholders are analyzed on an empty string, so any 'findings' are
+    meaningless; we exclude them so the comparison is apples-to-apples over genuinely
+    evaluable contracts.
     """
     out = set()
-    for c in load_real_contracts():
-        src = (c.get("source") or "").strip()
-        if len(src) > 200:
-            out.add(c["name"])
+    for loader in (load_real_contracts, load_defi_contracts, load_lending_contracts):
+        for c in loader():
+            if len((c.get("source") or "").strip()) > 200:
+                out.add(c["name"])
     return out
 
 JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "claude-haiku-4-5-20251001")
@@ -115,31 +122,33 @@ def judge_match(client, gt_key, gt_desc, candidate_findings):
 
 
 def rescore_contract(client, name, metrics, log):
-    """Recompute metrics for one contract using the judge. Returns new metrics dict."""
+    """Recompute metrics for one contract using the judge. Returns new metrics dict.
+
+    Order-independent: every missed ground-truth is judged against the FULL finding
+    pool (no consumption), so the result doesn't depend on iteration order and matches
+    how validate_judge measured the judge (per-decision, full pool). A finding that
+    legitimately covers two related ground-truth tags can satisfy both; for FP
+    accounting a finding is "used" once any ground-truth matches it.
+    """
     tp = metrics["tp"]
     missed = list(metrics.get("missed", []))
     fps = list(metrics.get("false_positives", []))
 
     promoted = []
+    used_findings = set()
     for gt in missed:
-        gt_desc = VULNERABILITY_TAXONOMY.get(gt, {}).get("description", gt)
-        matched, finding, why, used = judge_match(client, gt, gt_desc, fps)
+        gt_desc = _TAXONOMY.get(gt, {}).get("description", gt)
+        matched, finding, why, used = judge_match(client, gt, gt_desc, fps)  # full pool every call
         log["judge_tokens"] += used
         log["judge_calls"] += 1
-        if matched and finding in fps:
+        if matched:
             tp += 1
-            fps.remove(finding)
             promoted.append({"gt": gt, "matched_finding": finding, "why": why})
-        elif matched and finding is not None:
-            # judge matched but returned a paraphrase of the finding; match by best effort
-            tp += 1
-            # consume the closest finding (first remaining) to keep accounting consistent
-            if fps:
-                fps.pop(0)
-            promoted.append({"gt": gt, "matched_finding": finding, "why": why})
+            if finding in fps:
+                used_findings.add(finding)
 
     fn = len(missed) - len(promoted)
-    fp = len(fps)
+    fp = len([f for f in fps if f not in used_findings])
     precision = tp / (tp + fp) if (tp + fp) else 0.0
     recall = tp / (tp + fn) if (tp + fn) else 0.0
     f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
@@ -157,14 +166,18 @@ def main():
         sys.exit(1)
     path = Path(sys.argv[1])
     data = json.loads(path.read_text())
-    section = data.get("real_agentic") or data.get("real_hybrid") or data.get("real_claude")
-    if not section:
+    # Collect per-contract metrics from every LLM section (real_/defi_/lending_ × agentic/hybrid/claude).
+    pc = {}
+    sections = [k for k in data if k.endswith(("_agentic", "_hybrid", "_claude"))]
+    for k in sections:
+        pc.update(data[k].get("per_contract", {}))
+    if not pc:
         print("no agentic/hybrid/claude section found in results file")
         sys.exit(1)
+    print(f"sections: {', '.join(sections)}")
 
     client = Anthropic()
     log = {"judge_tokens": 0, "judge_calls": 0}
-    pc = section["per_contract"]
     evaluable = real_source_contracts()
 
     print(f"Semantic rescoring {path.name} with judge={JUDGE_MODEL}")

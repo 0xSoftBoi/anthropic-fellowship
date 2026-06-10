@@ -1,0 +1,549 @@
+{
+  "defi_static": {
+    "method": "static",
+    "overall": {
+      "precision": 0.03225806451612903,
+      "recall": 0.125,
+      "f1": 0.05128205128205128,
+      "tp": 1,
+      "fp": 30,
+      "fn": 7
+    },
+    "per_contract": {
+      "curve_finance_vyper_reentrancy": {
+        "metrics": {
+          "tp": 0,
+          "fp": 3,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "reentrancy_in_dex_callback"
+          ],
+          "false_positives": [
+            "untrusted_external_call",
+            "unprotected_admin_function",
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 3
+      },
+      "euler_finance_lending": {
+        "metrics": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "donation_attack_bad_debt",
+            "missing_solvency_check"
+          ],
+          "false_positives": [
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 1
+      },
+      "platypus_finance_pool": {
+        "metrics": {
+          "tp": 0,
+          "fp": 15,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_solvency_check",
+            "flash_loan_collateral_inflation"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 15
+      },
+      "dodo_v1_oracle": {
+        "metrics": {
+          "tp": 1,
+          "fp": 4,
+          "fn": 0,
+          "precision": 0.2,
+          "recall": 1.0,
+          "f1": 0.33333333333333337,
+          "missed": [],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 5
+      },
+      "kyberswap_elastic_swap": {
+        "metrics": {
+          "tp": 0,
+          "fp": 7,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "tick_boundary_exploit",
+            "price_impact_manipulation"
+          ],
+          "false_positives": [
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_initializer",
+            "reinitializable",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 7
+      }
+    }
+  },
+  "defi_agentic": {
+    "method": "agentic",
+    "overall": {
+      "precision": 0.05,
+      "recall": 0.125,
+      "f1": 0.07142857142857144,
+      "tp": 1,
+      "fp": 19,
+      "fn": 7
+    },
+    "per_contract": {
+      "curve_finance_vyper_reentrancy": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "reentrancy_in_dex_callback"
+          ],
+          "false_positives": [
+            "unrestricted_upgradeability_no_timelock",
+            "arbitrary_call_in_upgradeToAndCall",
+            "weak_implementation_validation",
+            "storage_collision_risk_uninitialized_implementation"
+          ]
+        },
+        "n_findings": 4,
+        "tokens": 46795,
+        "input_tokens": 41622,
+        "output_tokens": 5173,
+        "cost_usd": 1.012,
+        "tool_calls": 10,
+        "findings": [
+          "unrestricted_upgradeability_no_timelock",
+          "arbitrary_call_in_upgradeToAndCall",
+          "weak_implementation_validation",
+          "storage_collision_risk_uninitialized_implementation"
+        ]
+      },
+      "euler_finance_lending": {
+        "metrics": {
+          "tp": 1,
+          "fp": 4,
+          "fn": 1,
+          "precision": 0.2,
+          "recall": 0.5,
+          "f1": 0.28571428571428575,
+          "missed": [
+            "donation_attack_bad_debt"
+          ],
+          "false_positives": [
+            "unbounded_dynamic_liquidation_discount",
+            "upgrade_without_timelock",
+            "delegatecall_to_mutable_implementation",
+            "deferred_liquidity_invariant_gap"
+          ]
+        },
+        "n_findings": 5,
+        "tokens": 104767,
+        "input_tokens": 98216,
+        "output_tokens": 6551,
+        "cost_usd": 1.965,
+        "tool_calls": 13,
+        "findings": [
+          "missing_solvency_check",
+          "unbounded_dynamic_liquidation_discount",
+          "upgrade_without_timelock",
+          "delegatecall_to_mutable_implementation",
+          "deferred_liquidity_invariant_gap"
+        ]
+      },
+      "platypus_finance_pool": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_solvency_check",
+            "flash_loan_collateral_inflation"
+          ],
+          "false_positives": [
+            "flawed_solvency_check / collateral_withdrawal_without_debt_repayment",
+            "incorrect_event_emission",
+            "missing_solvency_check_on_migrate",
+            "unsafe_external_call_to_untrusted_rewarder"
+          ]
+        },
+        "n_findings": 4,
+        "tokens": 190952,
+        "input_tokens": 183770,
+        "output_tokens": 7182,
+        "cost_usd": 3.295,
+        "tool_calls": 13,
+        "findings": [
+          "flawed_solvency_check / collateral_withdrawal_without_debt_repayment",
+          "incorrect_event_emission",
+          "missing_solvency_check_on_migrate",
+          "unsafe_external_call_to_untrusted_rewarder"
+        ]
+      },
+      "dodo_v1_oracle": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 1,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "unprotected_initializer"
+          ],
+          "false_positives": [
+            "unprotected_initialization",
+            "tx_origin_fee_calculation",
+            "untrusted_external_call_in_fee_model",
+            "spot_price_twap_manipulation",
+            "missing_slippage_protection"
+          ]
+        },
+        "n_findings": 5,
+        "tokens": 203082,
+        "input_tokens": 196340,
+        "output_tokens": 6742,
+        "cost_usd": 3.451,
+        "tool_calls": 13,
+        "findings": [
+          "unprotected_initialization",
+          "tx_origin_fee_calculation",
+          "untrusted_external_call_in_fee_model",
+          "spot_price_twap_manipulation",
+          "missing_slippage_protection"
+        ]
+      },
+      "kyberswap_elastic_swap": {
+        "metrics": {
+          "tp": 0,
+          "fp": 2,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "tick_boundary_exploit",
+            "price_impact_manipulation"
+          ],
+          "false_positives": [
+            "unauthenticated_callback_integration_risk",
+            "reentrancy_missing_lock"
+          ]
+        },
+        "n_findings": 2,
+        "tokens": 70701,
+        "input_tokens": 65000,
+        "output_tokens": 5701,
+        "cost_usd": 1.403,
+        "tool_calls": 12,
+        "findings": [
+          "unauthenticated_callback_integration_risk",
+          "reentrancy_missing_lock"
+        ]
+      }
+    }
+  },
+  "lending_static": {
+    "method": "static",
+    "overall": {
+      "precision": 0.014705882352941176,
+      "recall": 0.125,
+      "f1": 0.02631578947368421,
+      "tp": 1,
+      "fp": 67,
+      "fn": 7
+    },
+    "per_contract": {
+      "onyx_opepe_market": {
+        "metrics": {
+          "tp": 0,
+          "fp": 22,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "exchange_rate_manipulation",
+            "rounding_error",
+            "empty_market_donation"
+          ],
+          "false_positives": [
+            "untrusted_external_call",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 22
+      },
+      "cream_cramp_market": {
+        "metrics": {
+          "tp": 1,
+          "fp": 6,
+          "fn": 2,
+          "precision": 0.14285714285714285,
+          "recall": 0.3333333333333333,
+          "f1": 0.2,
+          "missed": [
+            "erc777_callback",
+            "cross_function_reentrancy"
+          ],
+          "false_positives": [
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 7
+      },
+      "compound_p062_comptroller": {
+        "metrics": {
+          "tp": 0,
+          "fp": 39,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "reward_accounting_bug",
+            "incorrect_comparison_operator"
+          ],
+          "false_positives": [
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_admin_function",
+            "unprotected_upgrade"
+          ]
+        },
+        "n_findings": 39
+      }
+    }
+  },
+  "lending_agentic": {
+    "method": "agentic",
+    "overall": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 15,
+      "fn": 8
+    },
+    "per_contract": {
+      "onyx_opepe_market": {
+        "metrics": {
+          "tp": 0,
+          "fp": 6,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "exchange_rate_manipulation",
+            "rounding_error",
+            "empty_market_donation"
+          ],
+          "false_positives": [
+            "exchange_rate_manipulation_empty_market",
+            "rounding_truncation_in_mint_redeem",
+            "public_delegateToImplementation_arbitrary_delegatecall",
+            "missing_timelock_on_implementation_upgrade",
+            "unguarded_initialize_reinitialization_risk",
+            "sweepToken_underlying_check_required"
+          ]
+        },
+        "n_findings": 6,
+        "tokens": 171452,
+        "input_tokens": 163428,
+        "output_tokens": 8024,
+        "cost_usd": 3.053,
+        "tool_calls": 14,
+        "findings": [
+          "exchange_rate_manipulation_empty_market",
+          "rounding_truncation_in_mint_redeem",
+          "public_delegateToImplementation_arbitrary_delegatecall",
+          "missing_timelock_on_implementation_upgrade",
+          "unguarded_initialize_reinitialization_risk",
+          "sweepToken_underlying_check_required"
+        ]
+      },
+      "cream_cramp_market": {
+        "metrics": {
+          "tp": 0,
+          "fp": 5,
+          "fn": 3,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "reentrancy",
+            "erc777_callback",
+            "cross_function_reentrancy"
+          ],
+          "false_positives": [
+            "cross_contract_reentrancy",
+            "reentrancy_via_flashloan_callback",
+            "nonstandard_erc20_return_value",
+            "unrestricted_callback_data",
+            "missing_access_control"
+          ]
+        },
+        "n_findings": 5,
+        "tokens": 57869,
+        "input_tokens": 51640,
+        "output_tokens": 6229,
+        "cost_usd": 1.242,
+        "tool_calls": 12,
+        "findings": [
+          "cross_contract_reentrancy",
+          "reentrancy_via_flashloan_callback",
+          "nonstandard_erc20_return_value",
+          "unrestricted_callback_data",
+          "missing_access_control"
+        ]
+      },
+      "compound_p062_comptroller": {
+        "metrics": {
+          "tp": 0,
+          "fp": 4,
+          "fn": 2,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "reward_accounting_bug",
+            "incorrect_comparison_operator"
+          ],
+          "false_positives": [
+            "misleading_classification / wrong_contract",
+            "non_reverting_erc20_transfer_silent_failure",
+            "approval_race_condition",
+            "unauthenticated_comptroller_hook_dependency"
+          ]
+        },
+        "n_findings": 4,
+        "tokens": 38077,
+        "input_tokens": 33022,
+        "output_tokens": 5055,
+        "cost_usd": 0.874,
+        "tool_calls": 10,
+        "findings": [
+          "misleading_classification / wrong_contract",
+          "non_reverting_erc20_transfer_silent_failure",
+          "approval_race_condition",
+          "unauthenticated_comptroller_hook_dependency"
+        ]
+      }
+    }
+  },
+  "_run": {
+    "model": "claude-opus-4-8",
+    "spent_usd": 16.29,
+    "budget_usd": 20.0
+  }
+}

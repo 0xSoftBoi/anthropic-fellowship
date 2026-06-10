@@ -1,13 +1,19 @@
 """
 Lending Protocol Vulnerability Dataset (Phase 5C Expansion)
 
-Real verified Solidity source code for lending/money market exploits.
 Uses the same schema as bridge_contracts_real.py for unified benchmarking.
 
-Dataset includes:
-  - Compound price oracle manipulation ($80M)
-  - Venus flash loan collateral inflation ($200M)
-  - Cream Finance reentrancy & price oracle ($130M)
+  REBUILT June 2026 (see docs/DATA_QUALITY.md). The original entries were dropped
+  after a post-mortem audit found them unusable for source detection:
+    - "Compound oracle manipulation $80M" — no such event existed.
+    - "Venus flash loan $200M" — a market/oracle event, not a code bug.
+    - "Cream reentrancy $130M Oct-2021" — conflated two hacks (Oct = oracle manip).
+  The domain is now built around 3 GENUINE source-level bugs with verified on-chain
+  Solidity:
+    - Onyx oPEPE — empty-market exchange-rate manipulation (rounding/donation).
+    - Compound P062 Comptroller — COMP reward-accounting comparison bug.
+    - Cream crAMP — ERC-777 cross-function reentrancy (NOTE: on-chain impl is the
+      post-hack patched version; flagged in metadata).
 """
 
 import json
@@ -62,6 +68,47 @@ LENDING_VULNERABILITY_TAXONOMY = {
         "severity": "high",
         "description": "cToken exchange rate manipulation via donation or rounding",
     },
+    # ── rebuilt 2026-06: genuine source-level lending bugs (verified contracts) ──
+    "reentrancy": {
+        "type": "reentrancy",
+        "severity": "critical",
+        "description": "External call (e.g. ERC-777 hook) before state finalized; re-entry manipulates accounting",
+    },
+    "erc777_callback": {
+        "type": "erc777_callback",
+        "severity": "critical",
+        "description": "ERC-777 tokensReceived hook used to re-enter a market mid-borrow (CEI violation)",
+    },
+    "cross_function_reentrancy": {
+        "type": "cross_function_reentrancy",
+        "severity": "critical",
+        "description": "Re-entry into a different function while the first call's state is stale",
+    },
+    "rounding_error": {
+        "type": "rounding_error",
+        "severity": "high",
+        "description": "Integer truncation in mint/redeem share math lets attacker extract more than deposited",
+    },
+    "empty_market_donation": {
+        "type": "empty_market_donation",
+        "severity": "high",
+        "description": "First-depositor/donation attack on an empty market inflates the exchange rate",
+    },
+    "exchange_rate_manipulation": {
+        "type": "exchange_rate_manipulation",
+        "severity": "critical",
+        "description": "cToken/oToken exchange rate manipulated via direct donation on a low-supply market",
+    },
+    "reward_accounting_bug": {
+        "type": "reward_accounting_bug",
+        "severity": "critical",
+        "description": "Incentive/reward distribution logic over-pays due to a comparison/branch error",
+    },
+    "incorrect_comparison_operator": {
+        "type": "incorrect_comparison_operator",
+        "severity": "high",
+        "description": "Wrong comparison (>, >=) or branch in accounting causes incorrect payouts",
+    },
 }
 
 # Map lending types to bridge/DEX taxonomy for cross-domain equivalences
@@ -84,53 +131,60 @@ def load_lending_contracts() -> list:
     """
     contracts_dir = Path(__file__).parent / "contracts"
 
-    # Lending exploit metadata — 3 real protocols
+    # Lending exploit metadata — REBUILT 2026-06 around genuine source-level bugs with
+    # verified on-chain Solidity (see docs/DATA_QUALITY.md for why the old Compound/
+    # Venus/Cream-Oct entries were dropped: non-existent event / market event / wrong hack).
     contract_metadata = {
-        "compound_oracle_manipulation": {
+        "onyx_opepe_market": {
+            "loss_usd": 2_100_000,
+            "fork_block": 0,
+            "fork_chain": "mainnet",
+            "exploit_date": "2023-11-01",
+            "vuln_class": "exchange_rate_manipulation",
+            "chain": "ethereum",
+            "protocol": "Money Market (Compound-V2 fork)",
+            "address": "0x5FdBcD61bC9bd4B6D3FD1F49a5D253165Ea11750",
+            "description": "Empty-market exchange-rate manipulation via donation + integer truncation in mint/redeem",
+        },
+        "compound_p062_comptroller": {
             "loss_usd": 80_000_000,
-            "fork_block": 12_255_000,
+            "fork_block": 0,
             "fork_chain": "mainnet",
-            "exploit_date": "2021-05-15",
-            "vuln_class": "price_oracle_manipulation",
+            "exploit_date": "2021-09-29",
+            "vuln_class": "reward_accounting_bug",
             "chain": "ethereum",
             "protocol": "Money Market",
-            "description": "Oracle price manipulation enables liquidation of healthy positions",
+            "address": "0x374ABb8cE19A73f2c4EFAd642bda76c797f19233",
+            "description": "Proposal-062 Comptroller over-distributed COMP via a comparison/branch error in distributeSupplierComp",
         },
-        "venus_flash_loan": {
-            "loss_usd": 200_000_000,
-            "fork_block": 6_000_000,
-            "fork_chain": "bsc",
-            "exploit_date": "2021-05-19",
-            "vuln_class": "flash_loan_collateral_inflation",
-            "chain": "bsc",
-            "protocol": "Money Market",
-            "description": "Flash loan inflates collateral, enables liquidator undercut via borrow",
-        },
-        "cream_finance_reentrancy": {
-            "loss_usd": 130_000_000,
-            "fork_block": 13_055_000,
+        "cream_cramp_market": {
+            "loss_usd": 18_800_000,
+            "fork_block": 0,
             "fork_chain": "mainnet",
-            "exploit_date": "2021-10-27",
-            "vuln_class": "reentrancy_price_oracle",
+            "exploit_date": "2021-08-30",
+            "vuln_class": "reentrancy",
             "chain": "ethereum",
-            "protocol": "Money Market",
-            "description": "Reentrancy in price oracle update during liquidation",
+            "protocol": "Money Market (Compound fork)",
+            "address": "0x2Db6c82CE72C8d7D770ba1b5F5Ed0b6E075066d6",
+            "description": "ERC-777 AMP tokensReceived hook re-enters borrow() before debt state update (CEI violation). NOTE: on-chain impl is post-hack patched.",
         },
     }
 
-    # Vulnerability labels for each contract (what was actually exploited)
+    # Vulnerability labels for each contract (the actual source-level root cause)
     vuln_details = {
-        "compound_oracle_manipulation": [
-            "price_oracle_manipulation",
-            "oracle_price_manipulation",
+        "onyx_opepe_market": [
+            "exchange_rate_manipulation",
+            "rounding_error",
+            "empty_market_donation",
         ],
-        "venus_flash_loan": [
-            "flash_loan_collateral_inflation",
-            "ctoken_inflation",
+        "compound_p062_comptroller": [
+            "reward_accounting_bug",
+            "incorrect_comparison_operator",
         ],
-        "cream_finance_reentrancy": [
-            "reentrancy_price_oracle",
-            "price_oracle_manipulation",
+        "cream_cramp_market": [
+            "reentrancy",
+            "erc777_callback",
+            "cross_function_reentrancy",
         ],
     }
 
@@ -187,9 +241,9 @@ def get_loaded_lending_contracts() -> dict:
         "not_loaded": len(contracts) - loaded_count,
         "total_vulnerabilities": total_vuln,
         "by_vuln_class": {
-            "price_oracle_manipulation": sum(1 for c in contracts if c["metadata"]["exploit_class"] == "price_oracle_manipulation"),
-            "flash_loan_collateral_inflation": sum(1 for c in contracts if c["metadata"]["exploit_class"] == "flash_loan_collateral_inflation"),
-            "reentrancy_price_oracle": sum(1 for c in contracts if c["metadata"]["exploit_class"] == "reentrancy_price_oracle"),
+            "exchange_rate_manipulation": sum(1 for c in contracts if c["metadata"]["exploit_class"] == "exchange_rate_manipulation"),
+            "reward_accounting_bug": sum(1 for c in contracts if c["metadata"]["exploit_class"] == "reward_accounting_bug"),
+            "reentrancy": sum(1 for c in contracts if c["metadata"]["exploit_class"] == "reentrancy"),
         },
     }
 

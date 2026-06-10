@@ -13,28 +13,34 @@
 
 ## Datasets
 
-- `benchmarks/bridge_contracts_real.py` — 10 real bridge exploits
-- `benchmarks/defi_contracts_real.py` — 5 DEX/AMM contracts (Phase 5B)
-- `benchmarks/lending_contracts_real.py` — 3 lending contracts (Phase 5C)
-- `benchmarks/test_contracts.py` — Synthetic patterns (baseline)
+- `benchmarks/bridge_contracts_real.py` — bridge exploits (16/20 source-committed)
+- `benchmarks/defi_contracts_real.py` — DEX/AMM (5/5 source-committed)
+- `benchmarks/lending_contracts_real.py` — lending (3/3 source-committed, rebuilt)
+- `benchmarks/bridge_bench.py` — full exploit registry incl. off-chain (loss-coverage)
+- `benchmarks/judge_gold_standard.json` — 38 hand-labeled judge decisions
+- `benchmarks/test_contracts.py` — synthetic patterns (baseline)
 
 ## Tools & Agents
 
-- `agents/static_analyzer_v2.py` — Pattern-based vulnerability detector
-- `agents/agentic_analyzer.py` — Multi-turn Sonnet reasoning (8-10 turns)
-- `agents/hybrid_analyzer.py` — Multi-tool pre-filter + targeted Sonnet
-- `agents/benchmark_runner.py` — Evaluation harness for all approaches
+- `agents/static_analyzer_v2.py` — pattern-based baseline (no API)
+- `agents/agentic_analyzer.py` — multi-turn LLM reasoning with a tool loop
+- `agents/hybrid_analyzer.py` — multi-tool pre-filter + targeted LLM
+- `agents/benchmark_runner.py` — harness (`--real`/`--defi`/`--lending`, model-stamped output)
+- `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
+- `agents/validate_judge.py` — judge calibration vs. the gold standard
 
-## Key Results
+## Key Results (Opus 4.8, June 2026 — 24 verified contracts, 3 domains)
 
-### Performance
+| Domain | Contracts | String-match F1 | Semantic F1 | Recall |
+|--------|-----------|-----------------|-------------|--------|
+| Bridges | 16 | 4% | **37%** | 56% |
+| DEX/AMM | 5 | 7% | **21%** | 38% |
+| Lending | 3 | 0% | **40%** | 62% |
+| **All three** | **24** | **4%** | **35%** | **54%** |
 
-| Approach | F1 Score | Cost | Use Case |
-|----------|----------|------|----------|
-| Static v2 | 0% | Free | Baseline |
-| Multi-Tool | ~20% | $0.01 | Fast feedback |
-| Hybrid | ~40% | $0.08 | **Production** |
-| Full Sonnet | ~45% | $0.44 | Research |
+Judge validated at **92% precision / κ = 0.54** vs. a hand-labeled gold standard.
+Fable 5 **refuses** the task. DEX+lending compute: $16.29 (budget-capped).
+See [RESEARCH.md](RESEARCH.md) and [DATA_QUALITY.md](DATA_QUALITY.md).
 
 ### Why LLMs Win
 
@@ -53,38 +59,34 @@ Real vulnerabilities ≠ exploited vulnerabilities. Expanding ground truth:
 
 ## Quick Reference
 
-### Run Static Baseline
 ```bash
-python3 agents/benchmark_runner.py --real
-```
+# Static baseline (free, no API)
+python3 -m agents.benchmark_runner --real
 
-### Run Hybrid (Recommended for Production)
-```bash
-ANTHROPIC_API_KEY=sk-... python3 agents/benchmark_runner.py --real --hybrid
-```
+# Agentic — choose the model; non-default models write results_real__<model>.json
+BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --agentic
 
-### Run Full Agentic
-```bash
-ANTHROPIC_API_KEY=sk-... python3 agents/benchmark_runner.py --real --agentic
-```
+# DEX / lending domains
+BENCH_MODEL=opus python3 -m agents.benchmark_runner --defi --lending --agentic
 
-### Test Single Contract
-```bash
-PYTHONPATH=. ANTHROPIC_API_KEY=sk-... python3 agents/hybrid_analyzer.py --contract nomad_bridge_replica
+# Semantic re-score + validate the judge (no model re-run)
+python3 -m agents.semantic_rescorer results_real__claude-opus-4-8.json
+python3 -m agents.validate_judge
 ```
 
 ---
 
-## Domains Analyzed
+## Domains Analyzed (source-detectable, verified)
 
-### Bridges ($1.2B losses)
-Nomad, Poly Network, Qubit, Socket, XBridge, Ronin, Orbit, LiFi, Allbridge, Synapse
+### Bridges (16 source-committed)
+Nomad, Qubit, Socket, XBridge, LiFi, Allbridge, THORChain, Rubic, CrossCurve, Hyperbridge,
+Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra
 
-### DEX/AMM ($327M losses)
-Euler Finance, Kyberswap, Curve, Platypus, DODO
+### DEX/AMM (5 source-committed)
+Euler (solvency check), KyberSwap (tick precision), Platypus (solvency ordering), DODO (unprotected init), Curve (Vyper stand-in)
 
-### Lending ($410M losses)
-Venus, Cream, Compound
+### Lending (3 source-committed, rebuilt)
+Onyx oPEPE (rounding/donation), Compound P062 (reward-accounting), Cream crAMP (ERC-777 reentrancy)
 
 ---
 
@@ -111,14 +113,14 @@ Source Code
 
 ## Phase Status
 
-| Phase | Status | Completion |
-|-------|--------|------------|
-| **Phase 4: Bridges** | ✓ Complete | 10 exploits analyzed, Sonnet outperforms static |
-| **Phase 5A: Ground Truth** | ✓ Complete | Nomad/Socket expanded to include all detectable vulns |
-| **Phase 5B: DEX** | 🔄 In Progress | 5 DEX contracts, dataset complete, awaiting fetch |
-| **Phase 5C: Lending** | 🔄 In Progress | 3 lending contracts, dataset ready |
-| **Phase 6: Hybrid** | ✓ Complete | Multi-tool consensus pipeline implemented |
-| **Phase 7: Source Coverage** | ⏳ Pending | Fetch missing bridge sources |
+| Phase | Status | Notes |
+|-------|--------|-------|
+| **Phase 4: Bridges** | ✓ Complete | thesis validated on bridge domain |
+| **Phase 5A: Ground Truth** | ✓ Complete | exploit-centric → audit-centric labels |
+| **Phase 5B: DEX** | ✓ Complete | 5/5 verified source (Routescan/Sourcify/template); labels corrected |
+| **Phase 5C: Lending** | ✓ Rebuilt | dropped mislabeled entries; 3 verified source bugs committed |
+| **Phase 6: Hybrid** | ✓ Complete | multi-tool consensus pipeline |
+| **Phase 7: Expansion + Opus run** | ✓ Complete | 16 bridge contracts, Opus run, validated semantic rescorer |
 
 ---
 
@@ -133,4 +135,4 @@ Source Code
 
 ---
 
-**Last Updated:** April 7, 2026
+**Last Updated:** June 2026
