@@ -65,10 +65,9 @@ def generate_patch(
         for v in vulnerabilities
     )
 
-    response = client.messages.create(
+    _params = dict(
         model=model,
         max_tokens=8192,
-        temperature=0,  # deterministic — reproducible patches
         system=PATCH_SYSTEM_PROMPT,
         messages=[{
             "role": "user",
@@ -87,6 +86,9 @@ Original source:
 Generate the complete patched contract.""",
         }],
     )
+    if not any(s in model for s in ("fable", "opus-4-8")):
+        _params["temperature"] = 0
+    response = client.messages.create(**_params)
 
     patched = response.content[0].text
 

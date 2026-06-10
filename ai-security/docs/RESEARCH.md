@@ -175,6 +175,58 @@ gantt
 - **Goal**: Reduce false positives while keeping compositional reasoning
 - **Expected**: <10 FP on real contracts vs 56 FP static-only
 
+### Phase 7: Dataset Expansion + Frontier-Model Run (June 2026)
+
+**Dataset.** Expanded the source-bearing eval set from **3 → 16 real verified
+contracts** by fetching verified source from Blockscout / Sourcify (every address
+confirmed on-chain). New source-detectable exploits added: CrossCurve, Hyperbridge,
+THORChain Router, Rubic, Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra; plus
+filled placeholders (Qubit, LiFi-July-2024, Allbridge). Off-chain key-compromise
+hacks (Ronin, Orbit, KelpDAO, IoTeX, Force Bridge, Humanity Protocol) are kept in
+`bridge_bench.py` for loss-coverage only and **excluded from the F1 eval** — they have
+no source-level bug to detect.
+
+**Finding 5: Fable 5 refuses the task.** The newest model returns
+`stop_reason: refusal` (empty output) on smart-contract vulnerability-analysis
+prompts, reproduced across (a) the agentic tool harness, (b) a single-turn JSON
+analyzer, and (c) an explicit *authorized post-incident defensive audit* system
+prompt. Sonnet 4.6 and Opus 4.8 engage normally. A safety-tuned refusal of
+adversarial-code analysis is a real obstacle to defensive-security tooling and is
+itself a citable result.
+
+**Finding 6: Exact-string scoring massively undercounts a strong model.** On the 16
+real-source contracts, Opus 4.8 agentic scored **5% F1 / 7% recall** by the benchmark's
+near-exact string matcher (3 TP / 80 FP / 38 FN). The gap is naming: Opus emits compound,
+descriptive labels (`"arbitrary_external_call / approval_drain"`,
+`"forged_deposit_event / unauthenticated_memo"`, `"solvency_check_bypass"`,
+`"missing_message_source_validation"`) that the matcher buckets as false positives.
+The LLM-judge semantic rescorer (`semantic_rescorer.py`, default Haiku) recomputes F1
+from the **already-saved findings with no model re-run** (38 judge calls, ~17k tokens,
+~$0.02): **recall 7% → 56%, F1 5% → 37%**, with a correct root-cause hit on **15 of 16
+contracts** (only `sonne` is a genuine miss; the judge stays conservative on
+`nomad`/`penpie`, confirming it is not rubber-stamping). Residual false positives are
+mostly real-but-unlabeled observations (centralization, missing timelocks). This is
+**Finding 3 (ground-truth/measurement problem) reproduced at frontier-model scale**:
+the bottleneck is the evaluator, not the model.
+
+**Finding 7: the judge is calibrated, and errs conservative.** The semantic judge was
+validated against a frozen 38-unit hand-labeled gold standard
+(`benchmarks/judge_gold_standard.json`; `agents/validate_judge.py`, K=3 runs/unit):
+**82% accuracy, 92% precision, 83% recall, Cohen's κ = 0.54 (moderate), 97% run-to-run
+unanimous.** Two takeaways: (1) at 92% precision the judge almost never fabricates a
+match (2 FP, both on borderline labels), so it does **not** inflate the model — its 5
+false-negatives mean the real semantic recall is, if anything, *higher* than 37% F1
+reports (a lower bound). (2) κ=0.54 is honest about the limit: 5 of 7 judge/gold
+disagreements fall on labels I myself flagged borderline, i.e. the residual
+disagreement is genuine label ambiguity, not judge unreliability. The earlier
+worry about judge nondeterminism was an artifact of order-dependent finding
+*consumption* in the rescorer, not judge instability (97% unanimous here).
+
+**Operational note.** `claude-fable-5` and `claude-opus-4-8` reject an explicit
+`temperature` parameter (400); analyzers now omit it for those models while keeping
+`temperature=0` where supported. Per-model results write to
+`results_real__<model>.json` so baselines are never clobbered.
+
 ---
 
 ## Quick Start

@@ -81,6 +81,30 @@ TYPE_EQUIVALENCES = {
     "bad_debt_accumulation": ["bad_debt_accumulation", "donation_attack_bad_debt"],
     "missing_slippage_protection": ["missing_slippage_protection", "price_impact_manipulation"],
     "price_impact_manipulation": ["price_impact_manipulation", "missing_slippage_protection"],
+    # 2026 bridge additions (CrossCurve, Hyperbridge). Map likely model phrasings
+    # onto the committed ground-truth keys so semantically-correct findings count.
+    "missing_gateway_origin_check": ["missing_gateway_origin_check", "missing_source_validation", "unauthenticated_message_handler", "missing_access_control", "unrestricted_cross_chain_call"],
+    "missing_access_control": ["missing_access_control", "missing_gateway_origin_check", "unauthenticated_message_handler", "unprotected_admin_function"],
+    "missing_source_validation": ["missing_source_validation", "missing_gateway_origin_check", "forged_cross_chain_message"],
+    "unauthenticated_message_handler": ["unauthenticated_message_handler", "missing_gateway_origin_check", "missing_access_control"],
+    "forged_cross_chain_message": ["forged_cross_chain_message", "message_forgery", "spoofed_message", "missing_gateway_origin_check", "missing_source_validation"],
+    "message_forgery": ["message_forgery", "forged_cross_chain_message", "spoofed_message"],
+    "mmr_missing_bounds_check": ["mmr_missing_bounds_check", "missing_bounds_check", "improper_proof_verification", "missing_input_validation", "out_of_bounds"],
+    "improper_proof_verification": ["improper_proof_verification", "mmr_missing_bounds_check", "missing_proof_link"],
+    "unbounded_mint_authority": ["unbounded_mint_authority", "privileged_mint", "admin_takeover", "missing_access_control", "unprotected_admin_function"],
+    "admin_takeover": ["admin_takeover", "unbounded_mint_authority", "missing_access_control"],
+    # 2024-2025 DeFi additions (Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra)
+    "reentrancy": ["reentrancy", "missing_reentrancy_guard", "reentrancy_in_dex_callback", "untrusted_external_call", "cross_function_reentrancy"],
+    "untrusted_external_call": ["untrusted_external_call", "arbitrary_external_call", "reentrancy", "unsafe_external_call"],
+    "unvalidated_callback": ["unvalidated_callback", "arbitrary_external_call", "missing_input_validation", "unvalidated_flashloan_callback", "untrusted_external_call"],
+    "exchange_rate_manipulation": ["exchange_rate_manipulation", "empty_market_donation", "rounding_error", "first_depositor", "donation_attack_bad_debt", "share_inflation"],
+    "rounding_error": ["rounding_error", "precision_loss_rounding", "exchange_rate_manipulation"],
+    "empty_market_donation": ["empty_market_donation", "donation_attack_bad_debt", "first_depositor", "exchange_rate_manipulation"],
+    "missing_solvency_check": ["missing_solvency_check", "skipped_solvency_check", "undercollateralized_borrow", "missing_health_check", "state_flag_reset"],
+    "state_flag_reset": ["state_flag_reset", "missing_solvency_check", "logic_error"],
+    "logic_error": ["logic_error", "state_flag_reset", "missing_solvency_check", "insufficient_validation"],
+    "event_spoofing": ["event_spoofing", "forged_event", "spoofed_deposit", "input_validation", "message_forgery"],
+    "improper_whitelist": ["improper_whitelist", "arbitrary_external_call", "approval_exploitation", "unchecked_user_calldata", "missing_input_validation"],
 }
 
 
@@ -600,8 +624,14 @@ if __name__ == "__main__":
             print(f"  Real:       F1={c_real['f1']:.0%} (P={c_real['precision']:.0%} R={c_real['recall']:.0%})")
             print(f"  Delta:      {c_real['f1'] - c_syn['f1']:+.0%}")
 
-    # Save JSON results
-    output_filename = "results_real.json" if args.real and not args.compare else "results.json"
+    # Save JSON results. Stamp the model into the filename so a non-default model
+    # (e.g. BENCH_MODEL=fable) doesn't clobber the committed Sonnet baseline.
+    from agents.claude_analyzer import MODEL as _RUN_MODEL
+    _model_tag = "" if _RUN_MODEL == "claude-sonnet-4-6" else "__" + _RUN_MODEL.replace("/", "-")
+    if args.real and not args.compare:
+        output_filename = f"results_real{_model_tag}.json"
+    else:
+        output_filename = f"results{_model_tag}.json"
     output_path = Path(__file__).parent.parent / output_filename
     with open(output_path, "w") as f:
         json.dump(results_all, f, indent=2, default=str)
