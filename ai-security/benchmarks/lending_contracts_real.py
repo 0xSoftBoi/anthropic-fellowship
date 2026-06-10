@@ -1,13 +1,20 @@
 """
 Lending Protocol Vulnerability Dataset (Phase 5C Expansion)
 
-Real verified Solidity source code for lending/money market exploits.
 Uses the same schema as bridge_contracts_real.py for unified benchmarking.
 
-Dataset includes:
-  - Compound price oracle manipulation ($80M)
-  - Venus flash loan collateral inflation ($200M)
-  - Cream Finance reentrancy & price oracle ($130M)
+  ⚠️ DATA-QUALITY WARNING (see docs/DATA_QUALITY.md, June 2026 audit) ⚠️
+  The labels below are UNRELIABLE and this domain should NOT be run for an F1
+  number until rebuilt. A post-mortem audit found:
+    - "Compound oracle manipulation $80M" — no such event; the real 2021
+      Compound incident was the COMP reward-ACCOUNTING bug, not oracle, not a hack.
+    - "Venus flash loan $200M" — a market/oracle event (XVS spot-price-driven bad
+      debt), NOT a source-level code bug. Exclude from source detection.
+    - "Cream reentrancy $130M Oct-2021" — conflates two hacks: the $130M Oct-2021
+      was price-ORACLE manipulation; the genuine reentrancy was Aug-2021 (~$18.8M,
+      ERC-777 AMP). The reentrancy label belongs on the Aug event.
+  No verified source is committed for these; the loader returns source=None. Fix
+  labels + fetch real source (or rebuild around genuine source bugs) before use.
 """
 
 import json

@@ -67,6 +67,16 @@ DEX_VULNERABILITY_TAXONOMY = {
         "severity": "critical",
         "description": "Protocol depends on spot price without TWAP or price oracle protection",
     },
+    "missing_solvency_check": {
+        "type": "missing_solvency_check",
+        "severity": "critical",
+        "description": "Privileged/state-changing path skips an account health/solvency check (e.g. Euler donateToReserves)",
+    },
+    "unprotected_initializer": {
+        "type": "unprotected_initializer",
+        "severity": "critical",
+        "description": "init() lacks access control / re-init guard, allowing state takeover (e.g. DODO crowdpool)",
+    },
 }
 
 
@@ -109,12 +119,15 @@ CONTRACTS = {
         "protocol": "DEX/AMM",
     },
     "dodo_v1_oracle": {
+        # CORRECTED 2026-06: the March-2021 DODO crowdpool hack was on ETHEREUM (not BSC)
+        # and the root cause was an unprotected init() (re-initialization via the flash-loan
+        # callback), not oracle manipulation. Verified pool address still unconfirmed.
         "loss_usd": 3_800_000,
         "fork_block": 12_000_000,
-        "fork_chain": "bsc",
-        "exploit_date": "2021-03-23",
-        "vuln_class": "oracle_manipulation",
-        "chain": "bsc",
+        "fork_chain": "mainnet",
+        "exploit_date": "2021-03-09",
+        "vuln_class": "unprotected_initializer",
+        "chain": "ethereum",
         "protocol": "DEX/AMM",
     },
 }
@@ -123,8 +136,10 @@ CONTRACTS = {
 # Ground truth vulnerability types for each contract
 GROUND_TRUTH = {
     "euler_finance_lending": [
+        # CORRECTED 2026-06: the exploited bug is the missing solvency/health check on
+        # donateToReserves, not slippage. Verified source committed (module 0x2718...25d3).
         "donation_attack_bad_debt",
-        "missing_slippage_protection",
+        "missing_solvency_check",
     ],
     "curve_finance_vyper_reentrancy": [
         "reentrancy_in_dex_callback",
@@ -138,51 +153,62 @@ GROUND_TRUTH = {
         "spot_price_dependency",
     ],
     "dodo_v1_oracle": [
-        "oracle_price_manipulation",
+        # CORRECTED 2026-06: unprotected init() (re-init via flash-loan callback), not oracle manip.
+        "unprotected_initializer",
     ],
 }
 
 
-def load_defi_contracts() -> dict:
+def load_defi_contracts() -> list:
     """
     Load DEX/AMM contracts for analysis.
 
-    Returns:
-        Dict mapping contract names to {source, metadata, ground_truth}
+    Returns the canonical benchmark format (same as bridge/lending loaders) so the
+    runner can evaluate every domain through one code path:
+        [{name, source, ground_truth: {vulnerabilities, overall_risk}, metadata}]
+
+    Source is read from benchmarks/contracts/<name>.sol (was previously a broken
+    relative "sources/" path that never resolved).
     """
-    contracts = {}
+    contracts_dir = Path(__file__).parent / "contracts"
+    dataset = []
 
     for contract_name, metadata in CONTRACTS.items():
-        # Try to load source from disk
-        source_path = Path("sources") / f"{contract_name}.sol"
+        sol_path = contracts_dir / f"{contract_name}.sol"
+        source = None
+        if sol_path.exists():
+            txt = sol_path.read_text()
+            source = txt if txt.strip() else None
 
-        source = ""
-        if source_path.exists():
-            try:
-                source = source_path.read_text()
-            except Exception:
-                pass
+        vulnerabilities = [
+            {
+                "type": vuln_type,
+                "severity": DEX_VULNERABILITY_TAXONOMY.get(vuln_type, {}).get("severity", "medium"),
+                "description": DEX_VULNERABILITY_TAXONOMY.get(vuln_type, {}).get("description", ""),
+            }
+            for vuln_type in GROUND_TRUTH.get(contract_name, [])
+        ]
 
-        contracts[contract_name] = {
+        dataset.append({
+            "name": contract_name,
             "source": source,
-            "metadata": metadata,
-            "ground_truth": GROUND_TRUTH.get(contract_name, []),
-            "vulnerabilities": [
-                {
-                    "type": vuln_type,
-                    "severity": DEX_VULNERABILITY_TAXONOMY.get(vuln_type, {}).get("severity", "medium"),
-                    "description": DEX_VULNERABILITY_TAXONOMY.get(vuln_type, {}).get("description", ""),
-                }
-                for vuln_type in GROUND_TRUTH.get(contract_name, [])
-            ],
-        }
+            "ground_truth": {
+                "vulnerabilities": vulnerabilities,
+                "overall_risk": "critical" if vulnerabilities else "unknown",
+            },
+            "metadata": {
+                **metadata,
+                "total_loss_usd": metadata["loss_usd"],
+                "exploit_class": metadata["vuln_class"],
+            },
+        })
 
-    return contracts
+    return dataset
 
 
 if __name__ == "__main__":
     defi = load_defi_contracts()
     print(f"Loaded {len(defi)} DEX contracts")
-    for name, data in defi.items():
-        has_source = "✓" if data["source"] else "✗"
-        print(f"  {name}: {has_source} source, {len(data['vulnerabilities'])} vulns")
+    for c in defi:
+        has_source = "✓" if (c["source"] or "").strip() else "✗"
+        print(f"  {c['name']}: {has_source} source, {len(c['ground_truth']['vulnerabilities'])} vulns")

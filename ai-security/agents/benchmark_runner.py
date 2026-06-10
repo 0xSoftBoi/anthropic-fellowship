@@ -31,6 +31,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agents.static_analyzer_v2 import analyze_static, StaticFinding
 from benchmarks.test_contracts import TEST_CONTRACTS
 from benchmarks.bridge_contracts_real import load_real_contracts
+from benchmarks.defi_contracts_real import load_defi_contracts
+from benchmarks.lending_contracts_real import load_lending_contracts
 
 
 # Fuzzy type matching for evaluation
@@ -453,6 +455,35 @@ def convert_real_contracts_to_dict(real_contracts: list) -> dict:
     return result
 
 
+def run_domain(dataset_list, label, args, results_all):
+    """Run static + the selected LLM mode over one domain dataset (real/defi/lending).
+
+    Stores results under <label>_static and <label>_<mode>. Shared by every domain so
+    bridges, DEX, and lending go through one identical evaluation path.
+    """
+    dset = convert_real_contracts_to_dict(dataset_list)
+    loaded = sum(1 for c in dataset_list if (c.get("source") or "").strip())
+    print(f"\n{'='*60}\n{label}: {loaded}/{len(dataset_list)} contracts have source\n{'='*60}")
+
+    static = run_static_benchmark(dset, label)
+    results_all[f"{label}_static"] = static
+    if args.no_claude:
+        return
+
+    if args.hybrid:
+        mode, fn = "hybrid", run_hybrid_benchmark
+    elif args.agentic:
+        mode, fn = "agentic", run_agentic_benchmark
+    else:
+        mode, fn = "claude", run_claude_benchmark
+    res = fn(dset, label)
+    results_all[f"{label}_{mode}"] = res
+    if res:
+        s, c = static["overall"], res["overall"]
+        print(f"\n{label}: Static F1={s['f1']:.0%}  {mode.title()} F1={c['f1']:.0%}  "
+              f"Delta={c['f1']-s['f1']:+.0%}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="BRIDGE-bench: Cross-chain bridge vulnerability detection benchmark"
@@ -460,7 +491,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "--real",
         action="store_true",
-        help="Run against real verified contracts from Etherscan/BSCScan",
+        help="Run against real verified bridge contracts",
+    )
+    parser.add_argument(
+        "--defi",
+        action="store_true",
+        help="Run against the DEX/AMM dataset (benchmarks/defi_contracts_real.py)",
+    )
+    parser.add_argument(
+        "--lending",
+        action="store_true",
+        help="Run against the lending dataset (benchmarks/lending_contracts_real.py)",
     )
     parser.add_argument(
         "--compare",
@@ -486,7 +527,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Determine which dataset(s) to run
-    run_synthetic = not args.real or args.compare
+    run_synthetic = (not args.real and not args.defi and not args.lending) or args.compare
     run_real = args.real or args.compare
 
     results_all = {}
@@ -601,6 +642,14 @@ if __name__ == "__main__":
                     print(f"  Delta F1:   {delta:+.0%}")
 
     # ──────────────────────────────────────────────────────────────────
+    # Run DEX / lending domains (same evaluation path as bridges)
+    # ──────────────────────────────────────────────────────────────────
+    if args.defi:
+        run_domain(load_defi_contracts(), "defi", args, results_all)
+    if args.lending:
+        run_domain(load_lending_contracts(), "lending", args, results_all)
+
+    # ──────────────────────────────────────────────────────────────────
     # Save results
     # ──────────────────────────────────────────────────────────────────
     if args.compare and "synthetic_static" in results_all and "real_static" in results_all:
@@ -628,7 +677,11 @@ if __name__ == "__main__":
     # (e.g. BENCH_MODEL=fable) doesn't clobber the committed Sonnet baseline.
     from agents.claude_analyzer import MODEL as _RUN_MODEL
     _model_tag = "" if _RUN_MODEL == "claude-sonnet-4-6" else "__" + _RUN_MODEL.replace("/", "-")
-    if args.real and not args.compare:
+    if (args.defi or args.lending) and not args.real and not args.compare:
+        _dom = "defi" if args.defi else ""
+        _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"
+        output_filename = f"results_{_dom}{_model_tag}.json"
+    elif args.real and not args.compare:
         output_filename = f"results_real{_model_tag}.json"
     else:
         output_filename = f"results{_model_tag}.json"
