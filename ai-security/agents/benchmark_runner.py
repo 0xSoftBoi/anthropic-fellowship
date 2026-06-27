@@ -28,6 +28,7 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from agents import llm
 from agents.static_analyzer_v2 import analyze_static, StaticFinding
 from benchmarks.test_contracts import TEST_CONTRACTS
 from benchmarks.bridge_contracts_real import load_real_contracts
@@ -272,8 +273,8 @@ def run_claude_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Sy
     Returns:
         Results dict with metrics, or None if API key not set
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\nSkipping Claude analysis (set ANTHROPIC_API_KEY to enable)")
+    if not llm.has_credentials():
+        print("\nSkipping LLM analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
 
     if dataset is None:
@@ -337,8 +338,8 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
     Returns:
         Results dict with metrics, or None if API key not set
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\nSkipping agentic analysis (set ANTHROPIC_API_KEY to enable)")
+    if not llm.has_credentials():
+        print("\nSkipping agentic analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
 
     if dataset is None:
@@ -413,8 +414,8 @@ def run_hybrid_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Sy
     Returns:
         Results dict with metrics, or None if API key not set
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\nSkipping hybrid analysis (set ANTHROPIC_API_KEY to enable)")
+    if not llm.has_credentials():
+        print("\nSkipping hybrid analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
 
     if dataset is None:

@@ -16,20 +16,19 @@ import json
 import os
 import re
 from dataclasses import dataclass, asdict
-from anthropic import Anthropic
+from agents import llm
 from agents.static_analyzer_v2 import _extract_function_body
 
-# Single source of truth for the model — keep every analyzer on the same one so
-# static-vs-LLM comparisons are apples-to-apples (was mixed across files).
-# Override per-run with BENCH_MODEL, e.g. BENCH_MODEL=claude-fable-5 to evaluate
-# Fable 5 on BRIDGE-bench against the committed Sonnet baseline.
-MODELS = {
-    "sonnet": "claude-sonnet-4-6",
-    "opus": "claude-opus-4-8",
-    "haiku": "claude-haiku-4-5-20251001",
-    "fable": "claude-fable-5",
-}
-MODEL = MODELS.get(os.environ.get("BENCH_MODEL", ""), os.environ.get("BENCH_MODEL") or "claude-sonnet-4-6")
+# Single source of truth for the model lives in agents/llm.py, which routes
+# every analyzer through one provider-agnostic LiteLLM path (Anthropic,
+# DeepSeek, Kimi, Qwen, MiniMax, GLM, or any local OpenAI-compatible server).
+# Override per-run with BENCH_MODEL, e.g. BENCH_MODEL=deepseek to evaluate
+# DeepSeek on BRIDGE-bench against the committed Sonnet baseline.
+#
+# MODEL is the bare model name (no "provider/" prefix), used by the runner to
+# stamp result filenames — keeping the committed Sonnet baseline name stable.
+MODELS = llm.MODELS
+MODEL = llm.model_tag()
 
 
 SYSTEM_PROMPT = """You are an expert smart contract security auditor analyzing Solidity for vulnerabilities.
@@ -190,8 +189,6 @@ def analyze_with_claude(
     Deep analysis using Claude. Combines static pre-screening results
     with LLM reasoning for comprehensive vulnerability detection.
     """
-    client = Anthropic()
-
     # Prepare source: extract functions if too large
     source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
 
@@ -213,19 +210,19 @@ Analyze this Solidity smart contract for security vulnerabilities:
 
 Provide your analysis as JSON."""
 
-    _params = dict(
-        model=MODEL,
+    # System prompt becomes a system-role message in OpenAI format; LiteLLM
+    # maps it back to each provider's native system field. Temperature handling
+    # (some models reject an explicit override) lives in llm.completion.
+    response = llm.completion(
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
         max_tokens=4096,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
     )
-    # Fable and similar models reject an explicit temperature; keep it for others.
-    if not any(s in MODEL for s in ("fable", "opus-4-8")):
-        _params["temperature"] = 0
-    response = client.messages.create(**_params)
 
     # Parse response
-    response_text = response.content[0].text
+    response_text = response.choices[0].message.content or ""
 
     # Strip markdown fences if present
     if "```json" in response_text:
