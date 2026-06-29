@@ -1,99 +1,48 @@
-```markdown
-# anthropic-fellowship Development Patterns
+---
+name: anthropic-fellowship
+description: Development patterns and conventions for the anthropic-fellowship research repo (Python 3.10+; BRIDGE-bench AI-security harness + mech-interp). Use when adding code, writing tests, or running benchmarks in this repo.
+---
 
-> Auto-generated skill from repository analysis
+# anthropic-fellowship — Development Patterns
 
-## Overview
-This skill teaches the core development patterns and conventions used in the `anthropic-fellowship` Python repository. It covers file organization, import/export styles, commit message habits, and testing practices. By following these guidelines, contributors can maintain consistency and quality across the codebase.
+Research portfolio with two tracks:
+- **ai-security/** — BRIDGE-bench: LLM-driven smart-contract vulnerability detection, provider-agnostic via LiteLLM.
+- **mech-interp/** — TransformerLens replication experiments (Python + notebooks).
 
-## Coding Conventions
+## Conventions (verified against the codebase)
 
-### File Naming
-- Use **snake_case** for all Python files.
-  - Example: `data_loader.py`, `model_utils.py`
+- **Language:** Python 3.10+ (plus Solidity fixtures under `ai-security/benchmarks/contracts/`).
+- **Imports:** absolute, package-rooted — `from agents.llm import completion`, `from benchmarks.bridge_contracts_real import load_real_contracts`. The repo does **not** use relative (`from ..`) imports.
+- **Naming:** `snake_case` files and functions, `PascalCase` classes (e.g. `AgentAudit`), `SCREAMING_SNAKE_CASE` constants (e.g. `MAX_SOURCE_CHARS`). There is no `__all__` / named-export convention.
+- **Models:** never hard-code a provider. Route calls through `agents/llm.py` (LiteLLM) and select with `BENCH_MODEL`; result files are stamped per model so baselines aren't clobbered.
+- **Commits:** concise and descriptive; a `type:` prefix (`docs:`, `feat:`, `fix:`) is common, and agent commits add a `Co-Authored-By:` trailer.
 
-### Import Style
-- Prefer **relative imports** within the package.
-  - Example:
-    ```python
-    from .utils import preprocess_data
-    from ..models import ModelClass
-    ```
+## Tests
 
-### Export Style
-- Use **named exports** by explicitly listing public objects in `__all__`.
-  - Example:
-    ```python
-    __all__ = ["MyClass", "my_function"]
-    ```
+- Live in `ai-security/tests/` (e.g. `test_eval.py`); framework is **pytest**.
+- Run: `cd ai-security && python -m pytest tests/ -q`
+- Dataset integrity (no API key): `python -m benchmarks.validate_dataset`
 
-### Commit Messages
-- No strict prefixes; messages are freeform and descriptive.
-- Average length: ~64 characters.
-  - Example:  
-    ```
-    Fix bug in data preprocessing for edge cases
-    ```
+## Running the benchmark
 
-## Workflows
-
-### Adding a New Module
-**Trigger:** When you need to add new functionality to the codebase  
-**Command:** `/add-module`
-
-1. Create a new Python file using snake_case (e.g., `new_feature.py`).
-2. Implement your functionality.
-3. Use relative imports to reference existing code.
-4. Add your public classes/functions to `__all__` if needed.
-5. Write corresponding tests in a `*.test.*` file.
-6. Commit changes with a clear, descriptive message.
-
-### Running Tests
-**Trigger:** After making changes or before submitting a pull request  
-**Command:** `/run-tests`
-
-1. Locate test files matching the `*.test.*` pattern.
-2. Run tests using the project's preferred method (framework unknown; try `pytest` or `unittest`).
-   - Example:
-     ```
-     pytest
-     ```
-     or
-     ```
-     python -m unittest discover
-     ```
-3. Ensure all tests pass before pushing changes.
-
-### Refactoring Existing Code
-**Trigger:** When improving code readability or structure  
-**Command:** `/refactor`
-
-1. Update file and function names to follow snake_case if needed.
-2. Replace absolute imports with relative imports.
-3. Ensure all exports are named and listed in `__all__`.
-4. Update or add tests as necessary.
-5. Commit with a descriptive message about the refactor.
-
-## Testing Patterns
-
-- Test files follow the `*.test.*` naming convention (e.g., `utils.test.py`).
-- Testing framework is not specified; try `pytest` or `unittest`.
-- Place tests alongside or near the modules they test.
-- Example test file:
-  ```python
-  # utils.test.py
-  import unittest
-  from .utils import preprocess_data
-
-  class TestPreprocessData(unittest.TestCase):
-      def test_basic(self):
-          self.assertEqual(preprocess_data("input"), "expected_output")
-  ```
-
-## Commands
-| Command        | Purpose                                      |
-|----------------|----------------------------------------------|
-| /add-module    | Scaffold and add a new module                |
-| /run-tests     | Run all tests in the repository              |
-| /refactor      | Refactor code to follow repository patterns  |
+```bash
+cd ai-security
+make setup                                   # venv + deps
+python3 -m agents.benchmark_runner --real    # static baseline (free, no API)
+BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --agentic
+# modes: --agentic | --cascade | --sc | --hybrid   domains: --real --defi --lending
 ```
+
+Makefile targets: `setup`, `test-static`, `test-claude`, `benchmark`, `benchmark-real`, `benchmark-compare`, `fetch-contracts`.
+
+## Adding code
+
+1. New module → `ai-security/agents/<name>.py` (snake_case), absolute imports.
+2. Route any model call through `agents/llm.py` (`llm.completion(...)`), never a provider SDK directly.
+3. Add or extend tests in `ai-security/tests/`; run `python -m pytest tests/ -q`.
+4. Keep result-file naming model-stamped so committed baselines aren't overwritten.
+5. Commit with a concise, descriptive message.
+
+## Docs
+
+`ai-security/docs/`: `INDEX.md` (map), `RESEARCH.md`, `MULTI_MODEL.md`, `OPTIMIZATION.md`, `DATA_QUALITY.md`, `DATASHEET.md`.

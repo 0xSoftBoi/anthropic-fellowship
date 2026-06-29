@@ -7,8 +7,10 @@
     "explanations": true
   },
   "domains": [
-    "python"
+    "python",
+    "solidity",
+    "ml-research"
   ],
-  "suggestedBy": "ecc-tools-repo-analysis",
+  "suggestedBy": "ecc-tools-repo-analysis (reviewed & corrected)",
   "createdAt": "2026-06-08T07:39:15.674Z"
 }

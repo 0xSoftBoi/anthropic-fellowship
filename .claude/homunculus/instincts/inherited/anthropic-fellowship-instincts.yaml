@@ -1,261 +1,158 @@
 # Instincts generated from https://github.com/0xSoftBoi/anthropic-fellowship
-# Generated: 2026-06-08T07:39:15.674Z
-# Version: 2.0
+# Reviewed & corrected against the actual codebase (the auto-generated set was
+# JS-flavored and inaccurate: it claimed relative imports, camelCase functions,
+# __all__ exports, and *.test.* files — none of which this repo uses).
+# Version: 2.1
 # NOTE: This file supplements (does not replace) any existing curated instincts.
-# High-confidence manually curated instincts should be preserved alongside these.
 
 ---
-id: anthropic-fellowship-commit-length
+id: anthropic-fellowship-file-naming
+trigger: "when creating a new Python file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# File Naming
+
+## Action
+
+Name Python files in snake_case (e.g. `cascade_analyzer.py`).
+
+## Evidence
+
+- Every module under `ai-security/agents/` and `benchmarks/` uses snake_case.
+
+---
+id: anthropic-fellowship-function-naming
+trigger: "when defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Function Naming
+
+## Action
+
+Use snake_case for functions (e.g. `run_agent`, `prepare_source_for_analysis`). This is Python — not camelCase.
+
+## Evidence
+
+- Functions across `agents/*.py` are snake_case.
+
+---
+id: anthropic-fellowship-class-naming
+trigger: "when defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Class Naming
+
+## Action
+
+Use PascalCase for classes (e.g. `AgentAudit`, `CascadeAudit`, `Vulnerability`).
+
+## Evidence
+
+- Dataclasses in `agents/*.py` are PascalCase.
+
+---
+id: anthropic-fellowship-constant-naming
+trigger: "when defining a module-level constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constants (e.g. `MAX_SOURCE_CHARS`, `BRIDGE_RISK_PATTERNS`).
+
+## Evidence
+
+- Module constants across the analyzers are SCREAMING_SNAKE_CASE.
+
+---
+id: anthropic-fellowship-imports
+trigger: "when importing project modules"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Imports
+
+## Action
+
+Use absolute, package-rooted imports — `from agents.llm import completion`, `from benchmarks.bridge_contracts_real import load_real_contracts`. Do not use relative (`from ..`) imports.
+
+## Evidence
+
+- ~35 absolute `from agents` / `from benchmarks` imports; zero relative `from ..` imports.
+
+---
+id: anthropic-fellowship-model-access
+trigger: "when calling an LLM / model API"
+confidence: 0.85
+domain: architecture
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Provider-agnostic Model Access
+
+## Action
+
+Route every model call through `agents/llm.py` (`llm.completion(...)`, LiteLLM) and select the model with `BENCH_MODEL`. Never call a provider SDK directly.
+
+## Evidence
+
+- `agents/llm.py` is the single completion path; all analyzers import it.
+
+---
+id: anthropic-fellowship-tests
+trigger: "when writing or running tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Tests
+
+## Action
+
+Put tests in `ai-security/tests/` and run them with pytest: `python -m pytest tests/ -q`.
+
+## Evidence
+
+- `ai-security/tests/test_eval.py`; README and CI invoke `python -m pytest tests/ -q`.
+
+---
+id: anthropic-fellowship-commit-format
 trigger: "when writing a commit message"
-confidence: 0.6
-domain: git
-source: repo-analysis
-source_repo: https://github.com/0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Commit Length
-
-## Action
-
-Write moderate-length commit messages (~64 characters)
-
-## Evidence
-
-- Average commit message length: 64 chars
-- Based on 1 commits
-
----
-id: anthropic-fellowship-naming-files
-trigger: "when creating a new file"
-confidence: 0.8
-domain: code-style
-source: repo-analysis
-source_repo: https://github.com/0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Naming Files
-
-## Action
-
-Use snake_case naming convention
-
-## Evidence
-
-- Analyzed file naming patterns in repository
-- Dominant pattern: snake_case
-
----
-id: anthropic-fellowship-import-relative
-trigger: "when importing modules"
-confidence: 0.75
-domain: code-style
-source: repo-analysis
-source_repo: https://github.com/0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Import Relative
-
-## Action
-
-Use relative imports for project files
-
-## Evidence
-
-- Import analysis shows relative import pattern
-- Example: import { x } from '../lib/x'
-
----
-id: anthropic-fellowship-export-style
-trigger: "when exporting from a module"
 confidence: 0.7
-domain: code-style
-source: repo-analysis
-source_repo: https://github.com/0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Export Style
-
-## Action
-
-Prefer named exports
-
-## Evidence
-
-- Export pattern analysis
-- Dominant style: named
-
----
-id: anthropic-fellowship-test-separate
-trigger: "when writing tests"
-confidence: 0.8
-domain: testing
-source: repo-analysis
-source_repo: https://github.com/0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Test Separate
-
-## Action
-
-Place tests in the tests/ or __tests__/ directory, mirroring src structure
-
-## Evidence
-
-- Separate test directory pattern detected
-- Tests live in dedicated test folders
-
----
-id: anthropic-fellowship-instinct-file-naming
-trigger: "When creating a new Python file"
-confidence: 0.9
-domain: code-style
-source: repo-analysis
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Instinct File Naming
-
-## Action
-
-Name the file using snake_case
-
-## Evidence
-
-- Pattern in namingConventions.files
-
----
-id: anthropic-fellowship-instinct-function-naming
-trigger: "When defining a new function"
-confidence: 0.8
-domain: code-style
-source: repo-analysis
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Instinct Function Naming
-
-## Action
-
-Name the function using camelCase
-
-## Evidence
-
-- Pattern in namingConventions.functions
-
----
-id: anthropic-fellowship-instinct-class-naming
-trigger: "When defining a new class"
-confidence: 0.9
-domain: code-style
-source: repo-analysis
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Instinct Class Naming
-
-## Action
-
-Name the class using PascalCase
-
-## Evidence
-
-- Pattern in namingConventions.classes
-
----
-id: anthropic-fellowship-instinct-constant-naming
-trigger: "When defining a constant"
-confidence: 0.9
-domain: code-style
-source: repo-analysis
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Instinct Constant Naming
-
-## Action
-
-Name the constant using SCREAMING_SNAKE_CASE
-
-## Evidence
-
-- Pattern in namingConventions.constants
-
----
-id: anthropic-fellowship-instinct-import-style
-trigger: "When importing modules within the package"
-confidence: 0.8
-domain: code-style
-source: repo-analysis
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Instinct Import Style
-
-## Action
-
-Use relative imports
-
-## Evidence
-
-- Pattern in importStyle
-
----
-id: anthropic-fellowship-instinct-export-style
-trigger: "When exporting functions or classes from a module"
-confidence: 0.7
-domain: code-style
-source: repo-analysis
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Instinct Export Style
-
-## Action
-
-Use named exports
-
-## Evidence
-
-- Pattern in exportStyle
-
----
-id: anthropic-fellowship-instinct-test-location
-trigger: "When adding or updating tests"
-confidence: 0.9
-domain: testing
-source: repo-analysis
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Anthropic Fellowship Instinct Test Location
-
-## Action
-
-Place test files in a separate test folder
-
-## Evidence
-
-- Pattern in architecture.testLocation
-
----
-id: anthropic-fellowship-instinct-git-commit-format
-trigger: "When writing a commit message"
-confidence: 0.8
 domain: git
-source: repo-analysis
+source: repo-analysis (verified)
 source_repo: 0xSoftBoi/anthropic-fellowship
 ---
 
-# Anthropic Fellowship Instinct Git Commit Format
+# Commit Format
 
 ## Action
 
-Write a freeform message without a prefix, keep it concise (around 64 characters)
+Write a concise, descriptive message; a `type:` prefix (`docs:`, `feat:`, `fix:`) is common. Add a `Co-Authored-By:` trailer for agent commits.
 
 ## Evidence
 
-- Pattern in commits.type
-- Pattern in commits.prefixes
-- Pattern in commits.averageLength
-- Seen in commit: 'Make the negation mechanism reproducible (compute, don't assert)'
-
+- Recent history mixes type-prefixed and freeform messages.
