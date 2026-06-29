@@ -64,15 +64,49 @@ is measured against.
 | `LLM_NUM_RETRIES` | 3 | Retries on transient errors (LiteLLM backoff) |
 | `LLM_TIMEOUT` | 120 | Per-call timeout (seconds) |
 
-## Phase 2 — Accuracy-per-dollar (roadmap)
+## Phase 2 — Accuracy-per-dollar
 
-These change F1 and must be validated with the calibrated judge, so they ship
-behind measurement, not by default.
+### Model cascade (shipped — `--cascade`)
 
-- **Model cascade.** Cheap wide-net pass (DeepSeek/Flash or a local model) to
-  flag suspicious functions, then escalate only those to Opus, then judge-filter.
-  Targets the cost-accuracy frontier: most tokens spent by the cheap model, the
-  expensive model touches a fraction of the code.
+Cost-accuracy frontier: most tokens are spent by a **cheap** model doing a wide
+first pass; the **strong** model is pointed only at the suspicious surface.
+
+`agents/cascade_analyzer.py:run_cascade()` per contract:
+1. **Tier 1 (cheap)** — agentic pass over the full source → candidate findings +
+   flagged locations.
+2. **Escalation surface** = functions named in tier-1 findings **∪** functions
+   the free static pre-screen flags (the static net protects recall when the
+   cheap model is silent on a genuinely risky contract).
+3. **Tier 2 (strong)** — if the surface is non-empty, re-run the agent on *just
+   those function bodies*, with tier-1 findings as a context hint. If the surface
+   is empty, skip tier 2 and trust the cheap pass (saves strong-model $ on clean
+   contracts). `CASCADE_ALWAYS_ESCALATE=1` forces a full strong pass (recall over
+   cost).
+4. **Merge** — union of tier-1 + tier-2 findings, deduped by (type, location);
+   the strong tier wins on overlap.
+
+Why it saves money: the strong model reads a handful of flagged functions, not
+the whole contract, and only when there's something to look at. Per-run output
+reports the cheap/strong token split and how many contracts escalated.
+
+Config: `CASCADE_CHEAP_MODEL` (default `deepseek`), `CASCADE_STRONG_MODEL`
+(default `opus`), `CASCADE_ALWAYS_ESCALATE`, `CASCADE_MAX_TURNS`.
+
+```bash
+export DEEPSEEK_API_KEY=... ANTHROPIC_API_KEY=...
+CASCADE_CHEAP_MODEL=deepseek CASCADE_STRONG_MODEL=opus \
+  python3 -m agents.benchmark_runner --real --defi --lending --cascade
+# writes results_real__cascade_deepseek_opus.json (never clobbers a single-model baseline)
+python3 -m agents.semantic_rescorer results_real__cascade_deepseek_opus.json
+```
+
+> Caveat: focusing the strong model on flagged functions is a deliberate
+> recall/cost trade — a bug in an unflagged, non-risky-looking function can be
+> missed. `CASCADE_ALWAYS_ESCALATE=1` is the recall-max escape hatch. Measure
+> both against the agentic baseline with the judge before trusting either.
+
+### Still roadmap
+
 - **Large-context path.** For 1M-context models (MiniMax M3, Gemini, DeepSeek),
   skip the regex function-extraction in `prepare_source_for_analysis` and feed
   whole contracts — extraction can drop cross-function context that compositional
