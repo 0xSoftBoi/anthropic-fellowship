@@ -4,6 +4,8 @@
 
 - **[README](../README.md)** — Project overview, quick start, key findings
 - **[RESEARCH.md](RESEARCH.md)** — Detailed research methodology, all charts, full results
+- **[MULTI_MODEL.md](MULTI_MODEL.md)** — Provider-agnostic models (Claude/DeepSeek/Kimi/local), the bake-off
+- **[OPTIMIZATION.md](OPTIMIZATION.md)** — Prompt caching, concurrency, cascade, self-consistency, large-context
 
 ## Phase Reports
 
@@ -22,11 +24,14 @@
 
 ## Tools & Agents
 
+- `agents/llm.py` — **provider-agnostic LLM layer (LiteLLM)**: model registry, prompt caching, retries, context budget
 - `agents/static_analyzer_v2.py` — pattern-based baseline (no API)
 - `agents/agentic_analyzer.py` — multi-turn LLM reasoning with a tool loop
+- `agents/cascade_analyzer.py` — **cheap wide-net → focused strong-model escalation** (`--cascade`)
+- `agents/selfconsistency_analyzer.py` — **k-sample majority-vote findings** (`--sc`)
 - `agents/hybrid_analyzer.py` — multi-tool pre-filter + targeted LLM
-- `agents/benchmark_runner.py` — harness (`--real`/`--defi`/`--lending`, model-stamped output)
-- `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
+- `agents/benchmark_runner.py` — harness (`--real`/`--defi`/`--lending`, `--agentic`/`--cascade`/`--sc`, model-stamped output, concurrent)
+- `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings (parallelized)
 - `agents/validate_judge.py` — judge calibration vs. the gold standard
 
 ## Key Results (Opus 4.8, June 2026 — 24 verified contracts, 3 domains)
@@ -69,6 +74,11 @@ BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --agentic
 # DEX / lending domains
 BENCH_MODEL=opus python3 -m agents.benchmark_runner --defi --lending --agentic
 
+# Cheaper / local model, cost cascade, precision self-consistency
+BENCH_MODEL=deepseek python3 -m agents.benchmark_runner --real --agentic
+CASCADE_CHEAP_MODEL=deepseek CASCADE_STRONG_MODEL=opus python3 -m agents.benchmark_runner --real --cascade
+SC_SAMPLES=3 BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --sc
+
 # Semantic re-score + validate the judge (no model re-run)
 python3 -m agents.semantic_rescorer results_real__claude-opus-4-8.json
 python3 -m agents.validate_judge
@@ -93,20 +103,23 @@ Onyx oPEPE (rounding/donation), Compound P062 (reward-accounting), Cream crAMP (
 ## Architecture Overview
 
 ```
-Source Code
+Verified contract source (Blockscout / Sourcify, address confirmed on-chain)
     ↓
-[Static Analysis v2] — Fast pattern matching
+[Static Analysis v2] — fast pattern baseline (free)        ── + Mythril / Slither (if available)
     ↓
-[Mythril] (symbolic execution, if available)
-[Slither] (data flow analysis, if available)
+[Provider-agnostic LLM layer · agents/llm.py · LiteLLM]
+    │  Claude / DeepSeek / Kimi / Qwen / MiniMax / local vLLM-Ollama
+    │  prompt caching · retries · model-aware context budget
     ↓
-[Multi-Tool Consensus] — Deduplicate, filter by confidence
+[Analysis mode]
+    ├─ agentic         — multi-turn tool loop (one model)            (--agentic)
+    ├─ cascade         — cheap triage → focused strong escalation    (--cascade)
+    ├─ self-consistency— k samples, keep majority-vote findings      (--sc)
+    └─ large-context   — big-context models read whole contracts     (automatic)
     ↓
-[Create Targeted Context] — Structured summary of findings (~280 chars vs 2000+ char code snippets)
+[benchmark_runner] — concurrent; persists metrics + findings + cost + cache/wall-clock
     ↓
-[Claude Sonnet] — 8-turn agentic loop with tool-use
-    ↓
-[Confirmed Findings] — Merged static + agentic findings
+[Scoring] — string-match F1  +  semantic F1 (LLM-as-judge, validated vs. gold standard)
 ```
 
 ---
@@ -121,6 +134,7 @@ Source Code
 | **Phase 5C: Lending** | ✓ Rebuilt | dropped mislabeled entries; 3 verified source bugs committed |
 | **Phase 6: Hybrid** | ✓ Complete | multi-tool consensus pipeline |
 | **Phase 7: Expansion + Opus run** | ✓ Complete | 16 bridge contracts, Opus run, validated semantic rescorer |
+| **Phase 8: Multi-model + optimization** | ◐ Shipped, unmeasured | provider-agnostic (LiteLLM); caching/concurrency/retries; cascade, self-consistency, large-context modes — F1/cost deltas pending a live run |
 
 ---
 
@@ -132,6 +146,10 @@ Source Code
 - **Multi-Tool Consensus** — Finding confirmed by 2+ static analyzers (boosts confidence)
 - **Targeted Context** — Structured summary of static findings passed to LLM (not raw code)
 - **Agentic Loop** — Multi-turn interaction where LLM iteratively refines analysis using tools
+- **Provider-agnostic** — One LiteLLM code path runs any hosted or local model (Claude, DeepSeek, local vLLM)
+- **Prompt caching** — Re-used static prefix (system + tools + source) billed at ~10% on later turns
+- **Cascade** — Cheap model triages; the strong model deep-dives only flagged functions (cost lever)
+- **Self-consistency** — Run k samples and keep findings that recur in a majority (precision lever)
 
 ---
 

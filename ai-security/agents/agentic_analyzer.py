@@ -24,7 +24,7 @@ import re
 import subprocess
 from pathlib import Path
 from dataclasses import dataclass, field
-from anthropic import Anthropic
+from agents import llm
 from agents.claude_analyzer import prepare_source_for_analysis, MODEL
 
 
@@ -172,6 +172,35 @@ TOOLS = [
 ]
 
 
+# OpenAI-format tools (LiteLLM speaks OpenAI function-calling across all
+# providers). We keep the Anthropic-native TOOLS above as the single source of
+# truth and convert once here.
+OPENAI_TOOLS = llm.to_openai_tools(TOOLS)
+
+
+def _assistant_message_dict(msg) -> dict:
+    """Turn a LiteLLM response message back into a request-shaped dict so the
+    tool-call history round-trips across providers."""
+    tool_calls = getattr(msg, "tool_calls", None) or []
+    if tool_calls:
+        return {
+            "role": "assistant",
+            "content": msg.content or None,
+            "tool_calls": [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                }
+                for tc in tool_calls
+            ],
+        }
+    return {"role": "assistant", "content": msg.content or ""}
+
+
 @dataclass
 class AgentFinding:
     vuln_type: str
@@ -191,6 +220,7 @@ class AgentAudit:
     total_tokens: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    cached_tokens: int = 0  # input tokens served from prompt cache (cost ~90% less)
     reasoning_trace: list[str] = field(default_factory=list)
 
 
@@ -291,8 +321,9 @@ def run_agent(
     source_code: str,
     contract_name: str,
     max_turns: int = 10,
-    model: str = MODEL,  # unified to claude_analyzer.MODEL (was claude-sonnet-4-20250514)
+    model: str | None = None,  # None -> resolve BENCH_MODEL via agents.llm
     context_hint: str = "",  # Optional: pre-filter findings from static tools
+    temperature: float = 0,  # >0 to diversify samples (self-consistency)
 ) -> AgentAudit:
     """
     Run the agentic analyzer on a contract.
@@ -304,14 +335,17 @@ def run_agent(
         source_code: Solidity contract source
         contract_name: Name for reporting
         max_turns: Max analysis iterations (default 10)
-        model: Claude model to use (default Sonnet)
+        model: LiteLLM model id to use; None resolves BENCH_MODEL (default
+               Sonnet). Works for Anthropic, DeepSeek, Kimi, local servers, ...
         context_hint: Optional summary of static tool findings to focus analysis
     """
-    client = Anthropic()
     audit = AgentAudit(contract_name=contract_name)
 
-    # Use function extraction to handle large contracts
-    source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
+    # Feed the whole contract when it fits the model's context budget (big-context
+    # models skip the lossy regex extraction); otherwise extract risky functions.
+    source_for_analysis = prepare_source_for_analysis(
+        source_code, contract_name, model=model or llm.litellm_model()
+    )
 
     # Build the analysis prompt, including context_hint if provided
     prompt = f"""Analyze this bridge contract for security vulnerabilities.
@@ -332,47 +366,49 @@ Be thorough — check all vulnerability categories."""
     if context_hint:
         prompt += f"\n\n{context_hint}"
 
+    # System prompt + the (large, static) source-bearing prompt are re-sent on
+    # every turn, so mark both as cache breakpoints. Within a contract's loop
+    # turns 2..N read them from cache at ~90% off; across contracts the shared
+    # system+tools prefix stays warm. No-op string for auto-caching providers.
     messages = [
-        {
-            "role": "user",
-            "content": prompt,
-        }
+        {"role": "system", "content": llm.cacheable(SYSTEM_PROMPT, model)},
+        {"role": "user", "content": llm.cacheable(prompt, model)},
     ]
 
     nudged = False
     for turn in range(max_turns):
-        _params = dict(
+        # One provider-agnostic call path (LiteLLM, OpenAI format). Temperature
+        # quirks (Fable/Opus reject an explicit override) are handled in
+        # llm.completion so every model is driven identically here.
+        response = llm.completion(
+            messages=messages,
             model=model,
             max_tokens=4096,
-            system=SYSTEM_PROMPT,
-            tools=TOOLS,
-            messages=messages,
+            tools=OPENAI_TOOLS,
+            temperature=temperature,
         )
-        # Some models (e.g. Fable) reject an explicit temperature override and
-        # require the default. Keep temperature=0 for models that support it so
-        # static-vs-LLM comparisons stay reproducible.
-        if not any(s in model for s in ("fable", "opus-4-8")):
-            _params["temperature"] = 0
-        response = client.messages.create(**_params)
 
-        audit.input_tokens += response.usage.input_tokens
-        audit.output_tokens += response.usage.output_tokens
-        audit.total_tokens += response.usage.input_tokens + response.usage.output_tokens
+        usage = response.usage
+        in_tok = getattr(usage, "prompt_tokens", 0) or 0
+        out_tok = getattr(usage, "completion_tokens", 0) or 0
+        audit.input_tokens += in_tok
+        audit.output_tokens += out_tok
+        audit.total_tokens += in_tok + out_tok
+        audit.cached_tokens += llm.cached_tokens(response)
 
-        # Process response
-        assistant_content = response.content
-        messages.append({"role": "assistant", "content": assistant_content})
+        msg = response.choices[0].message
+        tool_calls = getattr(msg, "tool_calls", None) or []
 
-        # Check if we're done
-        if response.stop_reason == "end_turn":
-            # Extract any final text reasoning
-            for block in assistant_content:
-                if hasattr(block, "text"):
-                    audit.reasoning_trace.append(block.text)
-            # Some models (especially with extended thinking) answer in prose on
-            # the first turn without driving the tool loop. If we're about to
-            # finish with nothing recorded, nudge once to emit findings via the
-            # submit_finding tool. No-op for models that already submitted.
+        # Record the assistant turn (preserving any tool_calls) in history.
+        messages.append(_assistant_message_dict(msg))
+
+        # No tool calls => the model answered in prose / ended its turn.
+        if not tool_calls:
+            if msg.content:
+                audit.reasoning_trace.append(msg.content)
+            # Some models answer in prose on the first turn without driving the
+            # tool loop. If we're about to finish with nothing recorded, nudge
+            # once to emit findings via submit_finding. No-op if already done.
             if not audit.findings and not nudged:
                 nudged = True
                 messages.append({
@@ -388,41 +424,36 @@ Be thorough — check all vulnerability categories."""
                 continue
             break
 
-        # Process tool calls
-        tool_results = []
-        for block in assistant_content:
-            if block.type == "tool_use":
-                audit.tool_calls_made += 1
-                tool_name = block.name
-                tool_input = block.input
+        # Process tool calls — one tool message per call (OpenAI format).
+        for tc in tool_calls:
+            audit.tool_calls_made += 1
+            tool_name = tc.function.name
+            try:
+                tool_input = json.loads(tc.function.arguments or "{}")
+            except json.JSONDecodeError:
+                tool_input = {}
 
-                # Handle submit_finding specially
-                if tool_name == "submit_finding":
-                    finding = AgentFinding(
-                        vuln_type=tool_input.get("vuln_type", "unknown"),
-                        severity=tool_input.get("severity", "medium"),
-                        location=tool_input.get("location", "unknown"),
-                        description=tool_input.get("description", ""),
-                        exploit_scenario=tool_input.get("exploit_scenario", ""),
-                        suggested_fix=tool_input.get("suggested_fix", ""),
-                        confidence=tool_input.get("confidence", 0.5),
-                    )
-                    audit.findings.append(finding)
-                    result = f"Finding #{len(audit.findings)} recorded: {finding.vuln_type} ({finding.severity})"
-                else:
-                    result = handle_tool_call(tool_name, tool_input, source_code)
+            # Handle submit_finding specially
+            if tool_name == "submit_finding":
+                finding = AgentFinding(
+                    vuln_type=tool_input.get("vuln_type", "unknown"),
+                    severity=tool_input.get("severity", "medium"),
+                    location=tool_input.get("location", "unknown"),
+                    description=tool_input.get("description", ""),
+                    exploit_scenario=tool_input.get("exploit_scenario", ""),
+                    suggested_fix=tool_input.get("suggested_fix", ""),
+                    confidence=tool_input.get("confidence", 0.5),
+                )
+                audit.findings.append(finding)
+                result = f"Finding #{len(audit.findings)} recorded: {finding.vuln_type} ({finding.severity})"
+            else:
+                result = handle_tool_call(tool_name, tool_input, source_code)
 
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": block.id,
-                    "content": result,
-                })
-
-            elif hasattr(block, "text"):
-                audit.reasoning_trace.append(block.text)
-
-        if tool_results:
-            messages.append({"role": "user", "content": tool_results})
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tc.id,
+                "content": result,
+            })
 
     return audit
 

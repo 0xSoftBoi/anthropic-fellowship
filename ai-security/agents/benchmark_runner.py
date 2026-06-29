@@ -22,12 +22,14 @@ Usage:
 import os
 import sys
 import json
+import time
 import argparse
 from pathlib import Path
 from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from agents import llm
 from agents.static_analyzer_v2 import analyze_static, StaticFinding
 from benchmarks.test_contracts import TEST_CONTRACTS
 from benchmarks.bridge_contracts_real import load_real_contracts
@@ -272,8 +274,8 @@ def run_claude_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Sy
     Returns:
         Results dict with metrics, or None if API key not set
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\nSkipping Claude analysis (set ANTHROPIC_API_KEY to enable)")
+    if not llm.has_credentials():
+        print("\nSkipping LLM analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
 
     if dataset is None:
@@ -326,80 +328,143 @@ def run_claude_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Sy
     }
 
 
-def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
+def _run_audit_benchmark(dataset, dataset_name, worker, method, banner) -> dict | None:
     """
-    Run multi-turn agentic analysis benchmark against a dataset.
+    Shared core for audit-style benchmarks (agentic, cascade): run a per-contract
+    `worker(source, name) -> audit` concurrently and score the findings.
 
-    Args:
-        dataset: Dict of contract_name -> {source, ground_truth} (default: TEST_CONTRACTS)
-        dataset_name: Name for output display
-
-    Returns:
-        Results dict with metrics, or None if API key not set
+    `audit` must expose .findings (objects with .vuln_type/.severity),
+    .total_tokens, .cached_tokens, .tool_calls_made. Cascade audits additionally
+    expose cheap/strong token splits, recorded when present.
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\nSkipping agentic analysis (set ANTHROPIC_API_KEY to enable)")
+    if not llm.has_credentials():
+        print(f"\nSkipping {method} analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
-
     if dataset is None:
         dataset = TEST_CONTRACTS
 
-    from agents.agentic_analyzer import run_agent
-    from agents.claude_analyzer import static_prescreen
-
     print(f"\n{'=' * 60}")
-    print(f"BRIDGE-bench: Agentic (Multi-Turn) Analysis on {dataset_name}")
+    print(f"BRIDGE-bench: {banner} on {dataset_name}")
     print("=" * 60)
 
     results = {}
     totals = {"tp": 0, "fp": 0, "fn": 0}
 
+    # Build the worklist (contracts with usable source), preserving dataset order.
+    worklist = []
     for name, data in dataset.items():
-        if isinstance(data, dict) and "source" in data:
-            source = data["source"]
-            gt_vulns = data["ground_truth"]["vulnerabilities"]
-        else:
+        if not (isinstance(data, dict) and "source" in data):
             continue
-
-        if source is None:
+        if data["source"] is None:
             print(f"\n{name}: SKIPPED (source not available)")
             continue
+        worklist.append((name, data["source"], data["ground_truth"]["vulnerabilities"]))
 
-        audit = run_agent(source, name, max_turns=8)
+    # Contracts are independent and I/O-bound (API round-trips), so run them
+    # concurrently behind a bounded pool. Each worker owns its own state; LiteLLM
+    # retries handle transient rate limits. Tune with BENCH_CONCURRENCY.
+    concurrency = max(1, int(os.environ.get("BENCH_CONCURRENCY", "4")))
+    t0 = time.monotonic()
+    audits: dict[str, object] = {}
+    if concurrency == 1 or len(worklist) <= 1:
+        for name, source, _ in worklist:
+            audits[name] = worker(source, name)
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            fut_by_name = {name: pool.submit(worker, source, name) for name, source, _ in worklist}
+            for name, fut in fut_by_name.items():
+                audits[name] = fut.result()  # propagates any exception
+    elapsed = time.monotonic() - t0
 
-        # Convert AgentFinding to dict for evaluate_findings()
+    # Score + record in deterministic worklist order.
+    for name, source, gt_vulns in worklist:
+        audit = audits[name]
         ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.findings]
         metrics = evaluate_findings(ai_findings, gt_vulns)
 
         # Persist tokens/tool-calls (cost) and the raw finding types so a run is fully
         # auditable and re-scorable offline without re-invoking the model.
-        results[name] = {
+        rec = {
             "metrics": metrics,
             "n_findings": len(ai_findings),
             "tokens": getattr(audit, "total_tokens", 0),
+            "cached_tokens": getattr(audit, "cached_tokens", 0),
             "tool_calls": getattr(audit, "tool_calls_made", 0),
             "findings": [f["type"] for f in ai_findings],
         }
+        # Cascade provenance (only present on cascade audits).
+        if hasattr(audit, "cheap_tokens"):
+            rec["cheap_tokens"] = audit.cheap_tokens
+            rec["strong_tokens"] = audit.strong_tokens
+            rec["escalated"] = getattr(audit, "escalated", False)
+        results[name] = rec
         for k in ["tp", "fp", "fn"]:
             totals[k] += metrics[k]
 
         print(f"\n{name}: P={metrics['precision']:.0%} R={metrics['recall']:.0%} "
-              f"F1={metrics['f1']:.0%}  ({results[name]['tokens']:,} tok)")
+              f"F1={metrics['f1']:.0%}  ({rec['tokens']:,} tok)")
 
     p = totals["tp"] / (totals["tp"] + totals["fp"]) if (totals["tp"] + totals["fp"]) > 0 else 0
     r = totals["tp"] / (totals["tp"] + totals["fn"]) if (totals["tp"] + totals["fn"]) > 0 else 0
     f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
     total_tokens = sum(v.get("tokens", 0) for v in results.values())
+    total_cached = sum(v.get("cached_tokens", 0) for v in results.values())
+    cache_rate = (total_cached / total_tokens) if total_tokens else 0.0
 
     print(f"\n{'=' * 60}")
-    print(f"AGENTIC OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}  total {total_tokens:,} tokens")
+    print(f"{method.upper()} OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}  total {total_tokens:,} tokens")
+    print(f"  {len(worklist)} contracts in {elapsed:.1f}s "
+          f"(concurrency={concurrency}); cache hits: {total_cached:,} tok ({cache_rate:.0%})")
+    if method == "cascade":
+        cheap = sum(v.get("cheap_tokens", 0) for v in results.values())
+        strong = sum(v.get("strong_tokens", 0) for v in results.values())
+        n_esc = sum(1 for v in results.values() if v.get("escalated"))
+        print(f"  cheap {cheap:,} tok + strong {strong:,} tok; escalated {n_esc}/{len(worklist)} contracts")
 
-    return {
-        "method": "agentic",
+    out = {
+        "method": method,
         "overall": {"precision": p, "recall": r, "f1": f1, **totals},
         "total_tokens": total_tokens,
+        "cached_tokens": total_cached,
+        "wall_clock_seconds": round(elapsed, 1),
+        "concurrency": concurrency,
         "per_contract": results,
     }
+    if method == "cascade":
+        out["cheap_tokens"] = sum(v.get("cheap_tokens", 0) for v in results.values())
+        out["strong_tokens"] = sum(v.get("strong_tokens", 0) for v in results.values())
+    return out
+
+
+def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
+    """Multi-turn agentic analysis benchmark (one model). See _run_audit_benchmark."""
+    from agents.agentic_analyzer import run_agent
+    return _run_audit_benchmark(
+        dataset, dataset_name,
+        worker=lambda source, name: run_agent(source, name, max_turns=8),
+        method="agentic", banner="Agentic (Multi-Turn) Analysis",
+    )
+
+
+def run_cascade_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
+    """Cascade benchmark: cheap wide-net -> focused strong-model escalation."""
+    from agents.cascade_analyzer import run_cascade
+    return _run_audit_benchmark(
+        dataset, dataset_name,
+        worker=lambda source, name: run_cascade(source, name),
+        method="cascade", banner="Cascade (cheap -> strong) Analysis",
+    )
+
+
+def run_selfconsistency_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
+    """Self-consistency benchmark: k samples, keep findings with majority votes."""
+    from agents.selfconsistency_analyzer import run_self_consistent
+    return _run_audit_benchmark(
+        dataset, dataset_name,
+        worker=lambda source, name: run_self_consistent(source, name),
+        method="selfconsistency", banner="Self-Consistency (k-sample vote) Analysis",
+    )
 
 
 def run_hybrid_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
@@ -413,8 +478,8 @@ def run_hybrid_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Sy
     Returns:
         Results dict with metrics, or None if API key not set
     """
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("\nSkipping hybrid analysis (set ANTHROPIC_API_KEY to enable)")
+    if not llm.has_credentials():
+        print("\nSkipping hybrid analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
 
     if dataset is None:
@@ -499,6 +564,10 @@ def run_domain(dataset_list, label, args, results_all):
 
     if args.hybrid:
         mode, fn = "hybrid", run_hybrid_benchmark
+    elif args.cascade:
+        mode, fn = "cascade", run_cascade_benchmark
+    elif args.selfconsistency:
+        mode, fn = "selfconsistency", run_selfconsistency_benchmark
     elif args.agentic:
         mode, fn = "agentic", run_agentic_benchmark
     else:
@@ -550,6 +619,19 @@ if __name__ == "__main__":
         action="store_true",
         help="Use hybrid analysis (static pre-filter + targeted Sonnet)",
     )
+    parser.add_argument(
+        "--cascade",
+        action="store_true",
+        help="Use cascade analysis (cheap wide-net -> focused strong-model escalation). "
+             "Tune via CASCADE_CHEAP_MODEL / CASCADE_STRONG_MODEL.",
+    )
+    parser.add_argument(
+        "--selfconsistency", "--sc",
+        dest="selfconsistency",
+        action="store_true",
+        help="Use self-consistency (k samples, keep majority-vote findings). "
+             "Tune via SC_SAMPLES / SC_MIN_VOTES / SC_TEMPERATURE.",
+    )
 
     args = parser.parse_args()
 
@@ -581,6 +663,26 @@ if __name__ == "__main__":
                     print(f"  Hybrid:     P={h['precision']:.0%}  R={h['recall']:.0%}  F1={h['f1']:.0%}")
                     delta = h["f1"] - s["f1"]
                     print(f"  Delta F1:   {delta:+.0%}")
+            elif args.cascade:
+                synthetic_cascade = run_cascade_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
+                results_all["synthetic_cascade"] = synthetic_cascade
+
+                if synthetic_cascade:
+                    print(f"\n{'=' * 60}")
+                    print("SYNTHETIC: Static v2 vs Cascade")
+                    print("=" * 60)
+                    s = synthetic_static["overall"]
+                    a = synthetic_cascade["overall"]
+                    print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
+                    print(f"  Cascade:    P={a['precision']:.0%}  R={a['recall']:.0%}  F1={a['f1']:.0%}")
+                    print(f"  Delta F1:   {a['f1'] - s['f1']:+.0%}")
+            elif args.selfconsistency:
+                synthetic_sc = run_selfconsistency_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
+                results_all["synthetic_selfconsistency"] = synthetic_sc
+                if synthetic_sc:
+                    s = synthetic_static["overall"]; a = synthetic_sc["overall"]
+                    print(f"\nSYNTHETIC: Static F1={s['f1']:.0%}  Self-Consistency F1={a['f1']:.0%}  "
+                          f"Delta={a['f1'] - s['f1']:+.0%}")
             elif args.agentic:
                 synthetic_agentic = run_agentic_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
                 results_all["synthetic_agentic"] = synthetic_agentic
@@ -639,6 +741,26 @@ if __name__ == "__main__":
                     print(f"  Hybrid:     P={h['precision']:.0%}  R={h['recall']:.0%}  F1={h['f1']:.0%}")
                     delta = h["f1"] - s["f1"]
                     print(f"  Delta F1:   {delta:+.0%}")
+            elif args.cascade:
+                real_cascade = run_cascade_benchmark(real_contracts_dict, "Real Verified Contracts")
+                results_all["real_cascade"] = real_cascade
+
+                if real_cascade:
+                    print(f"\n{'=' * 60}")
+                    print("REAL: Static v2 vs Cascade")
+                    print("=" * 60)
+                    s = real_static["overall"]
+                    a = real_cascade["overall"]
+                    print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
+                    print(f"  Cascade:    P={a['precision']:.0%}  R={a['recall']:.0%}  F1={a['f1']:.0%}")
+                    print(f"  Delta F1:   {a['f1'] - s['f1']:+.0%}")
+            elif args.selfconsistency:
+                real_sc = run_selfconsistency_benchmark(real_contracts_dict, "Real Verified Contracts")
+                results_all["real_selfconsistency"] = real_sc
+                if real_sc:
+                    s = real_static["overall"]; a = real_sc["overall"]
+                    print(f"\nREAL: Static F1={s['f1']:.0%}  Self-Consistency F1={a['f1']:.0%}  "
+                          f"Delta={a['f1'] - s['f1']:+.0%}")
             elif args.agentic:
                 real_agentic = run_agentic_benchmark(real_contracts_dict, "Real Verified Contracts")
                 results_all["real_agentic"] = real_agentic
@@ -704,6 +826,16 @@ if __name__ == "__main__":
     # (e.g. BENCH_MODEL=fable) doesn't clobber the committed Sonnet baseline.
     from agents.claude_analyzer import MODEL as _RUN_MODEL
     _model_tag = "" if _RUN_MODEL == "claude-sonnet-4-6" else "__" + _RUN_MODEL.replace("/", "-")
+    # Cascade uses two models (cheap+strong), so its tag reflects the mode, not
+    # the single BENCH_MODEL — and never clobbers the committed single-model baseline.
+    if args.cascade:
+        _cheap = os.environ.get("CASCADE_CHEAP_MODEL", "deepseek")
+        _strong = os.environ.get("CASCADE_STRONG_MODEL", "opus")
+        _model_tag = f"__cascade_{_cheap}_{_strong}".replace("/", "-")
+    elif args.selfconsistency:
+        _k = os.environ.get("SC_SAMPLES", "3")
+        _model_tag = (("__" + _RUN_MODEL.replace("/", "-")) if _RUN_MODEL != "claude-sonnet-4-6" else "") \
+            + f"__sc{_k}"
     if (args.defi or args.lending) and not args.real and not args.compare:
         _dom = "defi" if args.defi else ""
         _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"

@@ -7,6 +7,8 @@
 [![Verified contracts: 24](https://img.shields.io/badge/verified%20contracts-24-blue)]()
 [![Domains: bridges · DEX · lending](https://img.shields.io/badge/domains-bridges%20%C2%B7%20DEX%20%C2%B7%20lending-8a2be2)]()
 [![Semantic F1: 35%](https://img.shields.io/badge/Opus%204.8%20semantic%20F1-35%25-success)]()
+[![Models: Claude · DeepSeek · local](https://img.shields.io/badge/models-Claude%20%C2%B7%20DeepSeek%20%C2%B7%20Kimi%20%C2%B7%20local-informational)]()
+[![Modes: agentic · cascade · self-consistency](https://img.shields.io/badge/modes-agentic%20%C2%B7%20cascade%20%C2%B7%20self--consistency-blueviolet)]()
 
 > **Research on AI-assisted security analysis and mechanistic interpretability**  
 > Demonstrating that multi-turn LLM reasoning outperforms static analysis on real-world blockchain exploits.
@@ -84,8 +86,13 @@ export ANTHROPIC_API_KEY=sk-ant-...
 # Static baseline (free, no API)
 python3 -m agents.benchmark_runner --real
 
-# Agentic run — choose the model; non-default models write results_real__<model>.json
+# Agentic run — any model via BENCH_MODEL (Claude, DeepSeek, Kimi, local vLLM/Ollama)
 BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --agentic
+BENCH_MODEL=deepseek python3 -m agents.benchmark_runner --real --agentic   # cheaper, your key
+
+# Optimized modes: cost cascade / precision self-consistency
+CASCADE_CHEAP_MODEL=deepseek CASCADE_STRONG_MODEL=opus python3 -m agents.benchmark_runner --real --cascade
+SC_SAMPLES=3 BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --sc
 
 # Other domains, then semantic re-score + validate the judge (no model re-run)
 BENCH_MODEL=opus python3 -m agents.benchmark_runner --defi --lending --agentic
@@ -94,12 +101,22 @@ python3 -m agents.validate_judge
 ```
 
 **Key Files:**
+- `agents/llm.py` — provider-agnostic LLM layer (LiteLLM): caching, retries, model registry
 - `agents/agentic_analyzer.py` — multi-turn LLM reasoning with a tool loop
+- `agents/cascade_analyzer.py` — cheap wide-net → focused strong-model escalation (`--cascade`)
+- `agents/selfconsistency_analyzer.py` — k-sample majority-vote findings (`--sc`)
 - `agents/static_analyzer_v2.py` — pattern-matching baseline (no API)
 - `agents/semantic_rescorer.py` — LLM-as-judge semantic F1 from saved findings
 - `agents/validate_judge.py` — judge calibration vs. the gold standard
 - `benchmarks/{bridge,defi,lending}_contracts_real.py` — datasets (16 / 5 / 3 source-committed)
 - `benchmarks/judge_gold_standard.json` — 38 hand-labeled judge decisions
+
+**Provider-agnostic & optimized.** The harness runs any hosted or local model through one
+LiteLLM path (no router, no markup; local = contract source never leaves your network), with
+prompt caching, contract-level concurrency, and cascade / self-consistency / large-context
+modes. See [ai-security/docs/MULTI_MODEL.md](./ai-security/docs/MULTI_MODEL.md) and
+[OPTIMIZATION.md](./ai-security/docs/OPTIMIZATION.md). *(Shipped + unit-verified; F1/cost
+deltas pending a live multi-model run — only the Opus 4.8 numbers above are measured.)*
 
 **Documentation:**
 - **[ai-security/README](./ai-security/README.md)** — results, quick start, honest limitations
@@ -138,19 +155,25 @@ jupyter notebook
 anthropic-fellowship/
 ├── ai-security/                      # BRIDGE-bench + Multi-domain detection
 │   ├── agents/
-│   │   ├── hybrid_analyzer.py         # ⭐ Recommended: Multi-tool + Sonnet
-│   │   ├── agentic_analyzer.py        # Full reasoning (expensive)
-│   │   ├── static_analyzer_v2.py      # Baseline (free)
-│   │   └── benchmark_runner.py        # Run all approaches
+│   │   ├── llm.py                      # Provider-agnostic LLM layer (LiteLLM): caching, retries
+│   │   ├── agentic_analyzer.py         # Multi-turn tool loop (any model)
+│   │   ├── cascade_analyzer.py         # Cheap→strong escalation (--cascade)
+│   │   ├── selfconsistency_analyzer.py # k-sample majority vote (--sc)
+│   │   ├── hybrid_analyzer.py          # Multi-tool pre-filter + LLM
+│   │   ├── static_analyzer_v2.py       # Baseline (free)
+│   │   ├── semantic_rescorer.py        # LLM-as-judge semantic F1
+│   │   ├── validate_judge.py           # Judge calibration vs. gold standard
+│   │   └── benchmark_runner.py         # Run all modes (concurrent, model-stamped)
 │   ├── benchmarks/
-│   │   ├── bridge_contracts_real.py   # 10 bridge exploits
+│   │   ├── bridge_contracts_real.py   # 16 bridge contracts
 │   │   ├── defi_contracts_real.py     # 5 DEX contracts
 │   │   ├── lending_contracts_real.py  # 3 lending contracts
 │   │   └── fetch_contracts.py         # Etherscan multichain fetcher
 │   ├── docs/
 │   │   ├── RESEARCH.md                # Detailed research + charts
-│   │   ├── PHASE4_RESULTS.md          # Bridge results
-│   │   ├── PHASE3_STATUS.md           # Static baseline
+│   │   ├── MULTI_MODEL.md             # Provider-agnostic models + bake-off
+│   │   ├── OPTIMIZATION.md            # Caching, concurrency, cascade, self-consistency
+│   │   ├── DATA_QUALITY.md            # DEX/lending label audit
 │   │   └── INDEX.md                   # Documentation navigation
 │   └── requirements.txt
 │
@@ -228,6 +251,8 @@ anthropic-fellowship/
 This is a research portfolio for the Anthropic Fellowship Program.
 
 **Ways to help:**
+- Run the multi-model bake-off → measure cheaper/local models vs. Opus on the same 24 contracts ([MULTI_MODEL.md](./ai-security/docs/MULTI_MODEL.md))
+- Measure the cascade / self-consistency modes against the agentic baseline with the judge
 - Run benchmarks on DEX/lending contracts → measure multi-domain generalization
 - Expand ground truth vulnerabilities → improve benchmark accuracy
 - Fetch missing contract sources → enable Phase 7 analysis
@@ -244,6 +269,6 @@ MIT — See LICENSE file
 
 ---
 
-**Last Updated:** April 7, 2026  
+**Last Updated:** June 2026  
 **Repository:** Active research in progress  
-**Phase Status:** 6 complete, 5B/5C in progress, 7 pending
+**Phase Status:** 7 complete (16-contract Opus run + validated judge); Phase 8 (multi-model harness + caching/concurrency/cascade/self-consistency) shipped & unit-verified, measurement pending a live run

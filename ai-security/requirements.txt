@@ -4,6 +4,10 @@
 # solc (e.g. via solc-select) to produce findings; without it the hybrid run is
 # degraded — the analyzers now warn loudly when a tool is unavailable.
 anthropic>=0.39
+# Provider-agnostic model access (Anthropic, DeepSeek, Kimi, Qwen, MiniMax, GLM,
+# or any local OpenAI-compatible server). MIT-licensed translation layer — no
+# router, no markup. See agents/llm.py and docs/MULTI_MODEL.md.
+litellm>=1.50
 web3>=6.0
 eth-abi
 eth-utils

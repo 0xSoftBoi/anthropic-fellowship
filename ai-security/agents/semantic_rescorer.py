@@ -121,8 +121,12 @@ def judge_match(client, gt_key, gt_desc, candidate_findings):
     return bool(obj.get("verdict")), obj.get("matched_finding"), obj.get("justification", ""), usage
 
 
-def rescore_contract(client, name, metrics, log):
+def rescore_contract(client, name, metrics):
     """Recompute metrics for one contract using the judge. Returns new metrics dict.
+
+    Self-contained (no shared mutable state) so contracts can be rescored
+    concurrently. Judge-call accounting is returned under _judge_calls /
+    _judge_tokens for the caller to aggregate.
 
     Order-independent: every missed ground-truth is judged against the FULL finding
     pool (no consumption), so the result doesn't depend on iteration order and matches
@@ -136,11 +140,13 @@ def rescore_contract(client, name, metrics, log):
 
     promoted = []
     used_findings = set()
+    judge_calls = 0
+    judge_tokens = 0
     for gt in missed:
         gt_desc = _TAXONOMY.get(gt, {}).get("description", gt)
         matched, finding, why, used = judge_match(client, gt, gt_desc, fps)  # full pool every call
-        log["judge_tokens"] += used
-        log["judge_calls"] += 1
+        judge_tokens += used
+        judge_calls += 1
         if matched:
             tp += 1
             promoted.append({"gt": gt, "matched_finding": finding, "why": why})
@@ -157,6 +163,8 @@ def rescore_contract(client, name, metrics, log):
         "precision": precision, "recall": recall, "f1": f1,
         "promoted": promoted,
         "still_missed": [m for m in missed if m not in [p["gt"] for p in promoted]],
+        "_judge_calls": judge_calls,
+        "_judge_tokens": judge_tokens,
     }
 
 
@@ -186,15 +194,29 @@ def main():
     tot = {"tp": 0, "fp": 0, "fn": 0}
     old_tot = {"tp": 0, "fp": 0, "fn": 0}
     rescored = {}
-    for name, info in pc.items():
-        if name not in evaluable:
-            continue  # empty-source placeholder — not genuinely evaluable
-        m = info["metrics"]
-        new = rescore_contract(client, name, m, log)
-        rescored[name] = new
+
+    # Judge calls are independent per contract and I/O-bound, so run contracts
+    # concurrently. The Anthropic client is safe to share across threads.
+    todo = [(name, info["metrics"]) for name, info in pc.items() if name in evaluable]
+    concurrency = max(1, int(os.environ.get("JUDGE_CONCURRENCY", "8")))
+    if concurrency == 1 or len(todo) <= 1:
+        for name, m in todo:
+            rescored[name] = rescore_contract(client, name, m)
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            fut = {name: pool.submit(rescore_contract, client, name, m) for name, m in todo}
+            for name, f in fut.items():
+                rescored[name] = f.result()
+
+    # Aggregate in deterministic order.
+    for name, m in todo:
+        new = rescored[name]
         for k in ("tp", "fp", "fn"):
             tot[k] += new[k]
             old_tot[k] += m[k]
+        log["judge_calls"] += new.get("_judge_calls", 0)
+        log["judge_tokens"] += new.get("_judge_tokens", 0)
         oldf1 = m.get("f1", 0)
         promoted = ", ".join(p["gt"] for p in new["promoted"]) or "-"
         print(f"{name:34s} {oldf1*100:6.0f}% {new['f1']*100:6.0f}%  {promoted}")

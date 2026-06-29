@@ -112,27 +112,28 @@ xychart-beta
 flowchart TD
     A["Solidity Source Code"]
     B["Static Analysis (v2, Mythril, Slither)"]
-    C{"High-Confidence Issues Found?"}
-    D["Create Targeted Context<br/>(vulnerable regions, ~100 chars)"]
-    E["Claude Sonnet<br/>(8-turn agentic loop)"]
     F["Multi-Tool Consensus<br/>(boost confidence when 2+ tools agree)"]
+    LLM["Provider-agnostic LLM layer<br/>agents/llm.py · LiteLLM<br/><i>Claude / DeepSeek / Kimi / local</i><br/>prompt caching · retries · context budget"]
+    M{"Analysis mode"}
+    AG["agentic<br/>multi-turn tool loop"]
+    CA["cascade<br/>cheap triage → focused strong"]
+    SC["self-consistency<br/>k-sample majority vote"]
     G["Confirmed Findings"]
-    H["Return static findings only"]
-    
-    A --> B
-    B --> F
-    F --> C
-    C -->|YES| D
-    D --> E
-    C -->|NO| H
-    E --> G
-    
+    SCORE["Scoring: string-match F1 + semantic F1<br/>(LLM-as-judge, validated vs. gold standard)"]
+
+    A --> B --> F --> LLM --> M
+    M -->|--agentic| AG --> G
+    M -->|--cascade| CA --> G
+    M -->|--sc| SC --> G
+    G --> SCORE
+
     style G fill:#90EE90
-    style H fill:#FFB6C6
-    style E fill:#87CEEB
+    style LLM fill:#fde68a
+    style SCORE fill:#87CEEB
 ```
 
-**Cost efficiency**: Pre-filtering reduces Sonnet turns from 12 → 8, cuts token waste by 40%.
+**Cost efficiency**: pre-filtering trims agent turns; prompt caching cuts the multi-turn
+input-token bill ~50–75%; the cascade spends the strong model only on flagged functions.
 
 ---
 
@@ -227,6 +228,36 @@ worry about judge nondeterminism was an artifact of order-dependent finding
 `temperature=0` where supported. Per-model results write to
 `results_real__<model>.json` so baselines are never clobbered.
 
+### Phase 8: Multi-model harness + cost/performance optimization (June 2026)
+
+A refactor for breadth and efficiency. **Status: shipped and unit-verified; F1/cost
+deltas not yet measured against a live key** — only the Phase 7 Opus run has measured
+numbers. Full detail in [MULTI_MODEL.md](MULTI_MODEL.md) and [OPTIMIZATION.md](OPTIMIZATION.md).
+
+**Provider-agnostic via LiteLLM (`agents/llm.py`).** The single Anthropic-SDK call path
+was replaced with one OpenAI-format path that drives Claude, DeepSeek, Kimi, Qwen,
+MiniMax, GLM, or **any local OpenAI-compatible server** (vLLM/Ollama/SGLang) — same loop,
+so cross-model F1 differences reflect the model, not the harness. Motivation: a
+Sonnet-class-but-cheaper model could cut per-scan COGS ~10×, and the only honest test is
+running it on the same 24 contracts + validated judge. It's a translation layer (no
+router, no markup), and pointing `LLM_BASE_URL` at a local model keeps contract source
+on-prem — the deployment story for a security buyer.
+
+**Three optimization axes.**
+- *Cost.* Prompt caching marks the static prefix (system + tools + source, re-sent every
+  turn) as a cache breakpoint → ~50–75% input-token cut on the multi-turn loop;
+  automatic for DeepSeek/OpenAI, explicit `cache_control` for Anthropic.
+- *Latency.* Contracts run through a bounded thread pool (`BENCH_CONCURRENCY`); the
+  semantic rescorer's judge calls are parallelized too. Retries + timeouts (LiteLLM)
+  make high concurrency safe.
+- *Accuracy-per-dollar.* Three selectable modes: **cascade** (`--cascade`, cheap
+  triage → focused strong escalation), **self-consistency** (`--sc`, k-sample majority
+  vote → precision), and **large-context** (automatic — big-context models read whole
+  contracts instead of regex-extracted functions → recall).
+
+Every run now persists `cached_tokens`, `wall_clock_seconds`, and per-tier/vote
+provenance, so each optimization is measured rather than assumed once a live run exists.
+
 ---
 
 ## Quick Start
@@ -235,17 +266,22 @@ worry about judge nondeterminism was an artifact of order-dependent finding
 # Setup
 make setup
 
-# Run static baseline (fast, free)
-python3 agents/benchmark_runner.py --real
+# Static baseline (fast, free)
+python3 -m agents.benchmark_runner --real
 
-# Run hybrid analysis (multi-tool pre-filter + Sonnet)
-ANTHROPIC_API_KEY=sk-... python3 agents/benchmark_runner.py --real --hybrid
+# Agentic — any model via BENCH_MODEL (Claude, DeepSeek, Kimi, local vLLM/Ollama)
+BENCH_MODEL=opus     python3 -m agents.benchmark_runner --real --agentic
+BENCH_MODEL=deepseek python3 -m agents.benchmark_runner --real --agentic
+LLM_BASE_URL=http://localhost:8000/v1 BENCH_MODEL=local \
+                     python3 -m agents.benchmark_runner --real --agentic
 
-# Run pure agentic (full reasoning, expensive)
-ANTHROPIC_API_KEY=sk-... python3 agents/benchmark_runner.py --real --agentic
+# Cost cascade / precision self-consistency
+CASCADE_CHEAP_MODEL=deepseek CASCADE_STRONG_MODEL=opus \
+                     python3 -m agents.benchmark_runner --real --cascade
+SC_SAMPLES=3 BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --sc
 
-# Compare approaches
-python3 agents/hybrid_analyzer.py --contract NomadBridge --compare
+# Hybrid (multi-tool pre-filter + targeted LLM); concurrency knob applies everywhere
+BENCH_CONCURRENCY=8  python3 -m agents.benchmark_runner --real --hybrid
 ```
 
 ---

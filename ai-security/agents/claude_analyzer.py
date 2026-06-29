@@ -16,20 +16,19 @@ import json
 import os
 import re
 from dataclasses import dataclass, asdict
-from anthropic import Anthropic
+from agents import llm
 from agents.static_analyzer_v2 import _extract_function_body
 
-# Single source of truth for the model — keep every analyzer on the same one so
-# static-vs-LLM comparisons are apples-to-apples (was mixed across files).
-# Override per-run with BENCH_MODEL, e.g. BENCH_MODEL=claude-fable-5 to evaluate
-# Fable 5 on BRIDGE-bench against the committed Sonnet baseline.
-MODELS = {
-    "sonnet": "claude-sonnet-4-6",
-    "opus": "claude-opus-4-8",
-    "haiku": "claude-haiku-4-5-20251001",
-    "fable": "claude-fable-5",
-}
-MODEL = MODELS.get(os.environ.get("BENCH_MODEL", ""), os.environ.get("BENCH_MODEL") or "claude-sonnet-4-6")
+# Single source of truth for the model lives in agents/llm.py, which routes
+# every analyzer through one provider-agnostic LiteLLM path (Anthropic,
+# DeepSeek, Kimi, Qwen, MiniMax, GLM, or any local OpenAI-compatible server).
+# Override per-run with BENCH_MODEL, e.g. BENCH_MODEL=deepseek to evaluate
+# DeepSeek on BRIDGE-bench against the committed Sonnet baseline.
+#
+# MODEL is the bare model name (no "provider/" prefix), used by the runner to
+# stamp result filenames — keeping the committed Sonnet baseline name stable.
+MODELS = llm.MODELS
+MODEL = llm.model_tag()
 
 
 SYSTEM_PROMPT = """You are an expert smart contract security auditor analyzing Solidity for vulnerabilities.
@@ -150,15 +149,26 @@ BRIDGE_RISK_PATTERNS = [
     r"function\s+(upgrade\w*|setImpl\w*|setOwner\w*|withdraw\w*|execute\w*)\s*\(",
     r"function\s+(swap\w*|route\w*|transfer\w*|approve\w*|deposit\w*)\s*\(",
 ]
-MAX_SOURCE_CHARS = 80_000  # ~20K tokens, safe budget
+MAX_SOURCE_CHARS = 80_000  # ~20K tokens — default/Anthropic budget (baseline-stable)
 
 
-def prepare_source_for_analysis(source_code: str, contract_name: str) -> str:
+def prepare_source_for_analysis(
+    source_code: str,
+    contract_name: str,
+    model: str | None = None,
+    max_chars: int | None = None,
+) -> str:
     """
-    If source is small enough, return as-is.
-    If large, extract only risky function bodies.
+    If source fits the model's context budget, return it whole (no information
+    loss). Otherwise extract only risky function bodies.
+
+    Budget is model-aware: big-context models (DeepSeek, MiniMax, Gemini, ...)
+    take whole contracts; Anthropic keeps the conservative default so the
+    committed baseline is unchanged. Override with max_chars or
+    LLM_MAX_SOURCE_CHARS.
     """
-    if len(source_code) <= MAX_SOURCE_CHARS:
+    budget = max_chars if max_chars is not None else llm.context_budget_chars(model)
+    if len(source_code) <= budget:
         return source_code
 
     # Extract risky functions
@@ -177,8 +187,8 @@ def prepare_source_for_analysis(source_code: str, contract_name: str) -> str:
         header = f"// {contract_name} — extracted risky functions ({len(risky_functions)} of full contract)\n\n"
         return header + "\n\n// ===== NEXT FUNCTION =====\n\n".join(set(risky_functions))
 
-    # Fallback: truncate first 80KB
-    return source_code[:MAX_SOURCE_CHARS] + "\n\n// [truncated — contract too large]"
+    # Fallback: truncate to budget
+    return source_code[:budget] + "\n\n// [truncated — contract too large]"
 
 
 def analyze_with_claude(
@@ -190,10 +200,10 @@ def analyze_with_claude(
     Deep analysis using Claude. Combines static pre-screening results
     with LLM reasoning for comprehensive vulnerability detection.
     """
-    client = Anthropic()
-
-    # Prepare source: extract functions if too large
-    source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
+    # Prepare source: feed whole if it fits the model's budget, else extract
+    source_for_analysis = prepare_source_for_analysis(
+        source_code, contract_name, model=llm.litellm_model()
+    )
 
     # Build the user prompt with context
     context_parts = [f"Contract name: {contract_name}"]
@@ -213,19 +223,21 @@ Analyze this Solidity smart contract for security vulnerabilities:
 
 Provide your analysis as JSON."""
 
-    _params = dict(
-        model=MODEL,
+    # System prompt becomes a system-role message in OpenAI format; LiteLLM
+    # maps it back to each provider's native system field. Temperature handling
+    # (some models reject an explicit override) lives in llm.completion.
+    # The system prompt and the (large, static) source-bearing user message are
+    # marked as cache breakpoints — a no-op string for auto-caching providers.
+    response = llm.completion(
+        messages=[
+            {"role": "system", "content": llm.cacheable(SYSTEM_PROMPT)},
+            {"role": "user", "content": llm.cacheable(user_prompt)},
+        ],
         max_tokens=4096,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
     )
-    # Fable and similar models reject an explicit temperature; keep it for others.
-    if not any(s in MODEL for s in ("fable", "opus-4-8")):
-        _params["temperature"] = 0
-    response = client.messages.create(**_params)
 
     # Parse response
-    response_text = response.content[0].text
+    response_text = response.choices[0].message.content or ""
 
     # Strip markdown fences if present
     if "```json" in response_text:
