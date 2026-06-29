@@ -22,6 +22,7 @@ Usage:
 import os
 import sys
 import json
+import time
 import argparse
 from pathlib import Path
 from typing import Optional
@@ -355,20 +356,39 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
     results = {}
     totals = {"tp": 0, "fp": 0, "fn": 0}
 
+    # Build the worklist (contracts with usable source), preserving dataset order.
+    worklist = []
     for name, data in dataset.items():
-        if isinstance(data, dict) and "source" in data:
-            source = data["source"]
-            gt_vulns = data["ground_truth"]["vulnerabilities"]
-        else:
+        if not (isinstance(data, dict) and "source" in data):
             continue
-
-        if source is None:
+        if data["source"] is None:
             print(f"\n{name}: SKIPPED (source not available)")
             continue
+        worklist.append((name, data["source"], data["ground_truth"]["vulnerabilities"]))
 
-        audit = run_agent(source, name, max_turns=8)
+    # Contracts are independent and I/O-bound (API round-trips), so run them
+    # concurrently behind a bounded pool. Each run_agent owns its own state;
+    # LiteLLM retries handle transient rate limits. Tune with BENCH_CONCURRENCY.
+    concurrency = max(1, int(os.environ.get("BENCH_CONCURRENCY", "4")))
+    t0 = time.monotonic()
+    audits: dict[str, object] = {}
+    if concurrency == 1 or len(worklist) <= 1:
+        for name, source, _ in worklist:
+            audits[name] = run_agent(source, name, max_turns=8)
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            fut_by_name = {
+                name: pool.submit(run_agent, source, name, max_turns=8)
+                for name, source, _ in worklist
+            }
+            for name, fut in fut_by_name.items():
+                audits[name] = fut.result()  # propagates any exception
+    elapsed = time.monotonic() - t0
 
-        # Convert AgentFinding to dict for evaluate_findings()
+    # Score + record in deterministic worklist order.
+    for name, source, gt_vulns in worklist:
+        audit = audits[name]
         ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.findings]
         metrics = evaluate_findings(ai_findings, gt_vulns)
 
@@ -378,6 +398,7 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
             "metrics": metrics,
             "n_findings": len(ai_findings),
             "tokens": getattr(audit, "total_tokens", 0),
+            "cached_tokens": getattr(audit, "cached_tokens", 0),
             "tool_calls": getattr(audit, "tool_calls_made", 0),
             "findings": [f["type"] for f in ai_findings],
         }
@@ -391,14 +412,21 @@ def run_agentic_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
     r = totals["tp"] / (totals["tp"] + totals["fn"]) if (totals["tp"] + totals["fn"]) > 0 else 0
     f1 = 2 * p * r / (p + r) if (p + r) > 0 else 0
     total_tokens = sum(v.get("tokens", 0) for v in results.values())
+    total_cached = sum(v.get("cached_tokens", 0) for v in results.values())
+    cache_rate = (total_cached / total_tokens) if total_tokens else 0.0
 
     print(f"\n{'=' * 60}")
     print(f"AGENTIC OVERALL: P={p:.0%} R={r:.0%} F1={f1:.0%}  total {total_tokens:,} tokens")
+    print(f"  {len(worklist)} contracts in {elapsed:.1f}s "
+          f"(concurrency={concurrency}); cache hits: {total_cached:,} tok ({cache_rate:.0%})")
 
     return {
         "method": "agentic",
         "overall": {"precision": p, "recall": r, "f1": f1, **totals},
         "total_tokens": total_tokens,
+        "cached_tokens": total_cached,
+        "wall_clock_seconds": round(elapsed, 1),
+        "concurrency": concurrency,
         "per_contract": results,
     }
 

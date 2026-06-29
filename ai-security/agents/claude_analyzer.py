@@ -213,10 +213,12 @@ Provide your analysis as JSON."""
     # System prompt becomes a system-role message in OpenAI format; LiteLLM
     # maps it back to each provider's native system field. Temperature handling
     # (some models reject an explicit override) lives in llm.completion.
+    # The system prompt and the (large, static) source-bearing user message are
+    # marked as cache breakpoints — a no-op string for auto-caching providers.
     response = llm.completion(
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
+            {"role": "system", "content": llm.cacheable(SYSTEM_PROMPT)},
+            {"role": "user", "content": llm.cacheable(user_prompt)},
         ],
         max_tokens=4096,
     )

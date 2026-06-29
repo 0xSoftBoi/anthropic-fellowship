@@ -98,6 +98,47 @@ def _supports_temperature(model: str) -> bool:
     return not any(s in model for s in ("fable", "opus-4-8"))
 
 
+# --- Prompt caching -------------------------------------------------------
+# Caching the static prefix (system + tools + contract source) is the single
+# biggest cost lever for a multi-turn agent: it is re-sent on every turn, and
+# cached reads cost ~90% less. Anthropic/Bedrock/Gemini need an explicit
+# cache_control marker (LiteLLM passes it through); DeepSeek/OpenAI cache
+# automatically, so for those we leave content as a plain string.
+
+def supports_explicit_cache(model: str) -> bool:
+    return any(p in model for p in ("anthropic", "claude", "bedrock", "vertex_ai", "gemini"))
+
+
+def cacheable(text: str, model: str | None = None) -> "str | list":
+    """
+    Return message content for `text`, marked as a cache breakpoint when the
+    target model supports explicit prompt caching. Use for large, static chunks
+    that repeat across turns (the system prompt, the contract source). For
+    auto-caching providers it returns the plain string unchanged.
+    """
+    model = model or litellm_model()
+    if supports_explicit_cache(model):
+        return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+    return text
+
+
+def cached_tokens(response) -> int:
+    """Best-effort count of input tokens served from cache (0 if unavailable)."""
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return 0
+    # Anthropic-style fields surfaced by LiteLLM, plus OpenAI-style details.
+    direct = getattr(usage, "cache_read_input_tokens", None)
+    if direct:
+        return int(direct)
+    details = getattr(usage, "prompt_tokens_details", None)
+    if details is not None:
+        cached = getattr(details, "cached_tokens", None)
+        if cached:
+            return int(cached)
+    return 0
+
+
 def to_openai_tools(anthropic_tools: list[dict]) -> list[dict]:
     """
     Convert Anthropic-native tool schemas ({name, description, input_schema})
@@ -153,5 +194,11 @@ def completion(
         kwargs["tools"] = tools
     if temperature is not None and _supports_temperature(model):
         kwargs["temperature"] = temperature
+
+    # Reliability: LiteLLM retries transient errors (429/5xx) with exponential
+    # backoff internally, so high concurrency is safe and a single blip doesn't
+    # lose a contract's run. Tunable via env.
+    kwargs["num_retries"] = int(os.environ.get("LLM_NUM_RETRIES", "3"))
+    kwargs["timeout"] = float(os.environ.get("LLM_TIMEOUT", "120"))
 
     return litellm.completion(**kwargs)

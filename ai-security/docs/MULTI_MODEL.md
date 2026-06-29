@@ -23,6 +23,12 @@ differentiator a hosted-API-only competitor can't offer.
 | `BENCH_MODEL` | A short alias (see table) or a full LiteLLM id (e.g. `deepseek/deepseek-chat`). Default: Sonnet baseline. |
 | `LLM_BASE_URL` | Optional. An OpenAI-compatible endpoint, e.g. `http://localhost:8000/v1` for local vLLM/Ollama. Maps to LiteLLM `api_base`. |
 | `LLM_API_KEY` | Optional. Key for the endpoint; omit for keyless local servers. Hosted providers may instead use their standard var (`ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, `MOONSHOT_API_KEY`, …). |
+| `BENCH_CONCURRENCY` | Optional (default 4). Contracts analyzed in parallel. |
+| `JUDGE_CONCURRENCY` | Optional (default 8). Parallel judge calls in the rescorer. |
+| `LLM_NUM_RETRIES` / `LLM_TIMEOUT` | Optional (3 / 120s). Retry + timeout for transient errors. |
+
+> Performance & cost tuning (prompt caching, concurrency, reliability) is
+> documented in [`OPTIMIZATION.md`](./OPTIMIZATION.md).
 
 ### Model aliases
 

@@ -220,6 +220,7 @@ class AgentAudit:
     total_tokens: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
+    cached_tokens: int = 0  # input tokens served from prompt cache (cost ~90% less)
     reasoning_trace: list[str] = field(default_factory=list)
 
 
@@ -361,9 +362,13 @@ Be thorough — check all vulnerability categories."""
     if context_hint:
         prompt += f"\n\n{context_hint}"
 
+    # System prompt + the (large, static) source-bearing prompt are re-sent on
+    # every turn, so mark both as cache breakpoints. Within a contract's loop
+    # turns 2..N read them from cache at ~90% off; across contracts the shared
+    # system+tools prefix stays warm. No-op string for auto-caching providers.
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": prompt},
+        {"role": "system", "content": llm.cacheable(SYSTEM_PROMPT, model)},
+        {"role": "user", "content": llm.cacheable(prompt, model)},
     ]
 
     nudged = False
@@ -384,6 +389,7 @@ Be thorough — check all vulnerability categories."""
         audit.input_tokens += in_tok
         audit.output_tokens += out_tok
         audit.total_tokens += in_tok + out_tok
+        audit.cached_tokens += llm.cached_tokens(response)
 
         msg = response.choices[0].message
         tool_calls = getattr(msg, "tool_calls", None) or []
