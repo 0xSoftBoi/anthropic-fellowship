@@ -22,16 +22,17 @@ Research demonstrating that compositional reasoning + multi-turn analysis beats 
 flowchart LR
     SRC["Verified contract source<br/>(Blockscout / Sourcify,<br/>address confirmed on-chain)"]
     SRC --> STATIC["Static analyzer v2<br/><i>pattern baseline, free</i>"]
-    SRC --> AGENT["Agentic analyzer<br/><i>multi-turn tool loop</i>"]
+    SRC --> LLM["Provider-agnostic LLM layer<br/><i>LiteLLM · Claude / DeepSeek / Kimi / local</i>"]
+    LLM --> MODES["Analysis modes<br/><i>agentic · cascade · self-consistency</i>"]
     STATIC --> EVAL{{"Evaluate vs.<br/>ground truth"}}
-    AGENT --> EVAL
+    MODES --> EVAL
     EVAL --> STR["String-match F1<br/><i>exact vuln-type</i>"]
     EVAL --> SEM["Semantic F1<br/><i>LLM-as-judge</i>"]
     SEM -.validated by.-> GOLD["validate_judge<br/>vs. 38-unit gold standard<br/><b>92% precision</b>"]
 
     classDef paid fill:#fde68a,stroke:#b45309,color:#111;
     classDef free fill:#bbf7d0,stroke:#15803d,color:#111;
-    class AGENT,SEM paid;
+    class LLM,MODES,SEM paid;
     class STATIC,STR free;
 ```
 
@@ -123,6 +124,37 @@ token cost and dollar amounts are persisted in the result files).
 
 ---
 
+## Models & analysis modes
+
+The analyzers are **provider-agnostic** via [LiteLLM](https://github.com/BerriAI/litellm):
+the same tool-use loop runs on Claude, DeepSeek, Kimi, Qwen, MiniMax, GLM, or **any local
+OpenAI-compatible server** (vLLM / Ollama / SGLang). It's an MIT translation layer — no
+router, no per-token markup — so requests go straight to the provider or to a model inside
+your own network, and contract source need never leave the box. Select with `BENCH_MODEL`;
+output is stamped per model so baselines are never overwritten.
+See **[MULTI_MODEL.md](docs/MULTI_MODEL.md)**.
+
+Four analysis modes, all behind the same evaluator + validated judge:
+
+| Mode | Flag | Optimizes for |
+|------|------|---------------|
+| **Agentic** | `--agentic` | the measured baseline (multi-turn tool loop, one model) |
+| **Cascade** | `--cascade` | **cost** — a cheap model triages, the strong model deep-dives only flagged functions |
+| **Self-consistency** | `--sc` | **precision** — k samples, keep majority-vote findings |
+| **Large-context** | *(automatic)* | **recall** — big-context models read whole contracts instead of regex-extracted functions |
+
+Cost/latency optimizations apply across every mode: **prompt caching** (~50–75% input-token
+cut on the multi-turn loop), **concurrency** (`BENCH_CONCURRENCY`), and **retries/timeouts**.
+See **[OPTIMIZATION.md](docs/OPTIMIZATION.md)**.
+
+> **Measured vs. shipped.** Only the committed Opus 4.8 agentic run has measured F1. The
+> multi-model layer and the cascade / self-consistency / large-context modes are **shipped
+> and unit-verified**, but their F1/cost deltas are **not yet measured against a live key**.
+> The instrumentation (cached tokens, wall-clock, per-tier cost) is in place to quantify them
+> on the next run.
+
+---
+
 ## Key Findings
 
 **1. Compositional vulnerabilities require multi-turn reasoning.** Flash loan + oracle
@@ -192,6 +224,27 @@ python3 -m agents.semantic_rescorer results_real__claude-opus-4-8.json
 python3 -m agents.validate_judge
 ```
 
+**Cheaper / local models and optimized modes** (provider-agnostic via LiteLLM):
+
+```bash
+# Cheaper hosted model — your own key, no middleman
+BENCH_MODEL=deepseek DEEPSEEK_API_KEY=... python3 -m agents.benchmark_runner --real --agentic
+
+# Local model — contract source never leaves your network
+LLM_BASE_URL=http://localhost:8000/v1 BENCH_MODEL=local \
+  python3 -m agents.benchmark_runner --real --agentic
+
+# Cost-optimized cascade: cheap wide-net -> focused strong-model escalation
+CASCADE_CHEAP_MODEL=deepseek CASCADE_STRONG_MODEL=opus \
+  python3 -m agents.benchmark_runner --real --cascade
+
+# Precision-optimized self-consistency: k samples, keep majority-vote findings
+SC_SAMPLES=3 BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --sc
+
+# Throughput: analyze contracts in parallel (prompt caching + retries are automatic)
+BENCH_CONCURRENCY=8 BENCH_MODEL=opus python3 -m agents.benchmark_runner --real --agentic
+```
+
 ---
 
 ## Architecture
@@ -206,22 +259,33 @@ flowchart TB
         REG["bridge_bench.py<br/><i>full registry incl. off-chain</i>"]
     end
 
-    subgraph analyze["Analyzers"]
+    subgraph llmlayer["Provider-agnostic LLM — agents/llm.py (LiteLLM)"]
+        direction LR
+        MC["Claude"]
+        MO["DeepSeek / Kimi / Qwen / MiniMax"]
+        ML["local vLLM / Ollama"]
+    end
+
+    subgraph analyze["Analyzers / modes"]
         direction LR
         SA["static_analyzer_v2<br/><i>free baseline</i>"]
         AA["agentic_analyzer<br/><i>multi-turn tool loop</i>"]
+        CA["cascade_analyzer<br/><i>cheap→strong escalation</i>"]
+        SC["selfconsistency_analyzer<br/><i>k-sample vote</i>"]
         HA["hybrid_analyzer<br/><i>consensus pre-filter + LLM</i>"]
     end
 
     subgraph score["Scoring"]
         direction LR
-        BR["benchmark_runner<br/><i>--real / --defi / --lending</i>"]
+        BR["benchmark_runner<br/><i>--real / --defi / --lending<br/>--agentic/--cascade/--sc</i>"]
         SR["semantic_rescorer<br/><i>LLM-as-judge</i>"]
         VJ["validate_judge<br/><i>vs. gold standard</i>"]
     end
 
-    data --> analyze --> BR
-    BR -->|"results_*.json<br/>(metrics + findings + cost)"| SR
+    data --> analyze
+    llmlayer --> analyze
+    analyze --> BR
+    BR -->|"results_*.json<br/>(metrics + findings + cost + cache/wall-clock)"| SR
     SR -->|"__rescored.json"| OUT["F1: string-match + semantic"]
     GOLD["judge_gold_standard.json<br/>38 hand labels"] --> VJ -.calibrates.-> SR
 ```
@@ -233,13 +297,16 @@ flowchart TB
   was fetched; off-chain key-compromise hacks are quarantined in `bridge_bench.py`.
 - **Reproducible & budget-aware.** Per-contract token + dollar cost is persisted; `budget_run.py`
   caps spend and saves after every contract.
-- **Model-agnostic.** `BENCH_MODEL` selects the model; results are stamped per model so baselines
-  are never overwritten.
+- **Provider-agnostic.** One LiteLLM path (`agents/llm.py`) runs any hosted or local model;
+  `BENCH_MODEL` selects it and results are stamped per model so baselines are never overwritten.
+- **Cost/perf built in.** Prompt caching, contract-level concurrency, and retries/timeouts apply
+  to every mode; cached-token and wall-clock figures are persisted alongside cost.
 
 | Layer | Files |
 |-------|-------|
 | Datasets | `benchmarks/{bridge,defi,lending}_contracts_real.py`, `bridge_bench.py`, `contracts/*.sol` |
-| Analyzers | `agents/{static_analyzer_v2,agentic_analyzer,hybrid_analyzer}.py` |
+| Model layer | `agents/llm.py` (LiteLLM: caching, retries, model registry, context budget) |
+| Analyzers | `agents/{static_analyzer_v2,agentic_analyzer,cascade_analyzer,selfconsistency_analyzer,hybrid_analyzer}.py` |
 | Scoring | `agents/{benchmark_runner,semantic_rescorer,validate_judge,budget_run}.py` |
 | Gold standard | `benchmarks/judge_gold_standard.json` (38 hand-labeled decisions) |
 
@@ -282,6 +349,8 @@ python -m agents.report                 # regenerate the results tables from com
 ## Documentation
 
 - **[RESEARCH.md](docs/RESEARCH.md)** — full methodology and phase-by-phase findings (incl. Phase 7)
+- **[MULTI_MODEL.md](docs/MULTI_MODEL.md)** — provider-agnostic models, local/self-host deployment, the bake-off
+- **[OPTIMIZATION.md](docs/OPTIMIZATION.md)** — prompt caching, concurrency, cascade, self-consistency, large-context
 - **[DATASHEET.md](docs/DATASHEET.md)** — Datasheet-for-Datasets: provenance, composition, limitations
 - **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
 - **[writeups/multi_domain_analysis.md](writeups/multi_domain_analysis.md)** — what Opus catches vs. misses, per contract
@@ -294,4 +363,6 @@ python -m agents.report                 # regenerate the results tables from com
 MIT — see LICENSE.
 
 **Status:** bridges complete (16 verified contracts, validated semantic rescorer); DEX
-partial; lending rebuilt. Last updated June 2026.
+partial; lending rebuilt. Harness is now provider-agnostic (LiteLLM) with cost/perf
+optimization (caching, concurrency) and cascade / self-consistency / large-context modes —
+shipped and unit-verified, measurement pending a live multi-model run. Last updated June 2026.
