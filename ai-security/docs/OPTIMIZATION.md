@@ -105,12 +105,20 @@ python3 -m agents.semantic_rescorer results_real__cascade_deepseek_opus.json
 > missed. `CASCADE_ALWAYS_ESCALATE=1` is the recall-max escape hatch. Measure
 > both against the agentic baseline with the judge before trusting either.
 
+### Large-context path (shipped)
+
+Regex function-extraction is lossy — it can drop the cross-function context
+compositional exploits live in. `prepare_source_for_analysis` is now
+**model-aware**: big-context families (DeepSeek, MiniMax, Gemini, Qwen, Kimi,
+GLM, Grok, Llama-4) feed the **whole contract** (budget ~600K chars ≈ 150K
+tokens via `llm.context_budget_chars`), while Anthropic keeps the conservative
+80K budget so the committed baseline is byte-for-byte unchanged. Override with
+`LLM_MAX_SOURCE_CHARS`. Pairs with prompt caching: the larger whole-contract
+prefix is cached across the agent's turns, so the cost of feeding more is
+absorbed after the first turn.
+
 ### Still roadmap
 
-- **Large-context path.** For 1M-context models (MiniMax M3, Gemini, DeepSeek),
-  skip the regex function-extraction in `prepare_source_for_analysis` and feed
-  whole contracts — extraction can drop cross-function context that compositional
-  exploits live in. Likely recall ↑.
 - **Self-consistency.** k-sample borderline findings and merge via the judge;
   trades a little cost for precision on ambiguous calls.
 

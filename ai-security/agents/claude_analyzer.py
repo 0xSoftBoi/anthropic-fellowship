@@ -149,15 +149,26 @@ BRIDGE_RISK_PATTERNS = [
     r"function\s+(upgrade\w*|setImpl\w*|setOwner\w*|withdraw\w*|execute\w*)\s*\(",
     r"function\s+(swap\w*|route\w*|transfer\w*|approve\w*|deposit\w*)\s*\(",
 ]
-MAX_SOURCE_CHARS = 80_000  # ~20K tokens, safe budget
+MAX_SOURCE_CHARS = 80_000  # ~20K tokens — default/Anthropic budget (baseline-stable)
 
 
-def prepare_source_for_analysis(source_code: str, contract_name: str) -> str:
+def prepare_source_for_analysis(
+    source_code: str,
+    contract_name: str,
+    model: str | None = None,
+    max_chars: int | None = None,
+) -> str:
     """
-    If source is small enough, return as-is.
-    If large, extract only risky function bodies.
+    If source fits the model's context budget, return it whole (no information
+    loss). Otherwise extract only risky function bodies.
+
+    Budget is model-aware: big-context models (DeepSeek, MiniMax, Gemini, ...)
+    take whole contracts; Anthropic keeps the conservative default so the
+    committed baseline is unchanged. Override with max_chars or
+    LLM_MAX_SOURCE_CHARS.
     """
-    if len(source_code) <= MAX_SOURCE_CHARS:
+    budget = max_chars if max_chars is not None else llm.context_budget_chars(model)
+    if len(source_code) <= budget:
         return source_code
 
     # Extract risky functions
@@ -176,8 +187,8 @@ def prepare_source_for_analysis(source_code: str, contract_name: str) -> str:
         header = f"// {contract_name} — extracted risky functions ({len(risky_functions)} of full contract)\n\n"
         return header + "\n\n// ===== NEXT FUNCTION =====\n\n".join(set(risky_functions))
 
-    # Fallback: truncate first 80KB
-    return source_code[:MAX_SOURCE_CHARS] + "\n\n// [truncated — contract too large]"
+    # Fallback: truncate to budget
+    return source_code[:budget] + "\n\n// [truncated — contract too large]"
 
 
 def analyze_with_claude(
@@ -189,8 +200,10 @@ def analyze_with_claude(
     Deep analysis using Claude. Combines static pre-screening results
     with LLM reasoning for comprehensive vulnerability detection.
     """
-    # Prepare source: extract functions if too large
-    source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
+    # Prepare source: feed whole if it fits the model's budget, else extract
+    source_for_analysis = prepare_source_for_analysis(
+        source_code, contract_name, model=llm.litellm_model()
+    )
 
     # Build the user prompt with context
     context_parts = [f"Contract name: {contract_name}"]

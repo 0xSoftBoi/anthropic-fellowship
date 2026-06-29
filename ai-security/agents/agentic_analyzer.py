@@ -340,8 +340,11 @@ def run_agent(
     """
     audit = AgentAudit(contract_name=contract_name)
 
-    # Use function extraction to handle large contracts
-    source_for_analysis = prepare_source_for_analysis(source_code, contract_name)
+    # Feed the whole contract when it fits the model's context budget (big-context
+    # models skip the lossy regex extraction); otherwise extract risky functions.
+    source_for_analysis = prepare_source_for_analysis(
+        source_code, contract_name, model=model or llm.litellm_model()
+    )
 
     # Build the analysis prompt, including context_hint if provided
     prompt = f"""Analyze this bridge contract for security vulnerabilities.

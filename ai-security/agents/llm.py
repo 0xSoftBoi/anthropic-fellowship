@@ -91,6 +91,35 @@ def has_credentials() -> bool:
     return any(os.environ.get(k) for k in provider_keys)
 
 
+# --- Context budget --------------------------------------------------------
+# Regex function-extraction (prepare_source_for_analysis) is lossy — it can drop
+# the cross-function context compositional exploits live in. Big-context models
+# don't need it: feed the whole contract. Budget is in CHARS (~4 chars/token).
+# Anthropic stays at the conservative default so the committed baseline is
+# byte-for-byte reproducible; only the large-context open models opt into more.
+LARGE_CONTEXT_MODELS = (
+    "deepseek", "minimax", "gemini", "qwen", "kimi", "moonshot",
+    "glm", "grok", "llama-4", "llama4",
+)
+_DEFAULT_BUDGET_CHARS = 80_000          # ~20K tokens (matches the committed baseline)
+_LARGE_BUDGET_CHARS = 600_000           # ~150K tokens — whole real contracts fit
+
+
+def context_budget_chars(model: str | None = None) -> int:
+    """Max source chars to send before falling back to function-extraction.
+
+    Override globally with LLM_MAX_SOURCE_CHARS; otherwise large-context model
+    families get a much higher budget so whole contracts pass through intact.
+    """
+    override = os.environ.get("LLM_MAX_SOURCE_CHARS")
+    if override:
+        return int(override)
+    m = (model or litellm_model()).lower()
+    if any(k in m for k in LARGE_CONTEXT_MODELS):
+        return _LARGE_BUDGET_CHARS
+    return _DEFAULT_BUDGET_CHARS
+
+
 def _supports_temperature(model: str) -> bool:
     # Some models reject an explicit temperature override and require the
     # default (e.g. Fable, Opus 4.8 with extended thinking). Keep temperature=0
