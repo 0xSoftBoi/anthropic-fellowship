@@ -1,0 +1,158 @@
+# Instincts generated from https://github.com/0xSoftBoi/anthropic-fellowship
+# Reviewed & corrected against the actual codebase (the auto-generated set was
+# JS-flavored and inaccurate: it claimed relative imports, camelCase functions,
+# __all__ exports, and *.test.* files — none of which this repo uses).
+# Version: 2.1
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+
+---
+id: anthropic-fellowship-file-naming
+trigger: "when creating a new Python file"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# File Naming
+
+## Action
+
+Name Python files in snake_case (e.g. `cascade_analyzer.py`).
+
+## Evidence
+
+- Every module under `ai-security/agents/` and `benchmarks/` uses snake_case.
+
+---
+id: anthropic-fellowship-function-naming
+trigger: "when defining a function"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Function Naming
+
+## Action
+
+Use snake_case for functions (e.g. `run_agent`, `prepare_source_for_analysis`). This is Python — not camelCase.
+
+## Evidence
+
+- Functions across `agents/*.py` are snake_case.
+
+---
+id: anthropic-fellowship-class-naming
+trigger: "when defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Class Naming
+
+## Action
+
+Use PascalCase for classes (e.g. `AgentAudit`, `CascadeAudit`, `Vulnerability`).
+
+## Evidence
+
+- Dataclasses in `agents/*.py` are PascalCase.
+
+---
+id: anthropic-fellowship-constant-naming
+trigger: "when defining a module-level constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constants (e.g. `MAX_SOURCE_CHARS`, `BRIDGE_RISK_PATTERNS`).
+
+## Evidence
+
+- Module constants across the analyzers are SCREAMING_SNAKE_CASE.
+
+---
+id: anthropic-fellowship-imports
+trigger: "when importing project modules"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Imports
+
+## Action
+
+Use absolute, package-rooted imports — `from agents.llm import completion`, `from benchmarks.bridge_contracts_real import load_real_contracts`. Do not use relative (`from ..`) imports.
+
+## Evidence
+
+- ~35 absolute `from agents` / `from benchmarks` imports; zero relative `from ..` imports.
+
+---
+id: anthropic-fellowship-model-access
+trigger: "when calling an LLM / model API"
+confidence: 0.85
+domain: architecture
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Provider-agnostic Model Access
+
+## Action
+
+Route every model call through `agents/llm.py` (`llm.completion(...)`, LiteLLM) and select the model with `BENCH_MODEL`. Never call a provider SDK directly.
+
+## Evidence
+
+- `agents/llm.py` is the single completion path; all analyzers import it.
+
+---
+id: anthropic-fellowship-tests
+trigger: "when writing or running tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Tests
+
+## Action
+
+Put tests in `ai-security/tests/` and run them with pytest: `python -m pytest tests/ -q`.
+
+## Evidence
+
+- `ai-security/tests/test_eval.py`; README and CI invoke `python -m pytest tests/ -q`.
+
+---
+id: anthropic-fellowship-commit-format
+trigger: "when writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Commit Format
+
+## Action
+
+Write a concise, descriptive message; a `type:` prefix (`docs:`, `feat:`, `fix:`) is common. Add a `Co-Authored-By:` trailer for agent commits.
+
+## Evidence
+
+- Recent history mixes type-prefixed and freeform messages.
