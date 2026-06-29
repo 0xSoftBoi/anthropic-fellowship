@@ -457,6 +457,16 @@ def run_cascade_benchmark(dataset: Optional[dict] = None, dataset_name: str = "S
     )
 
 
+def run_selfconsistency_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
+    """Self-consistency benchmark: k samples, keep findings with majority votes."""
+    from agents.selfconsistency_analyzer import run_self_consistent
+    return _run_audit_benchmark(
+        dataset, dataset_name,
+        worker=lambda source, name: run_self_consistent(source, name),
+        method="selfconsistency", banner="Self-Consistency (k-sample vote) Analysis",
+    )
+
+
 def run_hybrid_benchmark(dataset: Optional[dict] = None, dataset_name: str = "Synthetic") -> dict | None:
     """
     Run hybrid analysis benchmark: static pre-filter + targeted Sonnet analysis.
@@ -556,6 +566,8 @@ def run_domain(dataset_list, label, args, results_all):
         mode, fn = "hybrid", run_hybrid_benchmark
     elif args.cascade:
         mode, fn = "cascade", run_cascade_benchmark
+    elif args.selfconsistency:
+        mode, fn = "selfconsistency", run_selfconsistency_benchmark
     elif args.agentic:
         mode, fn = "agentic", run_agentic_benchmark
     else:
@@ -613,6 +625,13 @@ if __name__ == "__main__":
         help="Use cascade analysis (cheap wide-net -> focused strong-model escalation). "
              "Tune via CASCADE_CHEAP_MODEL / CASCADE_STRONG_MODEL.",
     )
+    parser.add_argument(
+        "--selfconsistency", "--sc",
+        dest="selfconsistency",
+        action="store_true",
+        help="Use self-consistency (k samples, keep majority-vote findings). "
+             "Tune via SC_SAMPLES / SC_MIN_VOTES / SC_TEMPERATURE.",
+    )
 
     args = parser.parse_args()
 
@@ -657,6 +676,13 @@ if __name__ == "__main__":
                     print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
                     print(f"  Cascade:    P={a['precision']:.0%}  R={a['recall']:.0%}  F1={a['f1']:.0%}")
                     print(f"  Delta F1:   {a['f1'] - s['f1']:+.0%}")
+            elif args.selfconsistency:
+                synthetic_sc = run_selfconsistency_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
+                results_all["synthetic_selfconsistency"] = synthetic_sc
+                if synthetic_sc:
+                    s = synthetic_static["overall"]; a = synthetic_sc["overall"]
+                    print(f"\nSYNTHETIC: Static F1={s['f1']:.0%}  Self-Consistency F1={a['f1']:.0%}  "
+                          f"Delta={a['f1'] - s['f1']:+.0%}")
             elif args.agentic:
                 synthetic_agentic = run_agentic_benchmark(TEST_CONTRACTS, "Synthetic Patterns")
                 results_all["synthetic_agentic"] = synthetic_agentic
@@ -728,6 +754,13 @@ if __name__ == "__main__":
                     print(f"  Static v2:  P={s['precision']:.0%}  R={s['recall']:.0%}  F1={s['f1']:.0%}")
                     print(f"  Cascade:    P={a['precision']:.0%}  R={a['recall']:.0%}  F1={a['f1']:.0%}")
                     print(f"  Delta F1:   {a['f1'] - s['f1']:+.0%}")
+            elif args.selfconsistency:
+                real_sc = run_selfconsistency_benchmark(real_contracts_dict, "Real Verified Contracts")
+                results_all["real_selfconsistency"] = real_sc
+                if real_sc:
+                    s = real_static["overall"]; a = real_sc["overall"]
+                    print(f"\nREAL: Static F1={s['f1']:.0%}  Self-Consistency F1={a['f1']:.0%}  "
+                          f"Delta={a['f1'] - s['f1']:+.0%}")
             elif args.agentic:
                 real_agentic = run_agentic_benchmark(real_contracts_dict, "Real Verified Contracts")
                 results_all["real_agentic"] = real_agentic
@@ -799,6 +832,10 @@ if __name__ == "__main__":
         _cheap = os.environ.get("CASCADE_CHEAP_MODEL", "deepseek")
         _strong = os.environ.get("CASCADE_STRONG_MODEL", "opus")
         _model_tag = f"__cascade_{_cheap}_{_strong}".replace("/", "-")
+    elif args.selfconsistency:
+        _k = os.environ.get("SC_SAMPLES", "3")
+        _model_tag = (("__" + _RUN_MODEL.replace("/", "-")) if _RUN_MODEL != "claude-sonnet-4-6" else "") \
+            + f"__sc{_k}"
     if (args.defi or args.lending) and not args.real and not args.compare:
         _dom = "defi" if args.defi else ""
         _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"

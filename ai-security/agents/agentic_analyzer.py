@@ -323,6 +323,7 @@ def run_agent(
     max_turns: int = 10,
     model: str | None = None,  # None -> resolve BENCH_MODEL via agents.llm
     context_hint: str = "",  # Optional: pre-filter findings from static tools
+    temperature: float = 0,  # >0 to diversify samples (self-consistency)
 ) -> AgentAudit:
     """
     Run the agentic analyzer on a contract.
@@ -384,6 +385,7 @@ Be thorough — check all vulnerability categories."""
             model=model,
             max_tokens=4096,
             tools=OPENAI_TOOLS,
+            temperature=temperature,
         )
 
         usage = response.usage

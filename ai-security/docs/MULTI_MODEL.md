@@ -26,6 +26,8 @@ differentiator a hosted-API-only competitor can't offer.
 | `BENCH_CONCURRENCY` | Optional (default 4). Contracts analyzed in parallel. |
 | `JUDGE_CONCURRENCY` | Optional (default 8). Parallel judge calls in the rescorer. |
 | `LLM_NUM_RETRIES` / `LLM_TIMEOUT` | Optional (3 / 120s). Retry + timeout for transient errors. |
+| `LLM_MAX_SOURCE_CHARS` | Optional. Force a source-size budget (else model-aware: big-context models feed whole contracts). |
+| `CASCADE_*` / `SC_*` | Cascade and self-consistency tuning — see `OPTIMIZATION.md`. |
 
 > Performance & cost tuning (prompt caching, concurrency, reliability) is
 > documented in [`OPTIMIZATION.md`](./OPTIMIZATION.md).

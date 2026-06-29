@@ -117,10 +117,32 @@ tokens via `llm.context_budget_chars`), while Anthropic keeps the conservative
 prefix is cached across the agent's turns, so the cost of feeding more is
 absorbed after the first turn.
 
-### Still roadmap
+### Self-consistency (shipped — `--selfconsistency` / `--sc`)
 
-- **Self-consistency.** k-sample borderline findings and merge via the judge;
-  trades a little cost for precision on ambiguous calls.
+Run the agent k times and keep findings that recur. A finding reported in many
+independent passes is far likelier real than a one-off, so voting filters
+unstable/hallucinated findings (precision ↑) at a k× token cost.
+
+`agents/selfconsistency_analyzer.py:run_self_consistent()`:
+- Diversity per sample comes from a prompt nonce ("independent pass i of k") —
+  which works even at temperature 0 — plus a non-zero `SC_TEMPERATURE` when the
+  model accepts one.
+- Findings are keyed by (normalized type, location); a key is kept when its vote
+  count ≥ `SC_MIN_VOTES` (default majority). Kept findings carry their **vote
+  fraction as confidence**, so consumers see the agreement level.
+
+Config: `SC_SAMPLES` (default 3), `SC_MIN_VOTES` (default `k//2+1`),
+`SC_TEMPERATURE` (default 0.7).
+
+```bash
+SC_SAMPLES=3 BENCH_MODEL=deepseek \
+  python3 -m agents.benchmark_runner --real --sc
+# writes results_real__deepseek-chat__sc3.json
+```
+
+> Trade-off: majority voting raises precision but can cost recall (a real finding
+> only one pass caught is dropped). Lower `SC_MIN_VOTES` to 1 for a recall-union
+> instead. Measure both against the agentic baseline with the judge.
 
 ## Phase 3 — Bake-off throughput (roadmap)
 
