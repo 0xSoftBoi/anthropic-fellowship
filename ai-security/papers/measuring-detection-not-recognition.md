@@ -22,8 +22,10 @@ benchmark reports a single number — here, an F1 score — and that number is r
 This paper is a case study in how much has to be true for that reading to be valid, using a
 smart-contract vulnerability-detection benchmark I built and then audited until it broke.
 
-I identify **four separable confounds**, each of which lets the benchmark report a number that is
-not measuring detection, and I instrument all four cheaply:
+I identify **four confounds**, each of which lets the benchmark report a number that is not
+measuring detection. For each I either measure its effect without a model API key or ship committed
+tooling plus a pre-registered design — a distinction I keep explicit throughout, because today only
+judge validity yields a key-free, model-level effect size:
 
 1. **Prompt leakage** — the answer is *in the input*. 13 of 24 contracts (54%) shipped a
    provenance comment that described the bug; 4 contained a ground-truth label string directly.
@@ -40,30 +42,28 @@ not measuring detection, and I instrument all four cheaply:
 For (1) I ship a sanitizer with a *structural safety invariant* (the code token stream and all
 control-flow counts are preserved, so a decontamination F1 drop cannot be the sanitizer breaking
 the contract). For (4) I add first-party, never-exploited, audit-hardened contracts as negative
-controls, and — the paper's main new construction — their positive complement: the **pre-audit
-versions of those same contracts**, giving 16 real, exploitable bugs the model cannot have
-memorized, with ground truth taken from the **git fix-commit diff** rather than any prose
-post-mortem.
+controls, and — the paper's central construction — their positive complement: the **pre-audit
+versions of those same contracts**, giving **16 diff-grounded vulnerability labels** whose ground
+truth is the **git fix-commit diff** rather than any prose post-mortem. Because these contracts are
+first-party and were never exploited, they have **no public post-mortem** — so a finding here
+cannot be recall-of-a-write-up.
 
-**Relation to prior work (stated up front, so the contribution is not overclaimed).** Each
-individual confound has strong parents that this paper confirms rather than discovers: matched
-vulnerable/fixed pairs with git-fix-commit labels and paired recall/specificity are established
-in C/C++ by PrimeVul (Ding et al., 2024) and Risse & Böhme (2024); answer-in-the-input leakage by
-SWE-Bench+ (Aleithan et al., 2024) and Fang et al. (2024); semantic-preserving perturbation by
-Yang et al. (2023) and SecLLMHolmes (Ullah et al., 2024); LLM-judge/human divergence by Krumdick
-et al. (2025) and Thakur et al. (2025); and the audit→quantify→checklist→fix method by ABC (Zhu et
-al., 2025). The exact setup we study — GPT-4/Claude on previously-compromised DeFi contracts — is
-David et al. (2023). Against that backdrop the paper makes a **domain-transfer-plus-integration**
-contribution, and only two claims are defended as genuinely new: **(a) provably un-memorizable
-positives** — first-party, never-exploited pre-audit contracts with *no public post-mortem*, so
-unlike PrimeVul's mined third-party fix commits they cannot sit in the training corpus, giving a
-recall measurement that cannot be recall-of-a-write-up; and **(b) a mechanically verified
-structural safety invariant** on the sanitizer, so an F1 drop is attributable to decontamination
-rather than to a broken artifact. Everything else is a known failure mode measured, for the first
-time jointly and with executable checks, in smart-contract security.
+**Relation to prior work (stated up front, so the contribution is not overclaimed).** Every
+individual confound has strong parents this paper confirms rather than discovers — PrimeVul (Ding
+et al., 2024) owns the matched-pairs / git-diff / paired-recall-and-specificity core, and the exact
+setup studied (GPT-4/Claude on compromised DeFi contracts) is David et al. (2023); full
+per-confound crediting is in §8. Only two claims are defended as genuinely new: **(a) provably
+un-memorizable first-party positives** — pre-audit contracts with no public post-mortem, so unlike
+PrimeVul's mined third-party fix commits they cannot be recall-of-a-write-up; and **(b) a
+mechanically verified structural sanitizer invariant**, so a decontamination F1 drop is
+attributable to sanitizing, not a broken artifact. Everything else is a known failure mode
+measured, for the first time jointly and with executable checks, in smart-contract security.
 
 The contribution is not a capability number. It is a reusable method — tooling plus a construction
-checklist — for telling whether a security-capability number means anything.
+checklist — for telling whether a security-capability number means anything. The same structural
+gap sits in today's frontier cyber evals (Cybench, CyberSecEval, NYU CTF): all-positive corpora
+scored by flag oracles, where specificity is unmeasurable and no grader is validated — the
+confounds instrumented here.
 
 ---
 
@@ -84,11 +84,16 @@ checks*, and to report the resulting effect sizes. That is what this paper does,
 smart-contract vulnerability-detection domain, using a benchmark I built and then audited until
 it broke. Four confounds — prompt leakage (the answer in the input), memorization (the answer in
 the weights), judge validity (the answer depends on who grades), and missing negative controls
-(specificity unmeasurable) — are measured or given committed tooling, and each is credited to its
-prior literature (§8). I state plainly what is new: not the individual techniques, but their joint
-decomposition in this domain, plus two narrow primitives — provably un-memorizable first-party
-positives and a mechanically verified sanitizer invariant (see the abstract's *Relation to prior
-work*, expanded in §8).
+(specificity unmeasurable) — are each measured key-free or given committed tooling plus a
+pre-registered design, and each is credited to its prior literature. What is new is not the
+individual techniques but their joint decomposition in this domain, plus two narrow primitives —
+un-memorizable first-party positives and a verified sanitizer invariant (§8).
+
+The same structural gap sits one level up, in the frontier cyber evaluations that gate real
+deployment decisions (Cybench, Meta's CyberSecEval, NYU CTF): all-positive task corpora scored by
+executable/flag oracles, where the model's false-positive rate is unmeasurable and no grader is
+validated. The confounds instrumented here are theirs too; smart contracts are just where the
+ground truth is crisp enough to measure them.
 
 The nearest single prior work is David et al. (2023), "Do you still need a manual smart contract
 audit?", which evaluates GPT-4/Claude on 52 previously-compromised DeFi contracts and reports ~40%
@@ -103,9 +108,10 @@ injections.) This paper turns that class of setup into a validity study.
 ### 1.1 The object of study
 
 BRIDGE-bench is a smart-contract vulnerability-detection benchmark: 24 verified, deployed
-contracts across three DeFi domains (16 cross-chain bridges, 5 DEX/AMM, 3 lending), each paired
-with a root-cause vulnerability label an auditor would assign, drawn from public exploits
-2021–2026 (full provenance in the [datasheet](../docs/DATASHEET.md)). A model reads a contract and
+contracts across three DeFi domains (16 cross-chain bridges, 5 DEX/AMM, 3 lending — Euler, counted
+under DEX/AMM, is strictly a lending/money-market protocol), each paired with a root-cause
+vulnerability label an auditor would assign, drawn from public exploits 2021–2026 (full provenance
+in the [datasheet](../docs/DATASHEET.md)). A model reads a contract and
 emits findings; findings are scored against the labels by exact/synonym string match and, for the
 misses, by an LLM-as-judge that decides semantic equivalence. The headline is Opus 4.8 at **35%
 semantic F1 / 54% recall** over the 24 contracts.
@@ -121,6 +127,38 @@ qualification. Each is individually cheap to measure; none is standard practice 
 security-capability benchmarks this work builds on. The rest of the paper measures the ones that
 can be measured without a key, ships the tooling for the ones that need one, and states — for each
 — exactly what the current evidence does and does not support.
+
+### 1.3 Contributions
+
+1. A **joint decomposition of four validity confounds** — prompt leakage, memorization, judge
+   validity, missing negative controls — instrumented together on one smart-contract benchmark
+   with executable, key-free checks, and reported effect sizes where they can be measured without
+   a model key.
+2. **Committed tooling** for each: a structural-invariant sanitizer, a judge grader-sensitivity +
+   bootstrap harness, first-party negative controls, and matched vulnerable/fixed pairs — all run
+   in CI.
+3. **[New] Provably un-memorizable first-party positives** — pre-audit contracts with no public
+   post-mortem, labeled from the first-party git fix-commit diff.
+4. **[New] A mechanically verified structural safety invariant** on the sanitizer, so a
+   decontamination F1 drop is attributable to sanitizing rather than to a broken artifact.
+5. A **six-point construction checklist** (§7) and a datasheet, so the checks transfer to other
+   security-capability benchmarks.
+
+Only items 3 and 4 are claimed as genuinely new; items 1, 2, and 5 are integration and
+method-transfer contributions whose parents are credited in §8.
+
+### 1.4 The four confounds at a glance
+
+| Confound (channel) | How measured | Effect / status (this paper) | Nearest prior |
+|---|---|---|---|
+| **C1 Prompt leakage** — answer in the *input* | grep the literal prompt for labels + prose; sanitizer | **13/24 SEVERE** at `raw` (diagnosed, key-free); effect size Δ(raw→stripped) needs a key | SWE-Bench+ (2024); Fang et al. (2024) |
+| **C2 Memorization** — answer in the *weights* | anonymizer arm, Δ(stripped→anon); matched pairs | tooling + pre-registered design; **no measured effect yet** (needs a key) | Carlini et al. (2022); Yang et al. (2023) |
+| **C3 Judge validity** — depends on *who grades* | re-score identical findings vs human gold + bootstrap | **37.1%→51.6%, Δ 14.5 pts** (measured, key-free) | Krumdick et al. (2025); Thakur et al. (2025) |
+| **C4 No negative controls** — base rate 100% | first-party negatives (specificity) + matched pairs (recall) | static **zero-finding 75%**, static **recall 0/16** (key-free); model runs are design | PrimeVul (2024); David et al. (2023) |
+
+The **status** column is the honest line through the paper: only C3 yields a key-free, model-level
+effect size today; C1 is diagnosed key-free with its effect size left as a committed run; C2 and
+the *model-side* of C4 are pre-registered designs with tooling shipped.
 
 ---
 
@@ -198,11 +236,11 @@ address-neutralizing regex was rewriting the first 40 hex chars of 64-char `byte
 
 **Design (needs a key); tooling shipped.** Full spec: [`CONTAMINATION.md`](../docs/CONTAMINATION.md).
 
-Every contract is a famous historical exploit — Nomad, Euler, Qubit, Wormhole, Cream, Compound,
-KyberSwap — each with a widely circulated post-mortem published before the models under test were
-trained. When Opus reports `missing_solvency_check` on the Euler module, at least three mechanisms
-could produce that output: (i) compositional reasoning from source (the capability claimed),
-(ii) recall of the post-mortem keyed off identifiers, (iii) prior familiarity shaping attention.
+Every contract is a famous historical exploit — Nomad, Euler, Qubit, Cream, Compound, KyberSwap —
+each with a widely circulated post-mortem published before the models under test were trained. When
+Opus reports `missing_solvency_check` on the Euler module, at least three mechanisms could produce
+that output: (i) compositional reasoning from source (the capability claimed), (ii) recall of the
+post-mortem keyed off identifiers, (iii) prior familiarity shaping attention.
 The design cannot distinguish them, so every reported number is
 *detection-under-possible-memorization*. This is not hypothetical for this dataset in particular:
 the **labels were themselves derived from those same post-mortems** (see
@@ -214,8 +252,10 @@ bit-for-bit preserved** (invariant §2.1) but the identifiers that make it recog
 Then two deltas separate the two confounds cleanly:
 
 - **Δ(raw → stripped) = prompt leakage** — how much of the score was reading the answer.
-- **Δ(stripped → anon) = memorization** — how much survives on de-identified but semantically
-  identical code.
+- **Δ(stripped → anon) = recognition** — how much survives on de-identified but semantically
+  identical code. Anonymization strips the cues behind both mechanisms (ii) and (iii), so this
+  delta bounds recognition (post-mortem recall *plus* general familiarity) jointly; it does not
+  isolate narrow memorization from familiarity.
 
 ```bash
 BENCH_SANITIZE=raw      python -m agents.benchmark_runner --real --agentic   # leaky baseline
@@ -242,7 +282,10 @@ memorized contract, **use contracts the model never saw.**
 The semantic F1 is a function of **53 binary LLM-as-judge calls** (for each label the string
 matcher missed, does some unmatched finding refer to the same bug?), and it has always been
 reported as a point estimate. `benchmarks/judge_gold_standard.json` hand-labels the truth for the
-38 bridge decisions, so for bridges we can score with human labels and read off the judge's cost:
+38 bridge decisions, so for bridges we can re-score the *identical* findings with human labels and
+measure how much the score depends on the grader. (The human labels are a single, in-sample
+annotator — the benchmark's author — so this bounds *grader-dependence*, not the correct value;
+§9.)
 
 | Bridge scoring | Precision | Recall | **F1** |
 |---|---|---|---|
@@ -250,16 +293,20 @@ reported as a point estimate. `benchmarks/judge_gold_standard.json` hand-labels 
 | Human gold labels, same findings | 38.6% | 78.0% | **51.6%** |
 | Human gold, 5 borderline labels flipped | — | — | **50.0%** |
 
-**Two graders differ by 14.5 F1 points on identical model output** — a larger effect than most of
-the model differences the benchmark exists to detect.
+**Two graders differ by 14.5 F1 points on identical model output** — plausibly comparable to the
+model differences the benchmark exists to detect. The gap robustly demonstrates grader-*dependence*;
+it does not establish that the human number is the correct one (the two hypotheses "conservative
+judge" and "lenient self-annotation" are observationally identical here).
 
 - **Fragility.** 27 "match" calls out of 53 produce the headline; one flipped decision moves it
   ≈1.1 points; +5 points costs 5 flips (9% of the corpus). A benchmark where 9% of grading
   decisions swing the headline 5 points is not a precision instrument — report a range.
 - **Uncertainty.** 20,000-iteration bootstrap (contracts resampled; judge error propagated via
   Beta posteriors where no gold standard exists): bridges 95% CI **[39.7%, 63.8%]**, all-24
-  **[38.5%, 57.4%]**. The committed 37.1%/35.0% fall *below* both lower bounds — consistent with a
-  systematically conservative judge, not a noisy one.
+  **[38.5%, 57.4%]**. The committed 37.1%/35.0% fall *below* both lower bounds. This is by
+  construction, not a separate finding: the interval injects modeled false-positive recovery (a
+  Beta posterior over the judge's missed matches), so it is centred above the committed point — the
+  point-below-interval gap is exactly the judge's modeled conservatism, not an error.
 - **The structural blind spot.** The judge **never sees the contract source.** It compares a label
   to a finding string, so it can answer "do these mean the same thing?" but not "is this finding
   true of this code?" A finding synonymous with the label but wrong about the contract must be
@@ -276,8 +323,10 @@ costs about twelve dollars, which is the main reason it should just be run.
 
 ## 5. Confound 4 — No negative controls, and the matched-pair positive that fixes it
 
-This is the paper's main new construction. It attacks confounds 2 and 4 together, **without a
-key.**
+This is the paper's central construction, and it attacks Confounds 2 and 4 together, **without a
+key.** Its novelty is narrow and scoped in §5.3 — the first-party, un-memorizable *provenance*, not
+the matched-pair *method* itself, which is PrimeVul's. The matched pair is the fix for Confound 4,
+not a fifth confound.
 
 ### 5.1 The hole
 
@@ -307,9 +356,10 @@ never exploited, with no incident in any training set** — so `ground_truth.vul
 | Measures | recall | **specificity** |
 
 Scored by **specificity = (contracts flagged with nothing) / (total)**, not F1 (F1 is 0 on empty
-ground truth whether the model was perfect or useless). Static baseline: **75%** (3/4 clean; the
-static analyzer raises `unprotected_admin_function` twice on the bonds contract — a centralization
-nit on owner functions). *Honesty caveats, stated:* the audits were the author's own manual passes
+ground truth whether the model was perfect or useless). Static baseline: **75%** — 3/4 flagged with
+nothing (a zero-finding *screen*, not a validated false-positive rate; n=4 admits no confidence
+interval, and the one "failure" is a debatable centralization nit — the static analyzer raises
+`unprotected_admin_function` twice on the bonds contract's owner functions). *Honesty caveats, stated:* the audits were the author's own manual passes
 plus open-source tooling (not an external firm), the contracts are testnet-deployed, and a finding
 here is not automatically wrong — it may be a real miss the self-audit made, which is why raw
 finding-count is a **screen** and the source-aware judge (§4) adjudicates.
@@ -320,15 +370,15 @@ finding-count is a **screen** and the source-aware judge (§4) adjudicates.
 Full doc: [`MATCHED_PAIRS.md`](../docs/MATCHED_PAIRS.md).
 
 The negative controls answer "does the model over-flag clean code?" Their positive complement is
-the measurement a *famous-exploit* benchmark cannot make: **real, exploitable bugs the model
-cannot have memorized.** Matched vulnerable/fixed pairs with git-fix-commit labels are not new —
-PrimeVul (Ding et al., 2024) and Risse & Böhme (2024) build exactly this in C/C++, and PrimeVul's
-pair-wise metric (P-C/P-V/P-B/P-R) is already a joint recall/specificity measurement on pairs.
-The distinction here is **provenance**: PrimeVul and Risse mine *public, third-party* fix commits,
-which can themselves sit in a training corpus, so their positives are not memorization-immune.
-Ours are **first-party and never-exploited, with no public post-mortem** — memorization-immune by
-construction — and the domain is Solidity, where no matched-pair set previously existed. The
-construction:
+the measurement a *famous-exploit* benchmark cannot make: **16 diff-grounded vulnerability labels
+with no public post-mortem, so a finding cannot be recall-of-a-write-up.** Matched vulnerable/fixed
+pairs with git-fix-commit labels are not new — PrimeVul (Ding et al., 2024) and Risse & Böhme
+(2024) build exactly this in C/C++, and PrimeVul's pair-wise metric (P-C/P-V/P-B/P-R) is already a
+joint recall/specificity measurement on pairs. The distinction here is **provenance**: PrimeVul and
+Risse mine *public, third-party* fix commits, which can themselves sit in a training corpus. Ours
+are **first-party and never-exploited, with no public post-mortem** — so recall-of-a-write-up is
+impossible — and the domain is Solidity, where (to our knowledge) no matched-pair set previously
+existed. The construction:
 
 - Take the **pre-audit versions** of the same first-party contracts — the source at the parent of
   each contract's earliest audit-fix commit, so it carries every bug the passes later removed.
@@ -345,11 +395,14 @@ construction:
 | Fixed counterpart for specificity | none | **yes** |
 
 **16 diff-grounded labels across 3 contracts** (bonds, staking, OFT): e.g. a critical
-flash-loan/LP-valuation bug (LP decomposed at spot price, valued by a fictional `liquidity / 1e12`
-term); a `recoverToken` that reserved only `totalStaked` and so let the owner drain stakers'
-unclaimed bonus reserve; a `mint` callable on satellite chains enabling cross-chain supply
-inflation. The token is intentionally excluded — its only pre-audit change was a non-exploitable
-gas cap, and labeling a non-bug as a positive is the mirror image of the leakage error in §2.
+flash-loan/LP-valuation bug — the bonded LP position is valued by a fictional `liquidity / 1e12`
+term (raw Uniswap-v3 position liquidity treated as a USDC amount), so the pool can be
+flash-manipulated to overmint discounted SUWP; a `recoverToken` that reserved only `totalStaked`
+and so let the owner drain stakers' unclaimed bonus reserve; a `mint` callable on satellite chains
+enabling cross-chain supply inflation. Several labels are privileged-role or invariant findings and
+one is a guarded CEI-ordering issue — these are audit-grade labels, not all critical exploits. The
+token is intentionally excluded — its only pre-audit change was a non-exploitable gas cap, and
+labeling a non-bug as a positive is the mirror image of the leakage error in §2.
 
 **Anti-leakage discipline (both directions).** For an exploit contract a leaky header states the
 bug; for a *negative* it states "nothing to find here"; for a *matched positive*, naming the bug
@@ -357,10 +410,13 @@ in the source **is** answer leakage. So every committed `.sol` — positive and 
 **provenance only** (repo, SHA, path); all bug/audit facts live in loader metadata and docs, never
 in the prompt. A test enforces it.
 
-**What the static baseline already shows:** `static_v2` finds **0 of 16** — the "static analysis
-fails on real compositional bugs" thesis, now on ground truth with no memorization confound. The
-LLM's recall here, paired with its specificity on the fixed counterparts, is the matched-pair
-result the key-holding run will produce.
+**What the static baseline already shows:** our heuristic static baseline (`static_v2`) finds
+**0 of 16**. `static_v2` is a regex/pattern analyzer, not a production detector — a classic tool
+like Slither would plausibly flag the one guarded CEI/reentrancy label — so the claim holds
+specifically for the **compositional valuation/accounting bugs** (the `liquidity / 1e12` valuation,
+the `recoverToken` solvency miss), which is where the thesis lives and where memorization-free
+ground truth matters most. The LLM's recall here, paired with its specificity on the fixed
+counterparts, is the matched-pair result the key-holding run will produce.
 
 ### 5.4 How the labels were verified
 
@@ -386,14 +442,16 @@ source-aware judge adjudicates, as everywhere. Severities are the audit's own, n
 | Sanitizer safety invariant | (same) | structural equivalence for all 24 × 3 levels |
 | Judge grader-sensitivity | `python -m agents.judge_uncertainty` | 37.1% → 51.6% (Δ 14.5 pts); 1 flip ≈1.1 pts |
 | Judge bootstrap CI | (same) | bridges [39.7, 63.8]; all-24 [38.5, 57.4] |
-| Negative-control specificity (static) | `--live --no-claude` + `specificity` | 75% (3/4 clean) |
+| Negative-control zero-finding rate (static) | `--live --no-claude` + `specificity` | 75% (3/4 flagged with nothing; n=4, a screen) |
 | Matched-pair recall (static) | `--matched --no-claude` | 0/16 |
 | Dataset integrity | `python -m benchmarks.validate_dataset` | 5 domains, 31 source-bearing contracts |
 | Test suite | `python -m pytest tests/ -q` | 46 passed, 1 skipped |
 
-The LLM-dependent measurements (Δ(raw→stripped), Δ(stripped→anon), the judge ablation sweep,
-matched-pair and negative-control *model* runs) are specified with cost estimates and left as the
-key-holding follow-up; the harnesses and scorers are committed and CI-checked.
+The **31** reconciles with the **24** thus: the 24 exploit contracts (3 domains) plus 4
+negative controls and 3 matched pairs = 31 source-bearing contracts across the 5 registered
+domains. The LLM-dependent measurements (Δ(raw→stripped), Δ(stripped→anon), the judge ablation
+sweep, matched-pair and negative-control *model* runs) are specified with cost estimates and left
+as the key-holding follow-up; the harnesses and scorers are committed and CI-checked.
 
 ---
 
@@ -436,7 +494,7 @@ et al. (2023), *Rephrased Samples*, which shows semantic-preserving rewrites def
 decontamination — but it rewrites test items to *evade* filters, whereas we rewrite the *input* to
 strip the answer while a structural invariant preserves task difficulty. Prevention/measurement
 calls (Jacovi et al., 2023, *Stop Uploading Test Data*; Sainz et al., 2023, *NLP Evaluation in
-Trouble*) frame the per-benchmark validity program; our Finding 1 is exactly the "solution appears
+Trouble*) frame the per-benchmark validity program; our Confound 1 is exactly the "solution appears
 next to the data" failure Jacovi et al. warn against.
 
 **Contamination and freshness in code benchmarks.** Controlling contamination on code costs 20–50
@@ -445,7 +503,7 @@ contamination deciles, and LiveCodeBench (Jain et al., 2024) uses time-windowed 
 dominant freshness control. Our single closest code prior is **SWE-Bench+ (Aleithan et al.,
 2024)**: auditing SWE-bench, it finds **32.67%** of passing patches had the fix leaked into the
 issue report and **31.08%** passed on weak tests, dropping resolution from 12.47% to 3.97% — our
-Findings 1 and 4, one benchmark over. *The SWE-Bench Illusion* (2025) isolates the weights channel
+Confounds 1 and 4, one benchmark over. *The SWE-Bench Illusion* (2025) isolates the weights channel
 (76% in- vs 53% out-of-benchmark file-path recall). Freshness cannot exist for a fixed set of
 famous hacks, which is precisely why our matched first-party pre-audit contracts with git-diff
 ground truth are the domain-appropriate substitute; we additionally separate leakage from
@@ -493,8 +551,9 @@ combined gap this paper fills.
 
 **Counterfactual and matched-pair methodology.** Our fixed-vs-buggy pairs instantiate a method
 family unified by one move: construct two inputs identical except the causal feature. Gardner et
-al. (2020), *Contrast Sets*, is the tightest analog to Finding 5 (minimal label-flipping
-perturbations probing the local decision boundary), and Kaushik et al. (2020), *Counterfactually-
+al. (2020), *Contrast Sets*, is the tightest analog to our matched-pair construction (§5.3, the fix
+for Confound 4): minimal label-flipping perturbations probing the local decision boundary, and
+Kaushik et al. (2020), *Counterfactually-
 Augmented Data*, is the conceptual parent. We differ in provenance: our perturbation is the *real*
 security fix and the label is the git diff, making the pair immune to both leakage and
 memorization. The confound-diagnosis lineage — Gururangan et al. (2018), *Annotation Artifacts*
@@ -513,19 +572,17 @@ reviews) and position papers (Bowman & Dahl, 2021, *What Will it Take to Fix Ben
 al., 2021, *The Everything in the Whole Wide World Benchmark*) anchor the argument; our datasheet
 sits in the *Datasheets for Datasets* (Gebru et al., 2018) lineage.
 
-**Frontier cyber-capability evaluation and safety framing.** Anthropic's *Challenges in Evaluating
-AI Systems* (2023) is the canonical statement of the pathologies we operationalize, and its
-third-party-evaluations initiative (2024) requires evals "not in the training data." **Fang et al.
-(2024), *LLM Agents can Autonomously Exploit One-day Vulnerabilities*** is the clearest external
-corroboration of Finding 1: GPT-4 exploits **87%** of one-day CVEs with the CVE description in the
-prompt but only **7%** without it — the answer-in-the-input effect our sanitizer measures, though
-they frame it as a capability caveat, not a validity program, and never separate leakage from
-memorization. Across the cyber landscape — Cybench (Zhang et al., 2024), NYU CTF Bench (2024),
-Meta's CyberSecEval suite (2023–2024) — benchmarks are all-positive with executable/flag oracles,
-so false-positive specificity is unmeasurable and judge validity is sidestepped, exactly the hole
-our negative controls and judge study fill. The governance chain (Anthropic RSP; OpenAI
-Preparedness; DeepMind Frontier Safety Framework) makes this high-stakes: an inflated score can
-flip a go/no-go threshold, which is the argument for instrumenting validity in the first place.
+**Frontier cyber-capability evaluation.** Anthropic's *Challenges in Evaluating AI Systems* (2023)
+is the canonical statement of the pathologies we operationalize. **Fang et al. (2024), *LLM Agents
+can Autonomously Exploit One-day Vulnerabilities*** is the clearest external corroboration of
+Confound 1: GPT-4 exploits **87%** of one-day CVEs with the CVE description in the prompt but only
+**7%** without it — the answer-in-the-input effect our sanitizer measures, though they frame it as
+a capability caveat, not a validity program, and never separate leakage from memorization. Across
+the cyber landscape — Cybench (Zhang et al., 2024), NYU CTF Bench (2024), Meta's CyberSecEval suite
+(2023–2024) — benchmarks are all-positive with executable/flag oracles, so false-positive
+specificity is unmeasurable and judge validity is sidestepped, exactly the hole our negative
+controls and judge study fill. Why this is high-stakes rather than academic is argued in §1 and
+§10; here it is enough that the same four confounds sit in the evals the field already relies on.
 
 ---
 
@@ -560,9 +617,9 @@ directly:
 > "Too often, evaluations end up measuring model memorization because the data is in its training
 > set. Where possible and useful, make sure the model hasn't seen the evaluation."
 
-A matched pair of first-party, never-exploited contracts, labeled from a private git fix-commit, is
-one concrete way to satisfy that requirement in a domain where every other dataset is a famous,
-memorizable hack. Smart contracts are the cleanest testbed available — adversarial code,
+A matched pair of first-party, never-exploited contracts — labeled from a first-party git
+fix-commit with no public post-mortem — is one concrete way to satisfy that requirement in a domain
+where every other dataset is a famous, memorizable hack. Smart contracts are the cleanest testbed available — adversarial code,
 unambiguous ground truth, a public incident record — but the four confounds and the six-point
 checklist are domain-general: they transfer to any benchmark that pairs an artifact under test with
 curated provenance or annotation metadata.

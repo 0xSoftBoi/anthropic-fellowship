@@ -21,7 +21,7 @@ fitted to them afterwards.
 ## The problem
 
 Every contract in this benchmark is a **famous historical exploit**: Nomad, Euler, Qubit,
-Wormhole, Cream, Compound, KyberSwap, Platypus. Each has a widely-circulated public
+Cream, Compound, KyberSwap, Platypus. Each has a widely-circulated public
 post-mortem — blog posts, Rekt.news entries, audit reports, Twitter threads — published well
 before the models under test were trained.
 
