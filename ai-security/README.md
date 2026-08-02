@@ -391,11 +391,20 @@ Costs are dominated by the largest contracts (Penpie ~184 KB).
   post-cutoff contracts, measuring the F1 delta) — has **not been run**; it is specified in
   advance in **[docs/CONTAMINATION.md](docs/CONTAMINATION.md)**. Read every number below with
   that caveat.
+- **The headline moves 14.5 F1 points depending on who grades it.** Scoring the *same* Opus
+  findings with the human gold labels instead of the Haiku judge gives bridge F1 of **51.6%,
+  not 37.1%** — the judge is systematically conservative, and the committed numbers sit
+  *below* the 95% CI implied by the repo's own gold standard ([39.7%, 63.8%]). One flipped
+  judge call moves the headline ~1.1 points; 5 of 53 move it 5 points. Neither number is
+  "the" answer — the grader-dependence is the finding. See
+  [JUDGE_VALIDITY.md](docs/JUDGE_VALIDITY.md).
 - **The semantic judge's calibration is in-sample, small-n, and source-blind.** The 92%
   precision / κ = 0.54 is measured on the *same* 38 decisions it then scores (not held out),
   over n = 26 positives (95% CI ≈ [0.76, 0.98]); the judge never reads the contract, so it
-  scores label-vs-label similarity, not whether a finding is truly correct. No separate gold
-  standard exists for DEX/lending. Treat 35–37% F1 as a direction with a real error bar.
+  scores label-vs-label similarity, not whether a finding is truly correct — a finding can be
+  synonymous with the label and false about the code, and the blind judge must credit it. No
+  separate gold standard exists for DEX/lending. Treat 35–37% F1 as a direction with a real
+  error bar.
 - **The string-match scorer is deliberately lenient** and some of its equivalences were added
   after observing model outputs, so string-match F1 is a soft floor, not a neutral baseline.
 - **Ground truth is hand-authored** (single annotator). The gold standard and fuzzy
@@ -428,6 +437,7 @@ python -m agents.report                 # regenerate the results tables from com
 - **[OPTIMIZATION.md](docs/OPTIMIZATION.md)** — prompt caching, concurrency, cascade, self-consistency, large-context
 - **[DATASHEET.md](docs/DATASHEET.md)** — Datasheet-for-Datasets: provenance, composition, limitations
 - **[LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md)** — the prompt-leakage finding, the Euler case study, and the sanitizer
+- **[JUDGE_VALIDITY.md](docs/JUDGE_VALIDITY.md)** — how much the headline depends on *who grades it* (14.5 F1 points)
 - **[CONTAMINATION.md](docs/CONTAMINATION.md)** — the memorization confound and the pre-registered experiment to measure it
 - **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
 - **[writeups/multi_domain_analysis.md](writeups/multi_domain_analysis.md)** — what Opus catches vs. misses, per contract

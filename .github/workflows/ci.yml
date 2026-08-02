@@ -29,5 +29,14 @@ jobs:
       - name: Prompt-leakage audit + sanitizer safety invariant
         run: python -m benchmarks.sanitize
 
+      # Reproduces the committed semantic F1 from the judge's own decisions (asserted
+      # inside the module) and recomputes the gold-corrected figure + bootstrap CI.
+      - name: Judge-validity analysis (reproduction gate)
+        run: python -m agents.judge_uncertainty
+
+      # Verifies the ablation harness can plan every configuration without an API key.
+      - name: Judge-ablation dry run
+        run: python -m agents.judge_ablation --full --dry-run
+
       - name: Static benchmark smoke test (free, no model)
         run: python -m agents.benchmark_runner --real --no-claude

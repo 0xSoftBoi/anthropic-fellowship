@@ -41,14 +41,21 @@ Shift the question from *"can an agent find bridge bugs?"* to **"what do
 security-capability benchmarks actually measure, and how do we build ones that
 measure detection?"** Three contributions:
 
-**1. A leakage + contamination methodology, with tooling**
+**1. A validity methodology, with tooling**
 
-Two confounds, separable and separately measurable:
+Three independent ways a security-capability benchmark reports a number that
+isn't measuring detection — separable, and each cheap to measure:
 
 - **Prompt leakage** — the answer is in the input. Found, fixed, and now
-  regression-tested in my repo (`benchmarks/sanitize.py`, 24 tests).
+  regression-tested in my repo (`benchmarks/sanitize.py`).
 - **Memorization** — the answer is in the weights. The contract is famous, its
   post-mortem is in training data, and recognition substitutes for analysis.
+- **Judge validity** — the answer depends on who grades. I measured this one
+  too: scoring the *same* model findings with my human gold labels instead of
+  the LLM judge moves bridge F1 from **37.1% to 51.6%**. A 14.5-point swing
+  from changing nothing but the grader — larger than the model differences the
+  benchmark exists to detect. One flipped judge call out of 53 moves the
+  headline ~1.1 points.
 
 The harness now runs at three levels — `raw` / `stripped` (comments removed) /
 `anon` (protocol identity removed, semantics preserved) — through one choke
@@ -70,11 +77,13 @@ is why it is worth running.**
 
 **3. A construction standard for security-capability evals**
 
-From the two deltas plus the audit, a short checklist for anyone building these
-benchmarks: print the literal prompt, grep it for your labels, separate
-author-injected annotation from upstream artifact content, report a
-de-identified arm, and state whether the labeled bug is even present in the
-supplied code. Cheap, and none of it is standard practice today.
+From the deltas plus the audits, a short checklist for anyone building these
+benchmarks: print the literal prompt and grep it for your labels; separate
+author-injected annotation from upstream artifact content; report a
+de-identified arm; state whether the labeled bug is even present in the supplied
+code; and report a grader-sensitivity range rather than a point estimate — with
+at least one arm where the judge can see the artifact, not just the label.
+Cheap, and none of it is standard practice today.
 
 ### Why this is safety-relevant, not just crypto
 
@@ -115,9 +124,12 @@ measurement bug is worth more than another point of F1.
 
 ### Timeline (4 months)
 
-- **Month 1 — measure the two deltas.** Re-run the committed 24-contract Opus
+- **Month 1 — measure the deltas.** Re-run the committed 24-contract Opus
   benchmark at `raw` / `stripped` / `anon`; publish all three plus the revised
-  honest number. Add a second labeler for inter-annotator agreement and a
+  honest number. Run the judge sweep (`judge_ablation.py`, ~$12 for 18
+  configurations) — including the source-visible arm, which is the only one that
+  can tell a finding that is *correct about the code* from one that merely
+  matches the label. Add a second labeler for inter-annotator agreement and a
   held-out judge gold standard (the current one is in-sample, n=26 positives).
 - **Month 2 — generalize the audit.** Apply the leakage scan to other public
   security-capability benchmarks (SCONE-bench, CVE- and bug-bounty-derived

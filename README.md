@@ -41,6 +41,12 @@ advisory text, bug-bounty sets with report summaries).
 **[→ Read the leakage audit](./ai-security/docs/LEAKAGE_AUDIT.md)** · measured, no API key
 needed: `python -m benchmarks.sanitize`
 
+And a second, independent way the number fails to mean what it says: **swap the LLM judge for
+the human gold labels and the same findings score 51.6% instead of 37.1%** — a 14.5-point
+swing from changing nothing but the grader. The committed numbers sit *below* the confidence
+interval implied by the repo's own gold standard. **[→ Judge-validity
+analysis](./ai-security/docs/JUDGE_VALIDITY.md)** (`python -m agents.judge_uncertainty`).
+
 | Prompt level | What the model sees | Contracts leaking the answer |
 |---|---|---|
 | `raw` — **as originally scored** | file verbatim, header included | **13 / 24 (54%)** |

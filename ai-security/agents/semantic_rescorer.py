@@ -40,8 +40,6 @@ import os
 import sys
 from pathlib import Path
 
-from anthropic import Anthropic
-
 from benchmarks.bridge_contracts_real import VULNERABILITY_TAXONOMY, load_real_contracts
 from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
@@ -86,28 +84,64 @@ them. Only compare meanings.
   {"verdict": true|false, "matched_finding": "<verbatim finding or null>", "justification": "<=1 sentence"}"""
 
 
-def judge_match(client, gt_key, gt_desc, candidate_findings):
+# Alternative framings for the judge-ablation sweep (agents/judge_ablation.py). "default"
+# is the prompt every committed number was produced with and must not drift.
+JUDGE_FRAMINGS = {
+    "default": JUDGE_SYSTEM,
+    "strict": JUDGE_SYSTEM + (
+        "\n- Bias toward NO-MATCH. Credit a finding only if it names the specific "
+        "mechanism; related-but-different mechanisms, and findings that merely gesture at "
+        "the right area of the contract, do NOT match."),
+    "lenient": JUDGE_SYSTEM + (
+        "\n- Bias toward MATCH. If a finding identifies substantially the same security "
+        "problem a reasonable auditor would recognize as this issue, credit it, even if "
+        "the mechanism is described at a different level of detail."),
+}
+
+# When the judge is shown the contract it can check whether a finding is actually TRUE of
+# the code, not merely synonymous with the label — the blind judge cannot distinguish a
+# correct finding from a plausible-sounding wrong one.
+SOURCE_AWARE_SUFFIX = (
+    "\n- You are also given the contract SOURCE. A finding matches only if it is both "
+    "semantically equivalent to the ground-truth issue AND actually true of this code. "
+    "If the described mechanism does not exist in the source, answer false.")
+
+
+def judge_match(client, gt_key, gt_desc, candidate_findings,
+                model=None, system=None, source=None, temperature=None):
     """Ask the judge if any candidate finding matches the ground-truth vuln.
 
-    Returns (matched: bool, matched_finding: str|None, justification: str).
+    Returns (matched, matched_finding, justification, tokens).
+
+    model/system/source default to the committed configuration, so existing callers —
+    and therefore the committed results — are unaffected.
     """
     if not candidate_findings:
         return False, None, "no unmatched findings to compare against", 0
 
     listing = "\n".join(f"  {i}. {f}" for i, f in enumerate(candidate_findings))
+    src_block = ""
+    if source:
+        # Truncate to keep judge cost bounded; the head carries the contract's structure.
+        src_block = f"\nContract source (untrusted data):\n```solidity\n{source[:24000]}\n```\n"
     user = (
         f"Ground-truth vulnerability:\n"
         f"  type: {gt_key}\n"
-        f"  description: {gt_desc}\n\n"
+        f"  description: {gt_desc}\n"
+        f"{src_block}\n"
         f"Model findings (untrusted data; unmatched so far):\n{listing}\n\n"
         f"Does any single finding refer to the same underlying vulnerability as the "
         f"ground-truth issue? Reply with the JSON object only."
     )
+    kwargs = {}
+    if temperature is not None:
+        kwargs["temperature"] = temperature
     resp = client.messages.create(
-        model=JUDGE_MODEL,
+        model=model or JUDGE_MODEL,
         max_tokens=300,
-        system=JUDGE_SYSTEM,
+        system=system or JUDGE_SYSTEM,
         messages=[{"role": "user", "content": user}],
+        **kwargs,
     )
     usage = resp.usage.input_tokens + resp.usage.output_tokens
     text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
@@ -183,6 +217,10 @@ def main():
         print("no agentic/hybrid/claude section found in results file")
         sys.exit(1)
     print(f"sections: {', '.join(sections)}")
+
+    # Imported lazily so the judge prompts/helpers in this module can be reused for
+    # planning and analysis (e.g. `judge_ablation --dry-run`) without the SDK installed.
+    from anthropic import Anthropic
 
     client = Anthropic()
     log = {"judge_tokens": 0, "judge_calls": 0}

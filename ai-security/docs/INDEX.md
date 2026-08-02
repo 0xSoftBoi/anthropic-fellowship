@@ -6,6 +6,8 @@
 - **[RESEARCH.md](RESEARCH.md)** — Detailed research methodology, all charts, full results
 - **[MULTI_MODEL.md](MULTI_MODEL.md)** — Provider-agnostic models (Claude/DeepSeek/Kimi/local), the bake-off
 - **[OPTIMIZATION.md](OPTIMIZATION.md)** — Prompt caching, concurrency, cascade, self-consistency, large-context
+- **[LEAKAGE_AUDIT.md](LEAKAGE_AUDIT.md)** — prompt leakage: 13/24 prompts described the bug (measured, fixed)
+- **[JUDGE_VALIDITY.md](JUDGE_VALIDITY.md)** — grader-dependence: the headline moves 14.5 F1 points (measured)
 - **[CONTAMINATION.md](CONTAMINATION.md)** — the memorization confound and the pre-registered control experiment (open)
 
 ## Phase Reports

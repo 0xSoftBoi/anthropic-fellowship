@@ -1,0 +1,35 @@
+{
+  "committed": {
+    "bridges_f1": 0.3709677419354839,
+    "all24_f1": 0.35028248587570626
+  },
+  "gold_corrected_bridges": {
+    "f1": 0.5161290322580645,
+    "precision": 0.3855421686746988,
+    "recall": 0.7804878048780488,
+    "borderline_flipped_f1": 0.5,
+    "judge_vs_gold_delta_points": 14.516129032258062
+  },
+  "bootstrap_ci_95": {
+    "bridges": [
+      0.396694214876033,
+      0.6379310344827586
+    ],
+    "all24": [
+      0.38522012578616355,
+      0.5737704918032787
+    ],
+    "n_boot": 20000,
+    "seed": 20260802
+  },
+  "sensitivity": {
+    "points_per_flipped_decision": 1.1007836704938878,
+    "flips_for_plus5_points": 5,
+    "n_decisions": 53
+  },
+  "caveats": [
+    "gold standard is single-annotator and in-sample (same 38 decisions)",
+    "DEX/lending judge error is extrapolated from bridges; no gold standard exists there",
+    "FP recovery modeled at the observed per-domain rate (bridges 1.00, dex/lending 0.71)"
+  ]
+}
