@@ -8,7 +8,9 @@ While building a contamination control for this benchmark, I found a more basic 
 underneath it. The committed `.sol` files each begin with a provenance header written for
 human auditability. The loader reads the file whole and the analyzer feeds it into the
 prompt, so **the header goes to the model**. In 13 of 24 contracts (54%) that header states
-the bug mechanism in prose; in 2 cases it states the ground-truth label verbatim.
+the bug mechanism in prose; in 4 the machine check finds a ground-truth label string in the
+header itself (`leakage_report.json`, `label_hits.raw`) — Euler states the explicit label
+token `missing_solvency_check`, two headers say "reentrancy", one says "arbitrary external call".
 
 The benchmark was, in part, scoring the model's ability to read a comment.
 
@@ -59,8 +61,9 @@ pinned by a regression test (`tests/test_sanitize.py::test_euler_header_states_t
 so it cannot silently reappear.
 
 Euler is the only contract in the corpus where a header-named symbol is absent from the
-source (1 of 7 header-named symbols checked) — but it is also one of the 2 verbatim-label
-leaks and the highest-loss DEX entry, so it disproportionately affected the DEX number.
+source (1 of 7 header-named symbols checked) — but it is also the one header that states the
+explicit underscored label token (`missing_solvency_check`) and the highest-loss DEX entry, so
+it disproportionately affected the DEX number.
 
 ## What this does and does not imply
 
