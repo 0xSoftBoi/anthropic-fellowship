@@ -47,6 +47,16 @@ def main():
     dom = _domains()
     string_agg, sem_agg, cost = {}, {}, {}
 
+    # The semantic judge only ran on contracts with committed source (the
+    # rescored files). Score string-match over the SAME set so the two columns
+    # are apples-to-apples — empty-source placeholders (no code to analyze)
+    # would otherwise add FN-only rows and understate string-match F1.
+    evaluable = set()
+    for fname in RESCORED:
+        path = ROOT / fname
+        if path.exists():
+            evaluable.update(json.loads(path.read_text())["per_contract"].keys())
+
     for fname, keys in RAW.items():
         path = ROOT / fname
         if not path.exists():
@@ -54,6 +64,8 @@ def main():
         j = json.loads(path.read_text())
         for key in keys:
             for name, m in j[key]["per_contract"].items():
+                if name not in evaluable:
+                    continue
                 d = dom.get(name, "?")
                 a = string_agg.setdefault(d, {"tp": 0, "fp": 0, "fn": 0})
                 for k in ("tp", "fp", "fn"):

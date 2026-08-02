@@ -31,7 +31,7 @@ Three observations inside GPT-2 small on "Paris is not the capital of":
 
 **1. The model reads "not."** Attention head L11H8 attends 37.7% to the "not" token from the prediction position. The negation is not ignored.
 
-**2. The negation signal is processed early.** Activation patching (erasing "not" by replacing its residual stream with the affirmative version) shows the negation effect concentrates in layers 0-2, with recovery of 130% of the logit gap at L0.
+**2. The negation signal is processed early.** Activation patching (erasing "not" by replacing its residual stream with the affirmative version) shows the negation effect concentrates in layers 0-2, with recovery of 130% of the logit gap at L0. **Caveat on that "130%":** the gap being recovered is tiny — only ~0.5 logits (France 16.93 affirmative vs 16.42 negated) — so >100% recovery is ~0.65 logits of movement and is noise-sensitive at this magnitude. Read this as "the effect localizes early," not as a precisely-measured 130%.
 
 **3. The factual lookup happens later and louder.** From experiments 01-03, the capital→country association resolves at layers 9-10 (~83% depth). By this point, the negation signal from L0-2 has been diluted across positions and heads. The France projection in the residual stream decreases by ~19 activation units at L10 (from 186 to 167), but this is only a ~10% reduction — insufficient to flip the prediction.
 

@@ -37,17 +37,26 @@ from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
 
 
-# Fuzzy type matching for evaluation
+# Fuzzy type matching for evaluation.
+#
+# PROVENANCE & LENIENCY (read before trusting string-match F1): this table maps
+# each canonical ground-truth vuln key to the finding-strings that count as the
+# same root cause. Some equivalences were added reactively after observing model
+# phrasings, so this scorer is deliberately generous — it is a low-effort proxy,
+# not an independent oracle. Treat string-match F1 as a *floor*; the validated
+# semantic judge (semantic_rescorer.py) is the primary signal. Every key below is
+# unique — earlier duplicate keys that Python silently shadowed have been merged
+# so no equivalence is lost.
 TYPE_EQUIVALENCES = {
     "unprotected_admin_function": ["unprotected_admin_function", "missing_access_control"],
-    "untrusted_external_call": ["untrusted_external_call", "signature_verification_bypass"],
+    "untrusted_external_call": ["untrusted_external_call", "signature_verification_bypass", "arbitrary_external_call", "reentrancy", "unsafe_external_call"],
     "unused_signature_parameter": ["missing_signature_verification"],
     "missing_signature_verification": ["missing_signature_verification", "unused_signature_parameter"],
     "missing_reentrancy_guard": ["reentrancy"],
-    "reentrancy": ["reentrancy", "missing_reentrancy_guard"],
-    "spot_price_oracle": ["spot_price_oracle", "flash_loan_exploitable"],
+    "reentrancy": ["reentrancy", "missing_reentrancy_guard", "reentrancy_in_dex_callback", "untrusted_external_call", "cross_function_reentrancy"],
+    "spot_price_oracle": ["spot_price_oracle", "flash_loan_exploitable", "flash_loan_price_manipulation", "spot_price_dependency"],
     "flash_loan_exploitable": ["flash_loan_exploitable", "spot_price_oracle"],
-    "unprotected_initializer": ["unprotected_initializer"],
+    "unprotected_initializer": ["unprotected_initializer", "reinitialization", "missing_access_control", "unprotected_init", "reinitializable"],
     "reinitializable": ["reinitializable"],
     "zero_root_acceptance": ["zero_root_acceptance"],
     "no_rate_limiting": ["no_rate_limiting"],
@@ -76,7 +85,6 @@ TYPE_EQUIVALENCES = {
     "flash_loan_collateral_inflation": ["flash_loan_collateral_inflation", "flash_loan_price_manipulation"],
     "donation_attack_bad_debt": ["donation_attack_bad_debt", "bad_debt_accumulation", "zero_value_deposit"],
     "reentrancy_in_dex_callback": ["reentrancy_in_dex_callback", "reentrancy"],
-    "spot_price_oracle": ["spot_price_oracle", "flash_loan_price_manipulation", "spot_price_dependency"],
     "precision_loss_rounding": ["precision_loss_rounding", "tick_boundary_exploit", "integer_boundary_exploit"],
     "jit_liquidity_attack": ["jit_liquidity_attack", "sandwich_attack_vector"],
     "sandwich_attack_vector": ["sandwich_attack_vector", "jit_liquidity_attack"],
@@ -97,27 +105,24 @@ TYPE_EQUIVALENCES = {
     "improper_proof_verification": ["improper_proof_verification", "mmr_missing_bounds_check", "missing_proof_link"],
     "unbounded_mint_authority": ["unbounded_mint_authority", "privileged_mint", "admin_takeover", "missing_access_control", "unprotected_admin_function"],
     "admin_takeover": ["admin_takeover", "unbounded_mint_authority", "missing_access_control"],
-    # 2024-2025 DeFi additions (Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra)
-    "reentrancy": ["reentrancy", "missing_reentrancy_guard", "reentrancy_in_dex_callback", "untrusted_external_call", "cross_function_reentrancy"],
-    "untrusted_external_call": ["untrusted_external_call", "arbitrary_external_call", "reentrancy", "unsafe_external_call"],
+    # 2024-2025 DeFi additions (Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra).
+    # `reentrancy` and `untrusted_external_call` were previously re-declared here,
+    # silently shadowing their bridge-section definitions — now merged above.
     "unvalidated_callback": ["unvalidated_callback", "arbitrary_external_call", "missing_input_validation", "unvalidated_flashloan_callback", "untrusted_external_call"],
-    "exchange_rate_manipulation": ["exchange_rate_manipulation", "empty_market_donation", "rounding_error", "first_depositor", "donation_attack_bad_debt", "share_inflation"],
     "rounding_error": ["rounding_error", "precision_loss_rounding", "exchange_rate_manipulation"],
-    "empty_market_donation": ["empty_market_donation", "donation_attack_bad_debt", "first_depositor", "exchange_rate_manipulation"],
-    "missing_solvency_check": ["missing_solvency_check", "skipped_solvency_check", "undercollateralized_borrow", "missing_health_check", "state_flag_reset"],
     "state_flag_reset": ["state_flag_reset", "missing_solvency_check", "logic_error"],
     "logic_error": ["logic_error", "state_flag_reset", "missing_solvency_check", "insufficient_validation"],
     "event_spoofing": ["event_spoofing", "forged_event", "spoofed_deposit", "input_validation", "message_forgery"],
     "improper_whitelist": ["improper_whitelist", "arbitrary_external_call", "approval_exploitation", "unchecked_user_calldata", "missing_input_validation"],
-    # DEX/lending domain (Euler, Onyx, Compound P062, Cream crAMP)
-    "missing_solvency_check": ["missing_solvency_check", "solvency_check_bypass", "missing_health_check", "donate_to_reserves", "skipped_solvency_check"],
+    # DEX/lending domain (Euler, Onyx, Compound P062, Cream crAMP). These three keys
+    # merge the earlier Phase-5B/2024-25 definitions that Python had shadowed.
+    "missing_solvency_check": ["missing_solvency_check", "solvency_check_bypass", "missing_health_check", "donate_to_reserves", "skipped_solvency_check", "undercollateralized_borrow", "state_flag_reset"],
     "exchange_rate_manipulation": ["exchange_rate_manipulation", "empty_market_donation", "rounding_error", "donation_attack", "donation_attack_bad_debt", "first_depositor", "share_inflation", "integer_truncation"],
     "empty_market_donation": ["empty_market_donation", "donation_attack", "donation_attack_bad_debt", "exchange_rate_manipulation", "first_depositor"],
     "erc777_callback": ["erc777_callback", "reentrancy", "cross_function_reentrancy", "token_hook_reentrancy", "tokens_received_hook"],
     "cross_function_reentrancy": ["cross_function_reentrancy", "reentrancy", "erc777_callback", "cei_violation"],
     "reward_accounting_bug": ["reward_accounting_bug", "incorrect_comparison_operator", "reward_distribution_error", "comp_distribution", "logic_error", "incorrect_distribution"],
     "incorrect_comparison_operator": ["incorrect_comparison_operator", "reward_accounting_bug", "off_by_one", "logic_error"],
-    "unprotected_initializer": ["unprotected_initializer", "reinitialization", "missing_access_control", "unprotected_init", "reinitializable"],
     "missing_input_validation": ["missing_input_validation", "input_validation", "insufficient_validation", "unvalidated_input", "missing_validation", "no_input_validation"],
     # reverse-direction keys: fuzzy_match keys on the model's finding string, so the
     # model's likely phrasings must each map onto the canonical ground-truth key.

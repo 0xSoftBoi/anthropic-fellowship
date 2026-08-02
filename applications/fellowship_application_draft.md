@@ -39,11 +39,19 @@ exploit reproductions.
 
 **2. Claude-Based Detection Agent vs Static Tool Baselines**
 
-I've built a working pipeline:
-- Static pattern analyzer (6 vulnerability categories) → 41% F1 baseline
-- Claude-powered deep analyzer with structured JSON output
-- Evaluation harness measuring precision/recall/F1 against ground truth
-- Etherscan contract source fetcher
+I've built a working pipeline (static baseline → agentic LLM → two-axis scoring):
+- Static pattern analyzer: ~55% F1 on *synthetic* patterns but **~0% F1 on real
+  verified contracts** (proxies, inheritance, compositional bugs break pattern rules)
+- Provider-agnostic agentic analyzer (multi-turn tool loop) with structured output
+- Two-axis evaluation: exact-string F1 *and* a validated LLM-as-judge semantic F1
+- Keyless multichain contract-source fetcher (Blockscout / Sourcify / Routescan)
+
+**Measured so far (Opus 4.8, 24 verified contracts, 3 domains):** ~5% string-match F1 but
+**35% semantic F1 / 54% recall** — the model finds the real root cause on 15 of 16 bridge
+contracts; the gap between the two scores is an evaluator artifact I quantify with a
+validated judge. Honest caveat I lead with: these are famous exploits likely in training
+data, so this is detection-under-possible-memorization until I run a contamination control —
+which is exactly the first experiment I'd run in the fellowship.
 
 The core research question: does Claude find vulnerabilities that
 Slither/Mythril miss, especially compositional/cross-chain bugs where
@@ -76,6 +84,12 @@ I'm not coming from academia — I'm a builder with domain expertise:
 
 ### Timeline (4 months)
 
+- Month 0 (week 1): **Run the contamination control** — the experiment my current
+  results most need. Perturb identifiers/constants to preserve each bug while
+  destroying its recognizability, re-run the same harness + judge, report the F1
+  delta. Design is pre-registered in `ai-security/docs/CONTAMINATION.md`; a large
+  delta would mean the field's exploit-benchmark numbers (mine included) are
+  measuring recognition, which is itself the more interesting result.
 - Month 1: Expand benchmark to 50+ contracts, reproduce top 10 exploits
   in simulation, run Claude analyzer against full benchmark
 - Month 2: Systematic comparison: Claude agent vs Slither vs Mythril

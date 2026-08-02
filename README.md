@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange)]()
 [![Verified contracts: 24](https://img.shields.io/badge/verified%20contracts-24-blue)]()
 [![Domains: bridges · DEX · lending](https://img.shields.io/badge/domains-bridges%20%C2%B7%20DEX%20%C2%B7%20lending-8a2be2)]()
-[![Semantic F1: 35%](https://img.shields.io/badge/Opus%204.8%20semantic%20F1-35%25-success)]()
+[![Semantic F1: 35%](https://img.shields.io/badge/Opus%204.8%20semantic%20F1-35%25%20(recall%2054%25)-informational)]()
 [![Models: Claude · DeepSeek · local](https://img.shields.io/badge/models-Claude%20%C2%B7%20DeepSeek%20%C2%B7%20Kimi%20%C2%B7%20local-informational)]()
 [![Modes: agentic · cascade · self-consistency](https://img.shields.io/badge/modes-agentic%20%C2%B7%20cascade%20%C2%B7%20self--consistency-blueviolet)]()
 
@@ -26,27 +26,34 @@ both exact-string matching and an LLM-judge.
 
 | Domain | Contracts | String-match F1 | **Semantic F1** | Recall |
 |--------|-----------|-----------------|-----------------|--------|
-| Bridges | 16 | 4% | **37%** | 56% |
+| Bridges | 16 | 5% | **37%** | 56% |
 | DEX/AMM | 5 | 7% | **21%** | 38% |
 | Lending | 3 | 0% | **40%** | 62% |
-| **All three** | **24** | **4%** | **35%** | **54%** |
+| **All three** | **24** | **5%** | **35%** | **54%** |
 
 ```mermaid
 xychart-beta
-    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match baseline (line)"
+    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match of the same findings (line)"
     x-axis ["Bridges", "DEX/AMM", "Lending", "All 24"]
     y-axis "F1 (%)" 0 --> 60
     bar [37, 21, 40, 35]
-    line [4, 7, 0, 4]
+    line [5, 7, 0, 5]
 ```
 
-The static/string-match baseline sits at ~4% F1; Opus 4.8 reaches **35% F1 / 54% recall**
-semantically — a ~9× lift from the same source, holding up across all three domains. The
-exact-string matcher hides this because the model writes *compound* finding names; an
-LLM-judge — itself **validated at 92% precision / Cohen's κ = 0.54** against a hand-labeled
-gold standard — recovers the real signal. Two notable model findings: **Fable 5 refuses**
-the task entirely (`stop_reason: refusal`), and newer models reject the `temperature`
-parameter. (DEX+lending compute: $16.29, budget-capped.)
+Scoring Opus 4.8's *own* findings two ways: exact-string matching gives **~5% F1**, the
+validated semantic judge gives **35% F1 / 54% recall** — a ~7× gap that is an *evaluator
+artifact*, not a model-vs-static result. The matcher misses because the model writes
+*compound* finding names; an LLM-judge recovers the intended match. (For reference, the
+pattern-based static analyzer scores **~0% F1** on these real contracts — Key Finding #1.)
+The judge is **validated at 92% precision / Cohen's κ = 0.54** against a hand-labeled gold
+standard — but that calibration is *in-sample* (the 38 gold units are the same decisions it
+scores; n = 26 positives, 95% CI ≈ [0.76, 0.98]), so read 35% as a direction with a stated
+error profile, not a point estimate. (DEX+lending compute: $16.29, budget-capped.)
+
+> **Caveat that bounds all of this:** every contract is a *famous* historical exploit whose
+> public post-mortem is almost certainly in the model's training data, so these numbers are
+> **detection-under-possible-memorization** — a contamination control (perturbed / post-cutoff
+> contracts) is the key open experiment, not yet run. See [Honest limitations](./ai-security/README.md#honest-limitations).
 
 > Full numbers, the judge-validation report, and the DEX/lending data-quality audit are in
 > [`ai-security/`](./ai-security). This is research, not a product — the limitations are

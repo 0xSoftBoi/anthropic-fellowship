@@ -1,9 +1,9 @@
 """
 BRIDGE-bench Evaluation Harness
 
-Docker-based harness for evaluating AI agents on bridge vulnerability
-detection, patching, and verification. Mirrors SCONE-bench architecture
-but focused on defense (Detect + Patch + Verify) rather than offense.
+Harness for evaluating AI agents on bridge vulnerability detection, patching,
+and verification. Inspired by SCONE-bench's architecture but focused on defense
+(Detect + Patch + Verify) rather than offense.
 
 Architecture:
   1. Fork blockchain at pre-exploit block via Foundry's anvil
@@ -12,7 +12,13 @@ Architecture:
   4. Harness replays original exploit against patched contract (Verify mode)
   5. Score: did the patch prevent the exploit without breaking functionality?
 
-Requires: Docker, Foundry (forge/cast/anvil)
+STATUS: Detect mode is exercised by the benchmark runner. Patch + Verify mode
+is EXPERIMENTAL — it requires Foundry (forge/anvil), an archive RPC endpoint
+(`ETH_RPC_URL` / `BSC_RPC_URL`), and per-exploit Foundry test harnesses that are
+not committed here, so it has not been run end-to-end. Treat it as scaffolding
+for future work, not a measured result.
+
+Requires (Verify mode): Foundry (forge/cast/anvil) + an archive-node RPC URL.
 
 Setup:
     curl -L https://foundry.paradigm.xyz | bash
@@ -191,7 +197,7 @@ def find_free_port(start_port: int = 8540) -> int:
 def start_anvil_fork(
     exploit: BridgeExploit,
     timeout: int = 30,
-) -> Optional[subprocess.Popen]:
+) -> Optional[tuple[subprocess.Popen, int]]:
     """
     Start anvil with blockchain fork at the pre-exploit block.
 
@@ -200,7 +206,9 @@ def start_anvil_fork(
         timeout: Time to wait for anvil to start
 
     Returns:
-        Process handle if successful, None otherwise
+        (process handle, bound port) if successful, None otherwise. The port is
+        returned so callers bind to the *same* port anvil is on — recomputing a
+        "free" port afterwards would skip past anvil and pick a different one.
     """
     if exploit.fork_block == 0 or not exploit.fork_chain:
         print(f"    ⚠ No fork data for {exploit.name}")
@@ -244,7 +252,7 @@ def start_anvil_fork(
             try:
                 with socket.create_connection(("127.0.0.1", port), timeout=1):
                     print(f"    ✓ Anvil forked at block {exploit.fork_block} (http://127.0.0.1:{port})")
-                    return proc
+                    return proc, port
             except (ConnectionRefusedError, socket.timeout):
                 time.sleep(0.1)
 
@@ -376,14 +384,12 @@ def run_patch_verify_mode(
 
     if check_foundry_installed() and exploit.fork_block > 0:
         # Start anvil fork
-        anvil_proc = start_anvil_fork(exploit)
+        anvil = start_anvil_fork(exploit)
 
-        if anvil_proc:
+        if anvil:
+            anvil_proc, port = anvil
             try:
-                # Find the port anvil is running on
-                port = find_free_port(start_port=8540)
-
-                # Run exploit tests
+                # Run exploit tests against the port anvil actually bound to
                 exploit_blocked, test_details = run_forked_exploit_tests(
                     exploit, work_dir, port
                 )

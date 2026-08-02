@@ -260,13 +260,20 @@ json.dump({
 
 ## Thesis Validation ✓ CONFIRMED
 
+> **Stale-number note (corrected later):** this doc originally quoted the static baseline at
+> "41% F1 on synthetic". The current analyzer measures **55% F1 on synthetic** (8 TP / 7 FP /
+> 6 FN over the 4 `test_contracts.py` patterns) — reproduce with the snippet in
+> [RESEARCH.md](RESEARCH.md). The "0% F1 on real" half was and remains correct, and is the
+> finding that matters. The Claude figures below are early Sonnet-era estimates that were
+> never committed; the measured model numbers are the Opus 4.8 run in RESEARCH.md.
+
 **Before Phase 3** (January 2026):
-- Static v2: 41% F1 on synthetic, 0% F1 on real
-- Claude: 60% F1 on synthetic, **0% F1 on real** (token overflow — couldn't even analyze)
+- Static v2: ~55% F1 on synthetic, 0% F1 on real
+- Claude: ~60% F1 on synthetic, **0% F1 on real** (token overflow — couldn't even analyze)
 
 **After Phase 3** (April 7, 2026):
-- Static v2: 41% F1 on synthetic, 0% F1 on real (unchanged, expected baseline)
-- Claude: 60% F1 on synthetic, **21% F1 on real** (function extraction enables analysis)
+- Static v2: ~55% F1 on synthetic, 0% F1 on real (unchanged, expected baseline)
+- Claude: ~60% F1 on synthetic, **~21% F1 on real** (function extraction enables analysis)
 
 **Result Summary**:
 
