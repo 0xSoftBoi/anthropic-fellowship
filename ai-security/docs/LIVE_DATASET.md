@@ -80,25 +80,18 @@ data), Superfluid is `low` — so a future expansion can pick the low-exposure o
 the memorization-control value. Fetching their source is the next build step
 (`fetch_contracts.py` + keyless Blockscout/Sourcify, which are reachable from this environment).
 
-## The strongest extension (not built here): the matched pair
+## The positive complement: the matched pair (now built)
 
-The single most valuable follow-up is a **buggy/fixed matched pair**. The nine audit findings
-were fixed in git history; recovering the pre-audit versions and labeling them with the
-documented findings would give **real positives with zero memorization confound** — the same
-contract, before and after the fix. That is the naturally-occurring version of the synthetic
-perturbation experiment in [CONTAMINATION.md](CONTAMINATION.md), and it is strictly better
-because the bugs are real.
+The negative controls answer "does the model over-flag clean code?" Their positive complement
+— **real bugs the model cannot have memorized** — is the [matched-pair domain](MATCHED_PAIRS.md),
+built from the *pre-audit* versions of these same contracts. The buggy snapshots are labeled
+directly from the **fix-commit diffs** (ground truth stronger than any prose post-mortem),
+giving 16 diff-grounded positive labels across Bonds/Staking/OFT, each paired to its fixed
+negative control here.
 
-It is deliberately **not** built here, for the same reason the rest of this work exists:
-mapping prose audit notes to exact pre-fix source is error-prone, and hasty labels are the
-defect this whole review has been removing. The recipe, to do it right:
+Run the pair: `--matched` for recall on the buggy versions, `--live` for specificity on the
+fixed ones. Static baseline: 0/16 recall on the positives, 75% specificity on the negatives.
 
-1. `git -C suwappubot fetch --unshallow` (the clone here is `--depth 1`).
-2. Find the audit-fix commits (`DEPLOYMENTS.md` says the full bug history is in the commit log).
-3. For each fix, take the **parent** commit's contract as the buggy version.
-4. Label it from the fix commit's own description + the audit note — and have the source-aware
-   judge confirm the labeled bug is actually present in that pre-fix source before committing it.
-
-That closes the loop: leakage (fixed), memorization (measured, plus this real control),
-judge validity (measured), and finally recall-on-unmemorized-bugs — the one measurement no
-famous-exploit benchmark can honestly make.
+That closes the loop: leakage (fixed), memorization (measured — this negative control plus the
+matched positives), judge validity (measured), and recall-on-unmemorized-bugs — the one
+measurement no famous-exploit benchmark can honestly make.

@@ -23,6 +23,12 @@ contracts (from a real cross-chain DeFi SDK) with no incident in any training se
 detector" the exploit set structurally cannot show. Static baseline: 75% specificity;
 `python -m agents.benchmark_runner --live --no-claude && python -m agents.specificity results_live.json`.
 
+Its positive complement is the **[matched-pair domain](docs/MATCHED_PAIRS.md)**: the *pre-audit*
+versions of those same contracts, carrying real bugs the model cannot have memorized, with
+**16 labels grounded in the actual git fix-commit diffs** (stronger ground truth than any prose
+post-mortem). Recall here + specificity on the fixed counterpart, on one contract pair, is the
+measurement no famous-exploit benchmark can make. Static baseline: 0/16 recall.
+
 Everything below is the underlying capability work. **All committed numbers were measured at
 `BENCH_SANITIZE=raw`** — i.e. under the leakage above — and are contaminated upper bounds
 until re-run.
@@ -447,6 +453,7 @@ python -m agents.report                 # regenerate the results tables from com
 - **[LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md)** — the prompt-leakage finding, the Euler case study, and the sanitizer
 - **[JUDGE_VALIDITY.md](docs/JUDGE_VALIDITY.md)** — how much the headline depends on *who grades it* (14.5 F1 points)
 - **[LIVE_DATASET.md](docs/LIVE_DATASET.md)** — negative controls: first-party *unexploited* contracts, measuring specificity
+- **[MATCHED_PAIRS.md](docs/MATCHED_PAIRS.md)** — memorization-free *positives*: pre-audit contracts, labels grounded in the git fix diffs
 - **[CONTAMINATION.md](docs/CONTAMINATION.md)** — the memorization confound and the pre-registered experiment to measure it
 - **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
 - **[writeups/multi_domain_analysis.md](writeups/multi_domain_analysis.md)** — what Opus catches vs. misses, per contract

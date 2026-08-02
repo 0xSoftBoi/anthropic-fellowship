@@ -36,6 +36,7 @@ from benchmarks.bridge_contracts_real import load_real_contracts
 from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
 from benchmarks.live_contracts import load_live_contracts
+from benchmarks.matched_contracts import load_matched_contracts
 from benchmarks.sanitize import LEVELS as SANITIZE_LEVELS, sanitize
 
 
@@ -132,6 +133,13 @@ TYPE_EQUIVALENCES = {
     "insufficient_validation": ["insufficient_validation", "missing_input_validation"],
     "missing_validation": ["missing_validation", "missing_input_validation"],
     "unvalidated_input": ["unvalidated_input", "missing_input_validation"],
+    # Matched-pair (Suwappu audit) types — labels grounded in fix-commit diffs.
+    "missing_token_transfer": ["missing_token_transfer", "no_op_transfer", "missing_transferfrom", "accounting_error", "logic_error"],
+    "front_running": ["front_running", "frontrunning", "mev", "sandwich_attack_vector", "flash_stake_frontrun"],
+    "denial_of_service": ["denial_of_service", "dos", "locked_funds", "griefing", "permanent_lock", "bricked"],
+    "unchecked_return_value": ["unchecked_return_value", "unchecked_call_return", "ignored_return", "unchecked_low_level_call"],
+    "integer_truncation": ["integer_truncation", "int96_overflow", "unsafe_cast", "integer_overflow", "downcast_overflow"],
+    "incorrect_decimal_scaling": ["incorrect_decimal_scaling", "decimal_mismatch", "wrong_decimals", "scaling_error"],
 }
 
 
@@ -642,6 +650,13 @@ if __name__ == "__main__":
              "agents/specificity.py, not F1.",
     )
     parser.add_argument(
+        "--matched",
+        action="store_true",
+        help="Run against the matched-pair positives (benchmarks/matched_contracts.py): "
+             "pre-audit Suwappu contracts with diff-grounded bug labels — memorization-free "
+             "positives, the buggy counterpart of --live. Scored by recall/F1.",
+    )
+    parser.add_argument(
         "--compare",
         action="store_true",
         help="Compare synthetic vs real contract results",
@@ -678,7 +693,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Determine which dataset(s) to run
-    run_synthetic = (not args.real and not args.defi and not args.lending and not args.live) or args.compare
+    run_synthetic = (not args.real and not args.defi and not args.lending
+                     and not args.live and not args.matched) or args.compare
     run_real = args.real or args.compare
 
     results_all = {}
@@ -841,6 +857,8 @@ if __name__ == "__main__":
         run_domain(load_lending_contracts(), "lending", args, results_all)
     if args.live:
         run_domain(load_live_contracts(), "live", args, results_all)
+    if args.matched:
+        run_domain(load_matched_contracts(), "matched", args, results_all)
 
     # ──────────────────────────────────────────────────────────────────
     # Save results
@@ -880,9 +898,11 @@ if __name__ == "__main__":
         _k = os.environ.get("SC_SAMPLES", "3")
         _model_tag = (("__" + _RUN_MODEL.replace("/", "-")) if _RUN_MODEL != "claude-sonnet-4-6" else "") \
             + f"__sc{_k}"
-    if args.live and not args.defi and not args.lending and not args.real and not args.compare:
+    if args.matched and not args.defi and not args.lending and not args.live and not args.real and not args.compare:
+        output_filename = f"results_matched{_model_tag}.json"
+    elif args.live and not args.defi and not args.lending and not args.matched and not args.real and not args.compare:
         output_filename = f"results_live{_model_tag}.json"
-    elif (args.defi or args.lending or args.live) and not args.real and not args.compare:
+    elif (args.defi or args.lending or args.live or args.matched) and not args.real and not args.compare:
         _dom = "defi" if args.defi else ""
         _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"
         _dom = (_dom + ("_live" if args.live else "")).strip("_")

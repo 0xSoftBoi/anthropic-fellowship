@@ -50,8 +50,11 @@ analysis](./ai-security/docs/JUDGE_VALIDITY.md)** (`python -m agents.judge_uncer
 And a third: every exploit contract *has* a bug, so specificity is unmeasurable. The
 **[live domain](./ai-security/docs/LIVE_DATASET.md)** adds first-party, *unexploited*,
 audit-hardened contracts (from a real cross-chain DeFi SDK — no incident in any training set)
-to measure whether the model over-flags hardened, unfamiliar code. Testing on things that
-*weren't* hacked is the point.
+to measure whether the model over-flags hardened, unfamiliar code. Its positive complement,
+the **[matched-pair domain](./ai-security/docs/MATCHED_PAIRS.md)**, is the *pre-audit* version
+of those same contracts: real bugs the model can't have read about, with **16 labels grounded
+in the git fix-commit diffs**. Recall on the buggy version + specificity on the fixed one is
+the one measurement a famous-exploit benchmark can't make.
 
 | Prompt level | What the model sees | Contracts leaking the answer |
 |---|---|---|

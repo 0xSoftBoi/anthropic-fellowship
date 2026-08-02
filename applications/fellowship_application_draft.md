@@ -62,7 +62,12 @@ isn't measuring detection — separable, and each cheap to measure:
   DeFi SDK, with no incident in any training set. It measures whether the model
   over-flags hardened, unfamiliar code — the half of "good detector" a
   famous-exploit benchmark structurally cannot show, and the direct answer to
-  "why only test on things that got hacked?"
+  "why only test on things that got hacked?" Its **positive complement is built
+  too**: the *pre-audit* versions of those same contracts, giving 16 real,
+  exploitable bugs the model cannot have memorized — with ground truth taken not
+  from a prose post-mortem but from the **git fix-commit diff** itself. That is
+  the one measurement a famous-exploit benchmark cannot make: recall where recall
+  can't be recall-of-a-write-up.
 
 The harness now runs at three levels — `raw` / `stripped` (comments removed) /
 `anon` (protocol identity removed, semantics preserved) — through one choke
@@ -123,8 +128,9 @@ I audited my own result until it broke:
   which is why I can label ground truth and tell a real bug from an audit nitpick.
 - **Working code, not just ideas.** Provider-agnostic harness (any hosted or
   local model through one path), validated LLM-judge, leakage sanitizer with a
-  safety invariant, a negative-control domain with a specificity scorer, 39
-  CPU-only tests in CI. Day-1 ready.
+  safety invariant, a negative-control domain with a specificity scorer, a
+  matched buggy/fixed-pair domain labeled from git fix diffs, 46 CPU-only tests
+  in CI. Day-1 ready.
 - **Strong Python + Rust**, familiar with Solidity, ethers/web3.
 
 What I don't have: a PhD or ML publications. I'm betting that finding the
@@ -147,9 +153,11 @@ measurement bug is worth more than another point of F1.
   construction standard: post-cutoff holdout arm, annotation stored *outside*
   the artifact, verification that the labeled bug is present in the supplied
   code, de-identified arm reported by default. Grow the negative-control set
-  (external dependencies are already catalogued) and build the matched buggy/fixed
-  pair from Suwappu's own audit history — real positives with zero memorization
-  confound.
+  (external dependencies are already catalogued) and extend the matched
+  buggy/fixed-pair domain — the first 16 diff-grounded positives from Suwappu's
+  own audit history are already built; scale them and add other repos with clean
+  fix-commit histories, so the zero-memorization positive set grows alongside the
+  negatives.
 - **Month 4 — write up**, release the tooling as a reusable package, and
   publish the checklist.
 

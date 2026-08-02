@@ -46,5 +46,11 @@ jobs:
           python -m agents.benchmark_runner --live --no-claude
           python -m agents.specificity results_live.json
 
+      # Matched-pair (positive) domain: the pre-audit versions of the same contracts,
+      # labeled from the git fix-commit diffs. Regenerates the static baseline so the
+      # "0/16 static recall on real, unmemorized bugs" figure can't regress unnoticed.
+      - name: Matched-pair static baseline (recall on unmemorized bugs)
+        run: python -m agents.benchmark_runner --matched --no-claude
+
       - name: Static benchmark smoke test (free, no model)
         run: python -m agents.benchmark_runner --real --no-claude
