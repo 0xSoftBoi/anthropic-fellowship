@@ -35,6 +35,7 @@ from benchmarks.test_contracts import TEST_CONTRACTS
 from benchmarks.bridge_contracts_real import load_real_contracts
 from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
+from benchmarks.live_contracts import load_live_contracts
 from benchmarks.sanitize import LEVELS as SANITIZE_LEVELS, sanitize
 
 
@@ -634,6 +635,13 @@ if __name__ == "__main__":
         help="Run against the lending dataset (benchmarks/lending_contracts_real.py)",
     )
     parser.add_argument(
+        "--live",
+        action="store_true",
+        help="Run against the live/negative-control dataset (benchmarks/live_contracts.py): "
+             "first-party, unexploited, audit-hardened contracts. Score with "
+             "agents/specificity.py, not F1.",
+    )
+    parser.add_argument(
         "--compare",
         action="store_true",
         help="Compare synthetic vs real contract results",
@@ -670,7 +678,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Determine which dataset(s) to run
-    run_synthetic = (not args.real and not args.defi and not args.lending) or args.compare
+    run_synthetic = (not args.real and not args.defi and not args.lending and not args.live) or args.compare
     run_real = args.real or args.compare
 
     results_all = {}
@@ -831,6 +839,8 @@ if __name__ == "__main__":
         run_domain(load_defi_contracts(), "defi", args, results_all)
     if args.lending:
         run_domain(load_lending_contracts(), "lending", args, results_all)
+    if args.live:
+        run_domain(load_live_contracts(), "live", args, results_all)
 
     # ──────────────────────────────────────────────────────────────────
     # Save results
@@ -870,9 +880,12 @@ if __name__ == "__main__":
         _k = os.environ.get("SC_SAMPLES", "3")
         _model_tag = (("__" + _RUN_MODEL.replace("/", "-")) if _RUN_MODEL != "claude-sonnet-4-6" else "") \
             + f"__sc{_k}"
-    if (args.defi or args.lending) and not args.real and not args.compare:
+    if args.live and not args.defi and not args.lending and not args.real and not args.compare:
+        output_filename = f"results_live{_model_tag}.json"
+    elif (args.defi or args.lending or args.live) and not args.real and not args.compare:
         _dom = "defi" if args.defi else ""
         _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"
+        _dom = (_dom + ("_live" if args.live else "")).strip("_")
         output_filename = f"results_{_dom}{_model_tag}.json"
     elif args.real and not args.compare:
         output_filename = f"results_real{_model_tag}.json"

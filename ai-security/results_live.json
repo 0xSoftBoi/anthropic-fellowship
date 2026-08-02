@@ -1,0 +1,90 @@
+{
+  "live_static": {
+    "method": "static_v2",
+    "overall": {
+      "precision": 0.0,
+      "recall": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 2,
+      "fn": 0
+    },
+    "per_contract": {
+      "suwappu_suwp": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "missed": [],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 0,
+        "findings": []
+      },
+      "suwappu_staking": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "missed": [],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 0,
+        "findings": []
+      },
+      "suwappu_bonds": {
+        "metrics": {
+          "tp": 0,
+          "fp": 2,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0,
+          "f1": 0,
+          "missed": [],
+          "false_positives": [
+            "unprotected_admin_function",
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 2,
+        "n_gt": 0,
+        "findings": [
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          },
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "suwappu_oft": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0,
+          "recall": 0,
+          "f1": 0,
+          "missed": [],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 0,
+        "findings": []
+      }
+    },
+    "systematic_gaps": []
+  }
+}

@@ -47,6 +47,12 @@ swing from changing nothing but the grader. The committed numbers sit *below* th
 interval implied by the repo's own gold standard. **[→ Judge-validity
 analysis](./ai-security/docs/JUDGE_VALIDITY.md)** (`python -m agents.judge_uncertainty`).
 
+And a third: every exploit contract *has* a bug, so specificity is unmeasurable. The
+**[live domain](./ai-security/docs/LIVE_DATASET.md)** adds first-party, *unexploited*,
+audit-hardened contracts (from a real cross-chain DeFi SDK — no incident in any training set)
+to measure whether the model over-flags hardened, unfamiliar code. Testing on things that
+*weren't* hacked is the point.
+
 | Prompt level | What the model sees | Contracts leaking the answer |
 |---|---|---|
 | `raw` — **as originally scored** | file verbatim, header included | **13 / 24 (54%)** |

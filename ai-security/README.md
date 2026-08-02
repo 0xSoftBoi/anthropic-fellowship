@@ -15,6 +15,14 @@ BENCH_SANITIZE=stripped python -m agents.benchmark_runner --real --agentic  # Δ
 BENCH_SANITIZE=anon     python -m agents.benchmark_runner --real --agentic  # Δ = memorization effect
 ```
 
+And the dataset had **zero negative controls** — all 24 exploit contracts carry a bug, so the
+base rate is 100% and the false-positive rate is unmeasurable. The
+**[live domain](docs/LIVE_DATASET.md)** fixes that: first-party, *unexploited*, audit-hardened
+contracts (from a real cross-chain DeFi SDK) with no incident in any training set. It measures
+**specificity** — does the model over-flag hardened, unfamiliar code? — the half of "good
+detector" the exploit set structurally cannot show. Static baseline: 75% specificity;
+`python -m agents.benchmark_runner --live --no-claude && python -m agents.specificity results_live.json`.
+
 Everything below is the underlying capability work. **All committed numbers were measured at
 `BENCH_SANITIZE=raw`** — i.e. under the leakage above — and are contaminated upper bounds
 until re-run.
@@ -438,6 +446,7 @@ python -m agents.report                 # regenerate the results tables from com
 - **[DATASHEET.md](docs/DATASHEET.md)** — Datasheet-for-Datasets: provenance, composition, limitations
 - **[LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md)** — the prompt-leakage finding, the Euler case study, and the sanitizer
 - **[JUDGE_VALIDITY.md](docs/JUDGE_VALIDITY.md)** — how much the headline depends on *who grades it* (14.5 F1 points)
+- **[LIVE_DATASET.md](docs/LIVE_DATASET.md)** — negative controls: first-party *unexploited* contracts, measuring specificity
 - **[CONTAMINATION.md](docs/CONTAMINATION.md)** — the memorization confound and the pre-registered experiment to measure it
 - **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
 - **[writeups/multi_domain_analysis.md](writeups/multi_domain_analysis.md)** — what Opus catches vs. misses, per contract

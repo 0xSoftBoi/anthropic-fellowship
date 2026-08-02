@@ -8,6 +8,7 @@
 - **[OPTIMIZATION.md](OPTIMIZATION.md)** — Prompt caching, concurrency, cascade, self-consistency, large-context
 - **[LEAKAGE_AUDIT.md](LEAKAGE_AUDIT.md)** — prompt leakage: 13/24 prompts described the bug (measured, fixed)
 - **[JUDGE_VALIDITY.md](JUDGE_VALIDITY.md)** — grader-dependence: the headline moves 14.5 F1 points (measured)
+- **[LIVE_DATASET.md](LIVE_DATASET.md)** — negative controls: first-party unexploited contracts, measuring specificity (the exploit set can't)
 - **[CONTAMINATION.md](CONTAMINATION.md)** — the memorization confound and the pre-registered control experiment (open)
 
 ## Phase Reports

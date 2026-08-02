@@ -38,5 +38,13 @@ jobs:
       - name: Judge-ablation dry run
         run: python -m agents.judge_ablation --full --dry-run
 
+      # Negative-control (live) domain: regenerate the static baseline over the
+      # audit-hardened first-party contracts and score specificity. Keeps the "does the
+      # model over-flag unmemorized code" arm honest and reproducible.
+      - name: Live negative-control static baseline + specificity
+        run: |
+          python -m agents.benchmark_runner --live --no-claude
+          python -m agents.specificity results_live.json
+
       - name: Static benchmark smoke test (free, no model)
         run: python -m agents.benchmark_runner --real --no-claude
