@@ -1,8 +1,9 @@
 <!--
-  DRAFT — sections marked [[PENDING]] are filled after the literature review lands.
-  Every number in this paper is reproducible from the committed repo; the exact command
-  is given inline. No API key is required for any figure reported here (all LLM-dependent
-  measurements are stated as designs with cost estimates, not results).
+  Working paper. Every number is reproducible from the committed repo; the exact command is
+  given inline. No API key is required for any figure reported here (all LLM-dependent
+  measurements are stated as designs with cost estimates, not results). Related-work citations
+  were gathered via a structured literature sweep + adversarial novelty check; load-bearing
+  entries were hand-verified against their source pages (see the note under References).
 -->
 
 # Measuring Detection, Not Recognition: Four Validity Confounds in AI Security-Capability Benchmarks
@@ -42,8 +43,24 @@ the contract). For (4) I add first-party, never-exploited, audit-hardened contra
 controls, and — the paper's main new construction — their positive complement: the **pre-audit
 versions of those same contracts**, giving 16 real, exploitable bugs the model cannot have
 memorized, with ground truth taken from the **git fix-commit diff** rather than any prose
-post-mortem. This measures recall where recall cannot be recall-of-a-write-up: the one
-measurement a famous-exploit benchmark structurally cannot make.
+post-mortem.
+
+**Relation to prior work (stated up front, so the contribution is not overclaimed).** Each
+individual confound has strong parents that this paper confirms rather than discovers: matched
+vulnerable/fixed pairs with git-fix-commit labels and paired recall/specificity are established
+in C/C++ by PrimeVul (Ding et al., 2024) and Risse & Böhme (2024); answer-in-the-input leakage by
+SWE-Bench+ (Aleithan et al., 2024) and Fang et al. (2024); semantic-preserving perturbation by
+Yang et al. (2023) and SecLLMHolmes (Ullah et al., 2024); LLM-judge/human divergence by Krumdick
+et al. (2025) and Thakur et al. (2025); and the audit→quantify→checklist→fix method by ABC (Zhu et
+al., 2025). The exact setup we study — GPT-4/Claude on previously-compromised DeFi contracts — is
+David et al. (2023). Against that backdrop the paper makes a **domain-transfer-plus-integration**
+contribution, and only two claims are defended as genuinely new: **(a) provably un-memorizable
+positives** — first-party, never-exploited pre-audit contracts with *no public post-mortem*, so
+unlike PrimeVul's mined third-party fix commits they cannot sit in the training corpus, giving a
+recall measurement that cannot be recall-of-a-write-up; and **(b) a mechanically verified
+structural safety invariant** on the sanitizer, so an F1 drop is attributable to decontamination
+rather than to a broken artifact. Everything else is a known failure mode measured, for the first
+time jointly and with executable checks, in smart-contract security.
 
 The contribution is not a capability number. It is a reusable method — tooling plus a construction
 checklist — for telling whether a security-capability number means anything.
@@ -52,11 +69,36 @@ checklist — for telling whether a security-capability number means anything.
 
 ## 1. Introduction
 
-[[PENDING — positioned against the literature. Core claims to make here, after the novelty check:
-the framing that eval validity is upstream of every deployment decision; that these four confounds
-are individually known but rarely instrumented together on one security benchmark; the honest
-statement of what is genuinely new vs. what extends prior work (esp. PrimeVul, SecLLMHolmes,
-counterfactual-data, LLM-judge-bias literature).]]
+Dangerous-capability evaluations are how frontier labs decide what a model can do, and those
+decisions gate deployment (Anthropic's Responsible Scaling Policy; OpenAI's Preparedness
+Framework; DeepMind's Frontier Safety Framework). An inflated score can flip a go/no-go threshold,
+so the *validity* of a security-capability number — whether it measures the capability it claims —
+is a safety quantity, not a methodological nicety. Anthropic's own "Challenges in Evaluating AI
+Systems" (2023) names the three pathologies this paper operationalizes: benchmark contamination,
+format fragility, and over-interpreting a single score; its third-party-evaluations initiative
+(2024) explicitly asks that evals be "not in the training data" and use "diverse formats."
+
+Each way a benchmark can report a number that is not measuring detection is, individually, known.
+What is rarely done is to instrument several of them *at once, on one benchmark, with executable
+checks*, and to report the resulting effect sizes. That is what this paper does, in the
+smart-contract vulnerability-detection domain, using a benchmark I built and then audited until
+it broke. Four confounds — prompt leakage (the answer in the input), memorization (the answer in
+the weights), judge validity (the answer depends on who grades), and missing negative controls
+(specificity unmeasurable) — are measured or given committed tooling, and each is credited to its
+prior literature (§8). I state plainly what is new: not the individual techniques, but their joint
+decomposition in this domain, plus two narrow primitives — provably un-memorizable first-party
+positives and a mechanically verified sanitizer invariant (see the abstract's *Relation to prior
+work*, expanded in §8).
+
+The nearest single prior work is David et al. (2023), "Do you still need a manual smart contract
+audit?", which evaluates GPT-4/Claude on 52 previously-compromised DeFi contracts and reports ~40%
+vulnerability-type identification with a high false-positive rate. That setup exhibits all four
+confounds — a 100% vulnerable base rate with no negatives, every contract a famous hack with a
+public post-mortem, no check for in-prompt bug descriptions, and detection scored without judge
+controls. (Notably, David et al. *do* run a small injected-mutation arm on five fresh contracts,
+reaching a best-case 78.7% true-positive rate — an early gesture at the un-memorizable-positive
+idea this paper builds out with real, first-party, git-diff-labeled bugs rather than manual
+injections.) This paper turns that class of setup into a validity study.
 
 ### 1.1 The object of study
 
@@ -278,8 +320,15 @@ finding-count is a **screen** and the source-aware judge (§4) adjudicates.
 Full doc: [`MATCHED_PAIRS.md`](../docs/MATCHED_PAIRS.md).
 
 The negative controls answer "does the model over-flag clean code?" Their positive complement is
-the one measurement a famous-exploit benchmark cannot make: **real, exploitable bugs the model
-cannot have memorized.** The construction:
+the measurement a *famous-exploit* benchmark cannot make: **real, exploitable bugs the model
+cannot have memorized.** Matched vulnerable/fixed pairs with git-fix-commit labels are not new —
+PrimeVul (Ding et al., 2024) and Risse & Böhme (2024) build exactly this in C/C++, and PrimeVul's
+pair-wise metric (P-C/P-V/P-B/P-R) is already a joint recall/specificity measurement on pairs.
+The distinction here is **provenance**: PrimeVul and Risse mine *public, third-party* fix commits,
+which can themselves sit in a training corpus, so their positives are not memorization-immune.
+Ours are **first-party and never-exploited, with no public post-mortem** — memorization-immune by
+construction — and the domain is Solidity, where no matched-pair set previously existed. The
+construction:
 
 - Take the **pre-audit versions** of the same first-party contracts — the source at the parent of
   each contract's earliest audit-fix commit, so it carries every bug the passes later removed.
@@ -369,14 +418,114 @@ cheap, and none of it standard practice today:
 
 ## 8. Related work
 
-[[PENDING — filled from the literature review. Themes: contamination detection & memorization;
-contamination in code/freshness benchmarks; LLM-as-judge bias & calibration; LLM/DL
-vulnerability-detection evals and their validity (PrimeVul, SecLLMHolmes, Risse & Böhme,
-DiverseVul, Big-Vul/CVEfixes); smart-contract detection benchmarks; counterfactual/matched-pair &
-behavioral-testing methodology; evaluation science / construct validity / leaderboard critiques;
-frontier dangerous-capability & cyber evaluations (Anthropic RSP + "Challenges in Evaluating AI
-Systems", METR, UK AISI Inspect, DeepMind FSF, Meta CyberSecEval). Each theme gets a paragraph
-that cites by title+year and says how this work relates.]]
+Every technique below has established parents; the honest framing is that this paper transfers and
+integrates them, adding two narrow primitives (§1). References with URLs are collected at the end.
+
+**Contamination detection, and the memorization/leakage distinction.** A large family detects that
+test data reached the model without controlling for it: black-box statistical tests (Oren et al.,
+2023, *Proving Test Set Contamination*), outlier-token membership inference (Shi et al., 2023,
+*Min-K% Prob*), guided-completion probes (Golchin & Surdeanu, 2023, *Time Travel in LLMs*), and
+temporal natural experiments showing pre-cutoff data scores higher (Li & Flanigan, 2023, *Task
+Contamination*; Roberts et al., 2023). Our conceptual parent is Magar & Schwartz (2022), *From
+Memorization to Exploitation*, which shows test data can be memorized yet not exploited — so
+presence-in-training does not by itself inflate a score; we split this into three channels
+(answer-in-input, answer-in-weights, genuine capability). Carlini et al. (2022) supply the
+mechanism (memorization scales with duplication, model size, context) that makes famous,
+heavily-duplicated hacks the worst case and justifies an anonymizer. Closest *in technique* is Yang
+et al. (2023), *Rephrased Samples*, which shows semantic-preserving rewrites defeat n-gram
+decontamination — but it rewrites test items to *evade* filters, whereas we rewrite the *input* to
+strip the answer while a structural invariant preserves task difficulty. Prevention/measurement
+calls (Jacovi et al., 2023, *Stop Uploading Test Data*; Sainz et al., 2023, *NLP Evaluation in
+Trouble*) frame the per-benchmark validity program; our Finding 1 is exactly the "solution appears
+next to the data" failure Jacovi et al. warn against.
+
+**Contamination and freshness in code benchmarks.** Controlling contamination on code costs 20–50
+points: Riddell et al. (2024) measure 43.7 pt (HumanEval) / 50 pt (MBPP) pass@1 gaps between
+contamination deciles, and LiveCodeBench (Jain et al., 2024) uses time-windowed problems as the
+dominant freshness control. Our single closest code prior is **SWE-Bench+ (Aleithan et al.,
+2024)**: auditing SWE-bench, it finds **32.67%** of passing patches had the fix leaked into the
+issue report and **31.08%** passed on weak tests, dropping resolution from 12.47% to 3.97% — our
+Findings 1 and 4, one benchmark over. *The SWE-Bench Illusion* (2025) isolates the weights channel
+(76% in- vs 53% out-of-benchmark file-path recall). Freshness cannot exist for a fixed set of
+famous hacks, which is precisely why our matched first-party pre-audit contracts with git-diff
+ground truth are the domain-appropriate substitute; we additionally separate leakage from
+memorization and add negative controls, which the freshness line does not.
+
+**LLM-as-judge validity.** The foundational ">80% agreement with humans" claim (Zheng et al.,
+2023, *MT-Bench / Chatbot Arena*) is specific to open-ended chat and does not transfer to tasks
+needing verifiable correctness — which is why we re-score with human gold labels (bridge F1 moves
+14.5 points). Our closest prior is **Krumdick et al. (2025), *No Free Labels***: an ungrounded
+judge agrees with experts only on questions it could itself answer, and expert references largely
+close the gap. We extend it to code and to a *stronger* blindness — our judge never sees the
+contract at all, so it cannot separate "true-of-the-code" from "synonymous-with-the-label," a gap
+references alone cannot restore. Judges are also fragile and gameable: order-swaps flip 66/80
+verdicts (Wang et al., 2023, *Not Fair Evaluators*), style beats correctness (*Style Over
+Substance*, 2023/2024), and judge choice reshuffles rankings while high percent-agreement hides
+multi-point gaps (Thakur et al., 2025, *Judging the Judges*) — consistent with our one-flip-of-53
+≈1.1-point sensitivity, which we report as a single-benchmark descriptive statistic, not a general
+claim.
+
+**Vulnerability-detection evaluations and matched pairs.** **PrimeVul (Ding et al., 2024)** is our
+closest vuln-detection prior and owns the methods core: matched vulnerable/fixed pairs, labels from
+git fix commits, contamination control (chronological split + dedup), and a pair-wise correctness
+metric that is exactly joint recall/specificity — with a 7B model dropping 68.26% → 3.09% F1 from
+BigVul to PrimeVul. Risse & Böhme (2024) and their VulnPatchPairs show detectors cannot separate
+vulnerable functions from their patched counterparts. SecLLMHolmes (Ullah et al., 2024) is the
+closest analog to our anonymizer — renaming flips 26% of top-model answers — but treats
+perturbation as a robustness test over hand-crafted CWE scenarios, not as a memorization/leakage
+disentangler over real bugs. Fix-commit labeling is standard (Big-Vul, 2020; CVEfixes, 2021;
+DiverseVul, 2023) with recurring label-noise complaints (Chakraborty et al., 2021), and the
+validity-gap motif recurs (*Top Score on the Wrong Exam*, 2025, high scores from word-counts
+alone). **We claim neither matched-pairs-from-git-diffs nor paired recall/specificity as novel** —
+PrimeVul and Risse own them; our defensible additions are the Solidity domain, first-party
+un-memorizable provenance, and the judge/leakage/negative-control axes this cluster does not touch.
+
+**Smart-contract benchmarks.** David et al. (2023), *Do you still need a manual smart contract
+audit?*, is the object of our study (§1): 52 previously-compromised contracts, ~40% type
+identification, high false positives, post-mortem labels, 100% base rate. The domain's datasets
+are structurally ~100% vulnerable — SmartBugs / SB Curated (Durieux et al., 2020) and later
+catalogs list only buggy code, with labels usually post-hoc prose. Bug injection (SolidiFI,
+Ghaleb & Pattabiraman, 2020) is the methodological ancestor of matched pairs but injects synthetic
+snippets, whereas our 16 pre-audit bugs are real and exploitable and their labels come from the
+actual fix commit. GPTScan (Sun et al., 2024) and static-tool comparisons report detectors without
+simultaneously controlling leakage, memorization, judge dependence, and missing negatives — the
+combined gap this paper fills.
+
+**Counterfactual and matched-pair methodology.** Our fixed-vs-buggy pairs instantiate a method
+family unified by one move: construct two inputs identical except the causal feature. Gardner et
+al. (2020), *Contrast Sets*, is the tightest analog to Finding 5 (minimal label-flipping
+perturbations probing the local decision boundary), and Kaushik et al. (2020), *Counterfactually-
+Augmented Data*, is the conceptual parent. We differ in provenance: our perturbation is the *real*
+security fix and the label is the git diff, making the pair immune to both leakage and
+memorization. The confound-diagnosis lineage — Gururangan et al. (2018), *Annotation Artifacts*
+(a hypothesis-only model hits 67% on SNLI); *Right for the Wrong Reasons* / HANS (McCoy et al.,
+2019) — is the precedent for our leakage and judge critiques, and CheckList's Invariance test
+(Ribeiro et al., 2020) is the template for our sanitizer's structural invariant.
+
+**Evaluation science and construct validity.** Closest methodologically is **ABC (Zhu et al.,
+2025), *Best Practices for Building Rigorous Agentic Benchmarks***: it audits real benchmarks,
+quantifies inflation (up to 100%), ships a checklist, and empirically fixes CVE-Bench (−33%
+overestimation). We follow the audit→quantify→checklist→fix pattern but go deep on one benchmark,
+make the checks *executable* (a sanitizer with a verified structural invariant), separate two
+contamination channels ABC does not distinguish, and build the negatives and matched pairs its
+checklist calls for. Validity frameworks (BetterBench, Reuel et al., 2024; construct-validity
+reviews) and position papers (Bowman & Dahl, 2021, *What Will it Take to Fix Benchmarking*; Raji et
+al., 2021, *The Everything in the Whole Wide World Benchmark*) anchor the argument; our datasheet
+sits in the *Datasheets for Datasets* (Gebru et al., 2018) lineage.
+
+**Frontier cyber-capability evaluation and safety framing.** Anthropic's *Challenges in Evaluating
+AI Systems* (2023) is the canonical statement of the pathologies we operationalize, and its
+third-party-evaluations initiative (2024) requires evals "not in the training data." **Fang et al.
+(2024), *LLM Agents can Autonomously Exploit One-day Vulnerabilities*** is the clearest external
+corroboration of Finding 1: GPT-4 exploits **87%** of one-day CVEs with the CVE description in the
+prompt but only **7%** without it — the answer-in-the-input effect our sanitizer measures, though
+they frame it as a capability caveat, not a validity program, and never separate leakage from
+memorization. Across the cyber landscape — Cybench (Zhang et al., 2024), NYU CTF Bench (2024),
+Meta's CyberSecEval suite (2023–2024) — benchmarks are all-positive with executable/flag oracles,
+so false-positive specificity is unmeasurable and judge validity is sidestepped, exactly the hole
+our negative controls and judge study fill. The governance chain (Anthropic RSP; OpenAI
+Preparedness; DeepMind Frontier Safety Framework) makes this high-stakes: an inflated score can
+flip a go/no-go threshold, which is the argument for instrumenting validity in the first place.
 
 ---
 
@@ -404,10 +553,19 @@ that cites by title+year and says how this work relates.]]
 
 Dangerous-capability evaluations are how we decide what models can do. A contaminated eval reports
 capability that isn't there — or masks capability that is. Getting vulnerability-detection
-measurement right is upstream of every deployment decision that depends on it. Smart contracts are
-the cleanest testbed available — adversarial code, unambiguous ground truth, a public incident
-record — but the four confounds and the six-point checklist are domain-general: they transfer to
-any benchmark that pairs an artifact under test with curated provenance or annotation metadata.
+measurement right is upstream of every deployment decision that depends on it. Anthropic's
+third-party-evaluations initiative (2024) states the requirement this paper is built around
+directly:
+
+> "Too often, evaluations end up measuring model memorization because the data is in its training
+> set. Where possible and useful, make sure the model hasn't seen the evaluation."
+
+A matched pair of first-party, never-exploited contracts, labeled from a private git fix-commit, is
+one concrete way to satisfy that requirement in a domain where every other dataset is a famous,
+memorizable hack. Smart contracts are the cleanest testbed available — adversarial code,
+unambiguous ground truth, a public incident record — but the four confounds and the six-point
+checklist are domain-general: they transfer to any benchmark that pairs an artifact under test with
+curated provenance or annotation metadata.
 
 **The method is the contribution; the domain is where it executes fastest.**
 
@@ -437,3 +595,62 @@ The CI workflow (`.github/workflows/ci.yml`) runs all of these on every push.
 - [`MATCHED_PAIRS.md`](../docs/MATCHED_PAIRS.md) — matched positives, git-diff labels
 - [`DATASHEET.md`](../docs/DATASHEET.md) — dataset datasheet (Gebru et al.)
 - [`DATA_QUALITY.md`](../docs/DATA_QUALITY.md) — label audit and corrections
+
+---
+
+## References
+
+Contamination & memorization:
+- Oren et al. (2023), *Proving Test Set Contamination in Black Box Language Models*. https://arxiv.org/abs/2310.17623
+- Shi et al. (2023), *Detecting Pretraining Data from LLMs (Min-K% Prob)*. https://arxiv.org/abs/2310.16789
+- Golchin & Surdeanu (2023), *Time Travel in LLMs*. https://arxiv.org/abs/2308.08493
+- Li & Flanigan (2023), *Task Contamination*. https://arxiv.org/abs/2312.16337
+- Roberts et al. (2023), *Data Contamination Through the Lens of Time*. https://arxiv.org/abs/2310.10628
+- Magar & Schwartz (2022), *Data Contamination: From Memorization to Exploitation*. https://aclanthology.org/2022.acl-short.18/
+- Carlini et al. (2022), *Quantifying Memorization Across Neural Language Models*. https://arxiv.org/abs/2202.07646
+- Yang et al. (2023), *Rethinking Benchmark and Contamination with Rephrased Samples*. https://arxiv.org/abs/2311.04850
+- Jacovi et al. (2023), *Stop Uploading Test Data in Plain Text*. https://arxiv.org/abs/2305.10160
+- Sainz et al. (2023), *NLP Evaluation in Trouble*. https://aclanthology.org/2023.findings-emnlp.722/
+
+Code/freshness benchmarks:
+- Aleithan et al. (2024), *SWE-Bench+*. https://arxiv.org/abs/2410.06992
+- *The SWE-Bench Illusion* (2025). https://arxiv.org/abs/2506.12286
+- Riddell et al. (2024), *Quantifying Contamination in Code Generation*. https://aclanthology.org/2024.acl-long.761/
+- Jain et al. (2024), *LiveCodeBench*. https://arxiv.org/abs/2403.07974
+
+LLM-as-judge:
+- Krumdick et al. (2025), *No Free Labels*. https://arxiv.org/abs/2503.05061
+- Zheng et al. (2023), *Judging LLM-as-a-Judge (MT-Bench / Chatbot Arena)*. https://arxiv.org/abs/2306.05685
+- Wang et al. (2023), *Large Language Models are not Fair Evaluators*. https://arxiv.org/abs/2305.17926
+
+Vulnerability detection & matched pairs:
+- Ding et al. (2024), *Vulnerability Detection with Code Language Models: How Far Are We?* (PrimeVul). https://arxiv.org/abs/2403.18624
+- Risse & Böhme (2024), *Uncovering the Limits of ML for Automatic Vulnerability Detection* (VulnPatchPairs). https://arxiv.org/abs/2306.17193
+- Ullah et al. (2024), *SecLLMHolmes: LLMs Cannot Reliably Identify and Reason About Security Vulnerabilities*. https://arxiv.org/abs/2312.12575
+- Bhandari et al. (2021), *CVEfixes*. https://arxiv.org/abs/2107.08760
+- Chakraborty et al. (2021), *Deep Learning based Vulnerability Detection: Are We There Yet?*. https://arxiv.org/abs/2009.07235
+
+Smart contracts:
+- David et al. (2023), *Do you still need a manual smart contract audit?*. https://arxiv.org/abs/2306.12338
+- Durieux et al. (2020), *SmartBugs*. https://arxiv.org/abs/2007.04771
+
+Counterfactual / behavioral testing:
+- Gardner et al. (2020), *Evaluating Models' Local Decision Boundaries via Contrast Sets*. https://arxiv.org/abs/2004.02709
+- Kaushik et al. (2020), *Counterfactually-Augmented Data*. https://arxiv.org/abs/1909.12434
+- Gururangan et al. (2018), *Annotation Artifacts in NLI Data*. https://aclanthology.org/N18-2017/
+- Ribeiro et al. (2020), *Beyond Accuracy: Behavioral Testing with CheckList*. https://arxiv.org/abs/2005.04118
+
+Evaluation science:
+- Zhu et al. (2025), *Establishing Best Practices for Building Rigorous Agentic Benchmarks* (ABC). https://arxiv.org/abs/2507.02825
+- Gebru et al. (2018), *Datasheets for Datasets*. https://arxiv.org/abs/1803.09010
+
+Frontier cyber / safety:
+- Anthropic (2023), *Challenges in Evaluating AI Systems*. https://www.anthropic.com/research/evaluating-ai-systems
+- Anthropic (2024), *A new initiative for developing third-party model evaluations*. https://www.anthropic.com/news/a-new-initiative-for-developing-third-party-model-evaluations
+- Fang et al. (2024), *LLM Agents can Autonomously Exploit One-day Vulnerabilities*. https://arxiv.org/abs/2404.08144
+- Zhang et al. (2024), *Cybench*. https://arxiv.org/abs/2408.08926
+
+*Citations were gathered via a structured literature sweep and an adversarial novelty check; the
+load-bearing entries (PrimeVul, SWE-Bench+, David et al., No Free Labels, Fang et al.) were
+verified by hand against their source pages. arXiv identifiers for a few very recent (2025–2026)
+entries mentioned in passing were not all hand-verified and are cited conservatively.*

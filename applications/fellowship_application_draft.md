@@ -163,8 +163,15 @@ measurement bug is worth more than another point of F1.
 
 ### Expected Output
 
-- Paper: *"Measuring Detection, Not Recognition: Prompt Leakage and
-  Memorization in AI Security-Capability Benchmarks"*
+- Paper: *"Measuring Detection, Not Recognition: Four Validity Confounds in AI
+  Security-Capability Benchmarks"* — **a full working draft is already written**
+  (`ai-security/papers/measuring-detection-not-recognition.md`), positioned
+  against the literature (PrimeVul, SWE-Bench+, No Free Labels, ABC, David et
+  al.) with an explicit, honest statement of what is new (provably
+  un-memorizable first-party positives; a mechanically verified sanitizer
+  invariant) versus what it confirms in a new domain. The key-holding
+  measurements (the leakage/memorization deltas, the judge sweep) are the
+  fellowship's compute.
 - Open-source: the leakage/anonymization tooling as a standalone package any
   benchmark author can run, plus the corrected BRIDGE-bench
 - A construction checklist for security-capability evals
