@@ -6,6 +6,11 @@
 - **[RESEARCH.md](RESEARCH.md)** — Detailed research methodology, all charts, full results
 - **[MULTI_MODEL.md](MULTI_MODEL.md)** — Provider-agnostic models (Claude/DeepSeek/Kimi/local), the bake-off
 - **[OPTIMIZATION.md](OPTIMIZATION.md)** — Prompt caching, concurrency, cascade, self-consistency, large-context
+- **[LEAKAGE_AUDIT.md](LEAKAGE_AUDIT.md)** — prompt leakage: 13/24 prompts described the bug (measured, fixed)
+- **[JUDGE_VALIDITY.md](JUDGE_VALIDITY.md)** — grader-dependence: the headline moves 14.5 F1 points (measured)
+- **[LIVE_DATASET.md](LIVE_DATASET.md)** — negative controls: first-party unexploited contracts, measuring specificity (the exploit set can't)
+- **[MATCHED_PAIRS.md](MATCHED_PAIRS.md)** — memorization-free positives: pre-audit contracts, labels grounded in the git fix diffs
+- **[CONTAMINATION.md](CONTAMINATION.md)** — the memorization confound and the pre-registered control experiment (open)
 
 ## Phase Reports
 
@@ -38,13 +43,17 @@
 
 | Domain | Contracts | String-match F1 | Semantic F1 | Recall |
 |--------|-----------|-----------------|-------------|--------|
-| Bridges | 16 | 4% | **37%** | 56% |
+| Bridges | 16 | 5% | **37%** | 56% |
 | DEX/AMM | 5 | 7% | **21%** | 38% |
 | Lending | 3 | 0% | **40%** | 62% |
-| **All three** | **24** | **4%** | **35%** | **54%** |
+| **All three** | **24** | **5%** | **35%** | **54%** |
 
-Judge validated at **92% precision / κ = 0.54** vs. a hand-labeled gold standard.
-Fable 5 **refuses** the task. DEX+lending compute: $16.29 (budget-capped).
+Both F1 columns score the same Opus findings (`python -m agents.report` regenerates them).
+Judge validated at **92% precision / κ = 0.54** vs. a hand-labeled gold standard — *in-sample*
+(n = 26 positives, 95% CI ≈ [0.76, 0.98]), so 35% is a direction, not a constant. Every
+contract is a famous exploit, so results are **detection-under-possible-memorization** (no
+contamination control run yet). Fable 5 declined the task in *uncommitted* manual testing
+(anecdotal — not in the committed harness). DEX+lending compute: $16.29 (budget-capped).
 See [RESEARCH.md](RESEARCH.md) and [DATA_QUALITY.md](DATA_QUALITY.md).
 
 ### Why LLMs Win

@@ -20,8 +20,37 @@ jobs:
       - name: Dataset integrity
         run: python -m benchmarks.validate_dataset
 
-      - name: Unit tests (eval logic + integrity)
+      - name: Unit tests (eval logic + sanitizer safety + integrity)
         run: python -m pytest tests/ -q
+
+      # Fails the build if the sanitizer ever changes program semantics (token stream or
+      # control-flow counts), which would silently invalidate the leakage/contamination
+      # deltas. Also re-measures leakage so the finding can't regress unnoticed.
+      - name: Prompt-leakage audit + sanitizer safety invariant
+        run: python -m benchmarks.sanitize
+
+      # Reproduces the committed semantic F1 from the judge's own decisions (asserted
+      # inside the module) and recomputes the gold-corrected figure + bootstrap CI.
+      - name: Judge-validity analysis (reproduction gate)
+        run: python -m agents.judge_uncertainty
+
+      # Verifies the ablation harness can plan every configuration without an API key.
+      - name: Judge-ablation dry run
+        run: python -m agents.judge_ablation --full --dry-run
+
+      # Negative-control (live) domain: regenerate the static baseline over the
+      # audit-hardened first-party contracts and score specificity. Keeps the "does the
+      # model over-flag unmemorized code" arm honest and reproducible.
+      - name: Live negative-control static baseline + specificity
+        run: |
+          python -m agents.benchmark_runner --live --no-claude
+          python -m agents.specificity results_live.json
+
+      # Matched-pair (positive) domain: the pre-audit versions of the same contracts,
+      # labeled from the git fix-commit diffs. Regenerates the static baseline so the
+      # "0/16 static recall on real, unmemorized bugs" figure can't regress unnoticed.
+      - name: Matched-pair static baseline (recall on unmemorized bugs)
+        run: python -m agents.benchmark_runner --matched --no-claude
 
       - name: Static benchmark smoke test (free, no model)
         run: python -m agents.benchmark_runner --real --no-claude

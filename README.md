@@ -6,47 +6,115 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange)]()
 [![Verified contracts: 24](https://img.shields.io/badge/verified%20contracts-24-blue)]()
 [![Domains: bridges · DEX · lending](https://img.shields.io/badge/domains-bridges%20%C2%B7%20DEX%20%C2%B7%20lending-8a2be2)]()
-[![Semantic F1: 35%](https://img.shields.io/badge/Opus%204.8%20semantic%20F1-35%25-success)]()
+[![Prompt leakage found: 13/24](https://img.shields.io/badge/prompt%20leakage%20found-13%2F24%20contracts-critical)]()
+[![Semantic F1: 35% (raw, leaky)](https://img.shields.io/badge/Opus%204.8%20semantic%20F1-35%25%20(raw%2C%20pre--fix)-informational)]()
 [![Models: Claude · DeepSeek · local](https://img.shields.io/badge/models-Claude%20%C2%B7%20DeepSeek%20%C2%B7%20Kimi%20%C2%B7%20local-informational)]()
 [![Modes: agentic · cascade · self-consistency](https://img.shields.io/badge/modes-agentic%20%C2%B7%20cascade%20%C2%B7%20self--consistency-blueviolet)]()
 
-> **Research on AI-assisted security analysis and mechanistic interpretability**  
-> Demonstrating that multi-turn LLM reasoning outperforms static analysis on real-world blockchain exploits.
+> **Research on measurement validity in AI security-capability evaluation**  
+> I built a vulnerability-detection benchmark, then found it was scoring answers it had printed in the prompt.
 
 ---
 
-## 🎯 Current Focus: Multi-Domain Vulnerability Detection
+## 🎯 Current Focus: are these benchmarks measuring detection, or recognition?
 
-**Core question:** can an LLM with a tool-use loop find vulnerabilities in *real* deployed
-contracts that pattern-based static analysis misses? **BRIDGE-bench** is the benchmark built
-to answer it — real, verified, on-chain source across bridges, DEX, and lending, scored by
-both exact-string matching and an LLM-judge.
+I built **BRIDGE-bench** to answer a capability question: can an LLM with a tool-use loop find
+vulnerabilities in *real* deployed contracts that static analysis misses? Opus 4.8 scored
+**35% semantic F1 / 54% recall** across 24 verified contracts in three domains.
 
-### Measured results (Opus 4.8, June 2026 — 24 verified contracts, 3 domains)
+Then I printed the exact string the model receives, and grepped it.
+
+**13 of 24 prompts (54%) contained a comment describing the bug in prose; 2 stated the
+ground-truth label verbatim.** Each contract's provenance header — written for human
+auditability — was being fed to the model along with the source.
+
+> **The sharpest case.** Euler's header reads `...donateToReserves had no account
+> health/solvency check ... CORRECTED label: missing_solvency_check`. Opus's top finding was
+> `missing_solvency_check`, scored a **true positive** — and `donateToReserves` **is not in
+> the committed source**. The bug wasn't there to find. The answer was.
+
+That reframed the project. The interesting question is no longer "can agents find bridge
+bugs" but **"what do security-capability benchmarks actually measure?"** — a question whose
+answer generalizes past crypto to any eval built from public incidents (CVE corpora with
+advisory text, bug-bounty sets with report summaries).
+
+**[→ Read the leakage audit](./ai-security/docs/LEAKAGE_AUDIT.md)** · measured, no API key
+needed: `python -m benchmarks.sanitize`
+
+And a second, independent way the number fails to mean what it says: **swap the LLM judge for
+the human gold labels and the same findings score 51.6% instead of 37.1%** — a 14.5-point
+swing from changing nothing but the grader. The committed numbers sit *below* the confidence
+interval implied by the repo's own gold standard. **[→ Judge-validity
+analysis](./ai-security/docs/JUDGE_VALIDITY.md)** (`python -m agents.judge_uncertainty`).
+
+And a third: every exploit contract *has* a bug, so specificity is unmeasurable. The
+**[live domain](./ai-security/docs/LIVE_DATASET.md)** adds first-party, *unexploited*,
+audit-hardened contracts (from a real cross-chain DeFi SDK — no incident in any training set)
+to measure whether the model over-flags hardened, unfamiliar code. Its positive complement,
+the **[matched-pair domain](./ai-security/docs/MATCHED_PAIRS.md)**, is the *pre-audit* version
+of those same contracts: real bugs the model can't have read about, with **16 labels grounded
+in the git fix-commit diffs**. Recall on the buggy version + specificity on the fixed one is
+the one measurement a famous-exploit benchmark can't make.
+
+| Prompt level | What the model sees | Contracts leaking the answer |
+|---|---|---|
+| `raw` — **as originally scored** | file verbatim, header included | **13 / 24 (54%)** |
+| `stripped` | comments removed | **0** |
+| `anon` | + protocol identity removed | **0** |
+
+The fix is shipped and regression-tested (`benchmarks/sanitize.py`, 24 CPU-only tests), wired
+into every analysis mode through one choke point, and guarded by a safety invariant so a drop
+in F1 can't be the sanitizer breaking contracts:
+
+```bash
+BENCH_SANITIZE=stripped python -m agents.benchmark_runner --real --agentic   # Δ = leakage effect
+BENCH_SANITIZE=anon     python -m agents.benchmark_runner --real --agentic   # Δ = memorization effect
+```
+
+Re-measuring at each level needs an API key and is the next experiment. **I don't know which
+way it goes, which is why it's worth running.**
+
+---
+
+### The original capability numbers (Opus 4.8, June 2026 — 24 verified contracts, 3 domains)
+
+⚠️ **Measured at `raw`, i.e. under the leakage described above.** Treat as contaminated upper
+bounds pending re-measurement, not as detection performance.
 
 | Domain | Contracts | String-match F1 | **Semantic F1** | Recall |
 |--------|-----------|-----------------|-----------------|--------|
-| Bridges | 16 | 4% | **37%** | 56% |
+| Bridges | 16 | 5% | **37%** | 56% |
 | DEX/AMM | 5 | 7% | **21%** | 38% |
 | Lending | 3 | 0% | **40%** | 62% |
-| **All three** | **24** | **4%** | **35%** | **54%** |
+| **All three** | **24** | **5%** | **35%** | **54%** |
 
 ```mermaid
 xychart-beta
-    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match baseline (line)"
+    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match of the same findings (line)"
     x-axis ["Bridges", "DEX/AMM", "Lending", "All 24"]
     y-axis "F1 (%)" 0 --> 60
     bar [37, 21, 40, 35]
-    line [4, 7, 0, 4]
+    line [5, 7, 0, 5]
 ```
 
-The static/string-match baseline sits at ~4% F1; Opus 4.8 reaches **35% F1 / 54% recall**
-semantically — a ~9× lift from the same source, holding up across all three domains. The
-exact-string matcher hides this because the model writes *compound* finding names; an
-LLM-judge — itself **validated at 92% precision / Cohen's κ = 0.54** against a hand-labeled
-gold standard — recovers the real signal. Two notable model findings: **Fable 5 refuses**
-the task entirely (`stop_reason: refusal`), and newer models reject the `temperature`
-parameter. (DEX+lending compute: $16.29, budget-capped.)
+Scoring Opus 4.8's *own* findings two ways: exact-string matching gives **~5% F1**, the
+validated semantic judge gives **35% F1 / 54% recall** — a ~7× gap that is an *evaluator
+artifact*, not a model-vs-static result. The matcher misses because the model writes
+*compound* finding names; an LLM-judge recovers the intended match. (For reference, the
+pattern-based static analyzer scores **~0% F1** on these real contracts — Key Finding #1.)
+The judge is **validated at 92% precision / Cohen's κ = 0.54** against a hand-labeled gold
+standard — but that calibration is *in-sample* (the 38 gold units are the same decisions it
+scores; n = 26 positives, 95% CI ≈ [0.76, 0.98]), so read 35% as a direction with a stated
+error profile, not a point estimate. (DEX+lending compute: $16.29, budget-capped.)
+
+> **Two caveats that bound all of this.** (1) **Prompt leakage:** measured at `raw`, so for
+> 54% of contracts the prompt described the bug — see the [leakage
+> audit](./ai-security/docs/LEAKAGE_AUDIT.md). (2) **Memorization:** every contract is a
+> *famous* historical exploit whose post-mortem is almost certainly in training data, so even
+> leak-free these are **detection-under-possible-memorization**. The tooling to measure both
+> is shipped (`BENCH_SANITIZE`); the re-run needs a key. See
+> [CONTAMINATION.md](./ai-security/docs/CONTAMINATION.md) and
+> [Honest limitations](./ai-security/README.md#honest-limitations).
 
 > Full numbers, the judge-validation report, and the DEX/lending data-quality audit are in
 > [`ai-security/`](./ai-security). This is research, not a product — the limitations are
@@ -56,18 +124,27 @@ parameter. (DEX+lending compute: $16.29, budget-capped.)
 
 ## 🔍 What Makes This Rigorous
 
-**1. Real, verified source.** 24 contracts across three domains, each fetched from
+**1. I attack my own results.** The leakage audit above cost me my headline number and is the
+most valuable thing here. Before it, a dataset audit found mislabeled exploits (a "$80M
+Compound oracle hack" that never happened; two Cream incidents conflated) and the lending
+domain was *rebuilt* around verified source bugs before any F1 was reported. In the
+mech-interp track I found a methodological error in my own patching setup and documented it
+rather than quietly fixing it.
+
+**2. Fixes ship with safety invariants.** The sanitizer cannot silently change program
+semantics: the code-token stream and control-flow counts must be identical, checked for every
+contract at every level. That verifier caught a real bug of mine — the address-neutralizing
+regex was corrupting `bytes32` function selectors — before any experiment ran.
+
+**3. Real, verified source.** 24 contracts across three domains, each fetched from
 Blockscout/Sourcify with the address confirmed on-chain — not synthetic snippets.
 
-**2. Two-axis scoring.** Exact-string F1 *and* an LLM-judge semantic F1, so the gap between
-"named the bug correctly" and "named it the way the label expects" is measured, not hidden.
+**4. Two-axis scoring, with the judge's limits stated.** Exact-string F1 *and* an LLM-judge
+semantic F1. The judge is calibrated (92% precision, 97% run-to-run stable) — and that
+calibration is disclosed as *in-sample*, n = 26 positives, 95% CI ≈ [0.76, 0.98].
 
-**3. The judge is validated.** Calibrated against a frozen 38-unit hand-labeled gold standard
-(92% precision, 97% run-to-run stable) — the semantic number ships with a stated error profile.
-
-**4. Data quality is audited.** A post-mortem-by-post-mortem audit caught mislabeled exploits
-(non-existent events, market events miscalled code bugs) and the lending set was *rebuilt*
-around verified source bugs before any F1 was reported.
+**5. Claims are pinned by tests.** 24 CPU-only tests run in CI, including the leakage finding
+and the Euler case study, so neither can silently regress.
 
 ---
 

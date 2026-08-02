@@ -1,0 +1,105 @@
+{
+  "matched_static": {
+    "method": "static_v2",
+    "overall": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 16
+    },
+    "per_contract": {
+      "suwappu_bonds_preaudit": {
+        "metrics": {
+          "tp": 0,
+          "fp": 1,
+          "fn": 6,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "flash_loan_price_manipulation",
+            "spot_price_oracle",
+            "precision_loss_rounding",
+            "missing_input_validation",
+            "reentrancy",
+            "logic_error"
+          ],
+          "false_positives": [
+            "unprotected_admin_function"
+          ]
+        },
+        "n_findings": 1,
+        "n_gt": 6,
+        "findings": [
+          {
+            "type": "unprotected_admin_function",
+            "severity": "critical",
+            "confidence": 0.7
+          }
+        ]
+      },
+      "suwappu_staking_preaudit": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 8,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_solvency_check",
+            "missing_token_transfer",
+            "front_running",
+            "denial_of_service",
+            "unchecked_return_value",
+            "integer_truncation",
+            "precision_loss_rounding",
+            "incorrect_decimal_scaling"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 8,
+        "findings": []
+      },
+      "suwappu_oft_preaudit": {
+        "metrics": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 2,
+          "precision": 0,
+          "recall": 0.0,
+          "f1": 0,
+          "missed": [
+            "missing_access_control",
+            "denial_of_service"
+          ],
+          "false_positives": []
+        },
+        "n_findings": 0,
+        "n_gt": 2,
+        "findings": []
+      }
+    },
+    "systematic_gaps": [
+      "suwappu_bonds_preaudit: flash_loan_price_manipulation",
+      "suwappu_bonds_preaudit: spot_price_oracle",
+      "suwappu_bonds_preaudit: precision_loss_rounding",
+      "suwappu_bonds_preaudit: missing_input_validation",
+      "suwappu_bonds_preaudit: reentrancy",
+      "suwappu_bonds_preaudit: logic_error",
+      "suwappu_staking_preaudit: missing_solvency_check",
+      "suwappu_staking_preaudit: missing_token_transfer",
+      "suwappu_staking_preaudit: front_running",
+      "suwappu_staking_preaudit: denial_of_service",
+      "suwappu_staking_preaudit: unchecked_return_value",
+      "suwappu_staking_preaudit: integer_truncation",
+      "suwappu_staking_preaudit: precision_loss_rounding",
+      "suwappu_staking_preaudit: incorrect_decimal_scaling",
+      "suwappu_oft_preaudit: missing_access_control",
+      "suwappu_oft_preaudit: denial_of_service"
+    ]
+  }
+}

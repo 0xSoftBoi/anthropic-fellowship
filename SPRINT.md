@@ -8,9 +8,9 @@
 - [ ] Read: "Transformers for Software Engineers" (Nelson Elhage)
 - [x] Install TransformerLens, load GPT-2 small, inspect hooks
 - [x] ★ BONUS: Experiment 01 — factual lookup localization
-- [x] ★ BONUS: Experiment 02 — multi-token confound (NOVEL FINDING)
+- [x] ★ BONUS: Experiment 02 — multi-token patching confound (methodological correction, not novel)
 - [x] ★ BONUS: Experiment 03 — cross-model replication
-- [x] ★ BONUS: Experiment 04 — negation processing (NOVEL FINDING)
+- [x] ★ BONUS: Experiment 04 — negation processing (added mechanistic detail to a known phenomenon)
 - [x] ★ BONUS: Experiment 05 — negation cross-model replication
 - [x] ★ BONUS: Draft writeup 01 — multi-token confound
 - [x] ★ BONUS: Draft writeup 02 — negation as factual booster
@@ -24,7 +24,7 @@
 - [x] ★ BONUS: Static contract analyzer
 - [x] ★ BONUS: Claude-powered deep analyzer
 - [x] ★ BONUS: Evaluation harness with ground truth
-- [x] ★ BONUS: End-to-end pipeline (static baseline: 41% F1)
+- [x] ★ BONUS: End-to-end pipeline (static baseline: ~55% F1 synthetic, ~0% F1 on real contracts)
 - [x] ★ BONUS: Etherscan contract fetcher
 - [x] ★ BONUS: Fellowship application draft
 

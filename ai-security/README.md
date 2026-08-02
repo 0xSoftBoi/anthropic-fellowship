@@ -1,8 +1,37 @@
-# AI Security Research: LLM-Driven Smart Contract Vulnerability Detection
+# AI Security Research: measuring detection, not recognition
 
-> **Can LLMs with tool-use outperform static analysis on real smart contracts?**
+> **What do LLM vulnerability benchmarks actually measure?**
 
-Research demonstrating that compositional reasoning + multi-turn analysis beats pattern matching on real-world blockchain exploits.
+I built a detection benchmark, scored Opus 4.8 at 35% semantic F1 — then found that **13 of
+24 prompts (54%) contained a comment describing the bug**, and 2 stated the ground-truth
+label verbatim. The benchmark was partly scoring the model's ability to read a comment.
+
+**[→ The leakage audit](docs/LEAKAGE_AUDIT.md)** (measured, no API key: `python -m benchmarks.sanitize`)
+
+The fix is shipped and regression-tested; re-measuring the effect is the open experiment:
+
+```bash
+BENCH_SANITIZE=stripped python -m agents.benchmark_runner --real --agentic  # Δ = prompt-leakage effect
+BENCH_SANITIZE=anon     python -m agents.benchmark_runner --real --agentic  # Δ = memorization effect
+```
+
+And the dataset had **zero negative controls** — all 24 exploit contracts carry a bug, so the
+base rate is 100% and the false-positive rate is unmeasurable. The
+**[live domain](docs/LIVE_DATASET.md)** fixes that: first-party, *unexploited*, audit-hardened
+contracts (from a real cross-chain DeFi SDK) with no incident in any training set. It measures
+**specificity** — does the model over-flag hardened, unfamiliar code? — the half of "good
+detector" the exploit set structurally cannot show. Static baseline: 75% specificity;
+`python -m agents.benchmark_runner --live --no-claude && python -m agents.specificity results_live.json`.
+
+Its positive complement is the **[matched-pair domain](docs/MATCHED_PAIRS.md)**: the *pre-audit*
+versions of those same contracts, carrying real bugs the model cannot have memorized, with
+**16 labels grounded in the actual git fix-commit diffs** (stronger ground truth than any prose
+post-mortem). Recall here + specificity on the fixed counterpart, on one contract pair, is the
+measurement no famous-exploit benchmark can make. Static baseline: 0/16 recall.
+
+Everything below is the underlying capability work. **All committed numbers were measured at
+`BENCH_SANITIZE=raw`** — i.e. under the leakage above — and are contaminated upper bounds
+until re-run.
 
 ---
 
@@ -46,11 +75,17 @@ Scored over the 16 real-source contracts (Opus run, `--real --agentic`):
 
 | Approach | Precision | Recall | F1 | TP / FP / FN |
 |----------|-----------|--------|----|--------------|
-| Static v2 | 4% | 7% | **5%** | 3 / 80 / 38 |
+| Static v2 (pattern baseline)\* | 1% | 2% | **~1%** | 1 / 188 / 45 |
 | **Opus 4.8 — string-match scoring** | 4% | 7% | **5%** | 3 / 80 / 38 |
 | **Opus 4.8 — semantic-judge scoring** | 28% | **56%** | **37%** | 23 / 60 / 18 |
-| Fable 5 agentic | — | — | n/a | **refuses** the task (`stop_reason: refusal`) |
+| Fable 5 agentic | — | — | n/a | refusals in *uncommitted* manual runs — see note |
 | Sonnet 4.6 (historical, unreproduced) | — | — | ~40–45% | original claim; never committed |
+
+\* `real_static` from the committed Opus run file (`results_real__claude-opus-4-8.json`),
+scored over the real-source set; the standalone static pass (`results_real.json`) scores
+0 / 56 / 19 (0% F1). The pattern baseline is **~0% F1 on real contracts either way** — that is
+Key Finding #1, not a typo. (An earlier version of this table mistakenly duplicated the Opus
+string-match row here.)
 
 > **Why two Opus rows.** The benchmark's evaluator does near-exact string matching on
 > vuln-type names. Opus 4.8 emits **compound, descriptive** finding names (e.g.
@@ -73,17 +108,32 @@ Scored over the 16 real-source contracts (Opus run, `--real --agentic`):
 > its errors are conservative under-credits, making the **37% a lower bound**. The
 > residual disagreement (moderate κ) sits almost entirely on labels flagged *borderline*
 > in the gold file — genuine ambiguity, not judge noise.
+>
+> **What this calibration does *not* cover (read before trusting 37%).** (1) It is
+> **in-sample**: the 38 gold units are exactly the 38 miss-decisions the judge is scored on
+> for this bridge run — a self-consistency check, not held-out validation. (2) The 92%
+> precision is over **n = 26 predicted-positives**, a wide interval (Wilson 95% CI ≈
+> [0.76, 0.98]); κ = 0.54 sits only ~6 points above an always-say-match baseline (76%
+> positive base rate). (3) The judge scores label-vs-label similarity and **never sees the
+> contract source**, so it cannot confirm a finding is actually correct about the code. (4)
+> There is **no separate gold standard for the DEX/lending domain**, which is nonetheless
+> reported at ~30% semantic F1. Treat the semantic numbers as a signal with a real error
+> bar, not a measured constant.
 
-> **Two model-specific findings from this run.**
-> 1. **Fable 5 declines the task.** The newest model returns `stop_reason: refusal`
->    with empty output on smart-contract vulnerability-analysis prompts, across the
->    agentic harness, a single-turn JSON path, and an explicit *authorized
->    post-incident defensive audit* system prompt. Sonnet/Opus do not. A model that
->    refuses adversarial-code analysis cannot be benchmarked here as-is — itself a
->    citable result about safety-tuning vs. defensive-security utility.
-> 2. **Newer models reject `temperature`.** Both `claude-fable-5` and
->    `claude-opus-4-8` 400 on an explicit `temperature` override; the analyzers now
->    omit it for those models and keep `temperature=0` only where supported.
+> **Two model-specific observations (one anecdotal — flagged as such).**
+> 1. **Fable 5 declined the task in manual testing — _not committed, treat as anecdotal._**
+>    In uncommitted manual runs the newest model returned refusals (empty output) on the
+>    smart-contract vulnerability-analysis prompt where Sonnet/Opus engaged. **This is not
+>    reproduced in the committed harness**: no result file records it, and the current tool
+>    loop reads LiteLLM's `finish_reason` rather than a `refusal` stop reason, so there is no
+>    saved artifact to cite. If real, it points at a genuine safety-tuning-vs-defensive-utility
+>    tension worth studying properly — but as it stands it is an observation, not a result.
+>    (The two committed system prompts are generic auditor framings; a dedicated
+>    authorized-defensive-audit prompt and a committed Fable run are future work.)
+> 2. **Newer models omit `temperature`.** `agents/llm.py` skips the explicit `temperature`
+>    override for `claude-fable-5` and `claude-opus-4-8` (observed to reject it in testing)
+>    and keeps `temperature=0` only where supported. This one is in code
+>    (`_supports_temperature`), though the underlying 400 is not saved as a trace.
 
 > **Dataset status.** 16 of 20 registered contracts now have **real verified source**
 > committed (fetched from Blockscout/Sourcify, addresses confirmed on-chain), up from
@@ -101,26 +151,30 @@ labeled vulnerabilities), then scored by the validated semantic judge:
 
 | Domain | Contracts | String-match F1 | **Semantic F1** | Semantic recall |
 |--------|-----------|-----------------|-----------------|-----------------|
-| Bridges | 16 | 4% | **37%** | 56% |
+| Bridges | 16 | 5% | **37%** | 56% |
 | DEX/AMM | 5 | 7% | **21%** | 38% |
 | Lending | 3 | 0% | **40%** | 62% |
-| **All three** | **24** | **4%** | **35%** | **54%** |
+| **All three** | **24** | **5%** | **35%** | **54%** |
+
+*(Regenerate this table from committed JSON any time: `python -m agents.report`.)*
 
 ```mermaid
 xychart-beta
-    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match baseline (line)"
+    title "Opus 4.8 F1 by domain — semantic judge (bars) vs string-match of the same findings (line)"
     x-axis ["Bridges", "DEX/AMM", "Lending", "All 24"]
     y-axis "F1 (%)" 0 --> 60
     bar [37, 21, 40, 35]
-    line [4, 7, 0, 4]
+    line [5, 7, 0, 5]
 ```
 
-The thesis holds across domains: the static/string-match baseline sits at ~4% F1, while
-Opus 4.8 reaches **35% F1 / 54% recall** semantically — a ~9× lift from the same source.
-DEX is the hardest domain (Curve is a Vyper compiler bug invisible to a Solidity reader;
-KyberSwap is a subtle tick-precision bug). Cost of the DEX+lending pass: **$16.29** (Opus
-4.8 agentic, 8 contracts, budget-capped at $20 via `agents/budget_run.py`; per-contract
-token cost and dollar amounts are persisted in the result files).
+Both columns score the **same Opus 4.8 findings**: exact-string matching gives ~5% F1, the
+validated semantic judge gives **35% F1 / 54% recall** — a ~7× gap that measures the
+*evaluator*, not the model. (Separately, the pattern-based static analyzer scores ~0% F1 on
+these contracts — the real weak baseline.) DEX is the hardest domain (Curve is a Vyper
+compiler bug invisible to a Solidity reader; KyberSwap is a subtle tick-precision bug). Cost
+of the DEX+lending pass: **$16.29** (Opus 4.8 agentic, 8 contracts, budget-capped at $20 via
+`agents/budget_run.py`; per-contract token cost and dollar amounts are persisted in the
+result files).
 
 ---
 
@@ -157,6 +211,14 @@ See **[OPTIMIZATION.md](docs/OPTIMIZATION.md)**.
 
 ## Key Findings
 
+**0. The benchmark was leaking the answer into the prompt.** 13 of 24 contracts' provenance
+headers describe the bug in prose; 2 state the ground-truth label verbatim. On Euler the
+model's scored true positive (`missing_solvency_check`) is the exact string in the header,
+and the vulnerable function isn't even in the committed source. Every finding below was
+measured under that condition. Found by printing the literal prompt and grepping it — see
+[LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md). This is the most important result in this repo,
+and it is a negative one about my own work.
+
 **1. Compositional vulnerabilities require multi-turn reasoning.** Flash loan + oracle
 manipulation + reentrancy is a single multi-step exploit path. On real contracts the
 static baseline scores ~1–5% F1; an agentic LLM reading the same source identifies the
@@ -167,9 +229,11 @@ Opus 4.8 at 5% F1; an LLM-judge that scores *semantic* equivalence — validated
 hand-labeled gold standard at 92% precision — recovers **37% F1 / 56% recall**. Benchmarks
 that match vuln names literally systematically understate strong models.
 
-**3. Frontier models disagree on whether to do the task at all.** Opus 4.8 engages;
-**Fable 5 refuses** smart-contract vulnerability analysis (`stop_reason: refusal`) across
-every prompt framing tried. Safety tuning vs. defensive-security utility is a real tension.
+**3. Frontier models may disagree on whether to do the task at all (anecdotal).** Opus 4.8
+engages; in *uncommitted* manual testing Fable 5 returned refusals on the same prompt. This
+is **not reproduced in the committed harness** and has no saved artifact — treat it as an
+observation to investigate, not a result. If it holds up, safety-tuning vs. defensive-security
+utility is a real tension worth a proper study.
 
 **4. Dataset quality is a first-class problem.** A post-mortem audit
 ([docs/DATA_QUALITY.md](docs/DATA_QUALITY.md)) found the original DEX/lending labels were
@@ -315,26 +379,60 @@ flowchart TB
 ## Reproducing the headline run
 
 The committed `results_real__claude-opus-4-8.json` (+ `__rescored.json`) is the Opus 4.8
-agentic pass over the 16 bridge contracts. `results_defi_lending*.json` are the static
-multi-domain passes. To regenerate from scratch you need an API key with credit; static
-passes are free. Costs are dominated by the largest contracts (Penpie ~184 KB).
+agentic pass over the 16 bridge contracts. `results_defi_lending__claude-opus-4-8.json`
+(+ `__rescored.json`) is the Opus 4.8 **agentic** pass over the 8 DEX+lending contracts
+(`_run.spent_usd = 16.29`) — both the static and agentic rows for those domains live in that
+file. To regenerate from scratch you need an API key with credit; static passes are free.
+Costs are dominated by the largest contracts (Penpie ~184 KB).
 
 ---
 
 ## Honest limitations
 
+- **Every committed number was measured with the answer partly in the prompt.** 13 of 24
+  provenance headers describe the bug; 2 name the label. Treat all F1 below as contaminated
+  upper bounds until re-run at `BENCH_SANITIZE=stripped`. Details and the Euler case study:
+  [LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md).
+- **One contract's labeled bug is absent from its own source.** Euler's committed file is the
+  module bundle, not the `EToken` module holding `donateToReserves`, so its ground truth is
+  not findable from the supplied code at all. Not yet fixed (needs the right source fetched).
+- **Training-data contamination is the second threat to validity — tooling now exists, the
+  experiment has not been run.** Every contract here is a *famous* historical exploit whose public
+  post-mortem is almost certainly in the model's training data, so "Opus finds the Euler
+  donation bug" is confounded by memorization of the Euler write-up. These numbers are
+  **detection-under-possible-leakage**, not clean capability measurement. The key open
+  experiment — a contamination control (identifier/constant perturbation, or genuinely
+  post-cutoff contracts, measuring the F1 delta) — has **not been run**; it is specified in
+  advance in **[docs/CONTAMINATION.md](docs/CONTAMINATION.md)**. Read every number below with
+  that caveat.
+- **The headline moves 14.5 F1 points depending on who grades it.** Scoring the *same* Opus
+  findings with the human gold labels instead of the Haiku judge gives bridge F1 of **51.6%,
+  not 37.1%** — the judge is systematically conservative, and the committed numbers sit
+  *below* the 95% CI implied by the repo's own gold standard ([39.7%, 63.8%]). One flipped
+  judge call moves the headline ~1.1 points; 5 of 53 move it 5 points. Neither number is
+  "the" answer — the grader-dependence is the finding. See
+  [JUDGE_VALIDITY.md](docs/JUDGE_VALIDITY.md).
+- **The semantic judge's calibration is in-sample, small-n, and source-blind.** The 92%
+  precision / κ = 0.54 is measured on the *same* 38 decisions it then scores (not held out),
+  over n = 26 positives (95% CI ≈ [0.76, 0.98]); the judge never reads the contract, so it
+  scores label-vs-label similarity, not whether a finding is truly correct — a finding can be
+  synonymous with the label and false about the code, and the blind judge must credit it. No
+  separate gold standard exists for DEX/lending. Treat 35–37% F1 as a direction with a real
+  error bar.
+- **The string-match scorer is deliberately lenient** and some of its equivalences were added
+  after observing model outputs, so string-match F1 is a soft floor, not a neutral baseline.
 - **Ground truth is hand-authored** (single annotator). The gold standard and fuzzy
   equivalences encode the author's judgment; a second labeler would let us report
   inter-human agreement.
-- **The semantic judge is moderate-κ** (0.54) though high-precision (92%); the 37% F1 is a
-  conservative lower bound, not a point estimate.
 - **Some DEX source is a faithful stand-in, not the exploited instance**: KyberSwap uses a
   verified same-implementation pool (Optimism, pre-patch) and DODO uses the verified clone
   template, because the exploited factory-deployed instances are unverified on-chain. Curve
-  is a Vyper bug with no Solidity equivalent. The lending Cream positive uses a post-hack
-  *patched* impl (a softer positive).
+  is a Vyper bug with no Solidity equivalent (counted toward "5/5 source" but excluded from
+  F1). The lending Cream positive uses a post-hack *patched* impl (a softer positive).
 - **No committed Sonnet baseline** on the full set yet, so the Opus number lacks a same-set
-  head-to-head; and the committed Opus run covers bridges only (DEX/lending not yet run).
+  head-to-head. The Opus agentic run now covers all three domains (bridges committed first,
+  DEX+lending in `results_defi_lending__claude-opus-4-8.json`), but n is small: effectively
+  16 bridges + ~4 clean DEX + ~2 clean lending after exclusions.
 
 ---
 
@@ -352,6 +450,11 @@ python -m agents.report                 # regenerate the results tables from com
 - **[MULTI_MODEL.md](docs/MULTI_MODEL.md)** — provider-agnostic models, local/self-host deployment, the bake-off
 - **[OPTIMIZATION.md](docs/OPTIMIZATION.md)** — prompt caching, concurrency, cascade, self-consistency, large-context
 - **[DATASHEET.md](docs/DATASHEET.md)** — Datasheet-for-Datasets: provenance, composition, limitations
+- **[LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md)** — the prompt-leakage finding, the Euler case study, and the sanitizer
+- **[JUDGE_VALIDITY.md](docs/JUDGE_VALIDITY.md)** — how much the headline depends on *who grades it* (14.5 F1 points)
+- **[LIVE_DATASET.md](docs/LIVE_DATASET.md)** — negative controls: first-party *unexploited* contracts, measuring specificity
+- **[MATCHED_PAIRS.md](docs/MATCHED_PAIRS.md)** — memorization-free *positives*: pre-audit contracts, labels grounded in the git fix diffs
+- **[CONTAMINATION.md](docs/CONTAMINATION.md)** — the memorization confound and the pre-registered experiment to measure it
 - **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
 - **[writeups/multi_domain_analysis.md](writeups/multi_domain_analysis.md)** — what Opus catches vs. misses, per contract
 - **[INDEX.md](docs/INDEX.md)** — documentation map

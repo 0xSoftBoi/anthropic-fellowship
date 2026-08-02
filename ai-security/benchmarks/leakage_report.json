@@ -1,0 +1,340 @@
+{
+  "rows": [
+    {
+      "domain": "bridge",
+      "contract": "nomad_bridge_replica",
+      "n_labels": 5,
+      "raw": "IDENTITY",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "qubit_finance_bridge",
+      "n_labels": 2,
+      "raw": "MODERATE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "socket_gateway_registry",
+      "n_labels": 2,
+      "raw": "IDENTITY",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "xbridge_approval_drain",
+      "n_labels": 1,
+      "raw": "IDENTITY",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "lifi_protocol_diamond_july_2024",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "allbridge_oracle_pool",
+      "n_labels": 2,
+      "raw": "MODERATE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "CLEAN",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "crosscurve_receiveraxelar",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "hyperbridge_tokengateway",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "penpie_pendlestaking",
+      "n_labels": 2,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [
+          "reentrancy"
+        ],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "seneca_chamber",
+      "n_labels": 2,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "CLEAN",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "prisma_migratetrovezap",
+      "n_labels": 2,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "sonne_soVELO_cerc20",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "dough_connector_paraswap",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [
+          "arbitrary_external_call"
+        ],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "abracadabra_cauldronv4",
+      "n_labels": 3,
+      "raw": "MODERATE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "thorchain_router",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [
+          "reentrancy"
+        ],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "bridge",
+      "contract": "rubic_proxy",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "defi",
+      "contract": "euler_finance_lending",
+      "n_labels": 2,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [
+          "missing_solvency_check"
+        ],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "defi",
+      "contract": "curve_finance_vyper_reentrancy",
+      "n_labels": 1,
+      "raw": "CLEAN",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "CLEAN",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "defi",
+      "contract": "kyberswap_elastic_swap",
+      "n_labels": 2,
+      "raw": "MODERATE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "defi",
+      "contract": "platypus_finance_pool",
+      "n_labels": 2,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "defi",
+      "contract": "dodo_v1_oracle",
+      "n_labels": 1,
+      "raw": "MODERATE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "lending",
+      "contract": "onyx_opepe_market",
+      "n_labels": 3,
+      "raw": "SEVERE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "CLEAN",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "lending",
+      "contract": "compound_p062_comptroller",
+      "n_labels": 2,
+      "raw": "MODERATE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "IDENTITY",
+      "anon": "CLEAN"
+    },
+    {
+      "domain": "lending",
+      "contract": "cream_cramp_market",
+      "n_labels": 3,
+      "raw": "MODERATE",
+      "label_hits": {
+        "raw": [],
+        "stripped": [],
+        "anon": []
+      },
+      "stripped": "CLEAN",
+      "anon": "CLEAN"
+    }
+  ],
+  "counts": {
+    "raw": {
+      "IDENTITY": 3,
+      "MODERATE": 7,
+      "SEVERE": 13,
+      "CLEAN": 1
+    },
+    "stripped": {
+      "IDENTITY": 19,
+      "CLEAN": 5
+    },
+    "anon": {
+      "CLEAN": 24
+    }
+  },
+  "failures": []
+}

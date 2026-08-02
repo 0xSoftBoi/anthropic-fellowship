@@ -4,6 +4,18 @@
 
 This is a comprehensive research project exploring AI-assisted security analysis across blockchain domains.
 
+> ⚠️ **How to read this document.** The *measured* headline is the Phase 7/8 **Opus 4.8**
+> run: **35% semantic F1 / 54% recall over 24 contracts, ~5% string-match, static ≈ 0%**
+> (regenerate with `python -m agents.report`). Earlier phases (4–6) below quote **Sonnet
+> estimates (~40–45% F1, false-positive counts, cost/accuracy charts) that were never
+> committed or reproduced** — they are kept as a narrative of how the work evolved, not as
+> results; where they conflict with the Opus numbers or [DATA_QUALITY.md](DATA_QUALITY.md),
+> the latter win. **Contamination caveat:** every contract is a famous exploit with a public
+> post-mortem likely in training data, so all numbers are detection-under-possible-memorization
+> (no contamination control run yet). The "Research Scope" catalog directly below still lists
+> the *original* lending set (Venus/Cream/Compound); several of those labels were later found
+> wrong and the domain was rebuilt — see DATA_QUALITY.md for the corrected, evaluated set.
+
 ---
 
 ## Core Question
@@ -18,22 +30,27 @@ This research demonstrates:
 
 ---
 
-## Research Scope: 23 Real Exploits, $1.6B+ Losses
+## Research Scope: ~23 Real Exploits, ~$2.8B+ Losses (historical catalog)
 
-### Bridges (10 exploits, $1.2B)
-Nomad ($190M), Poly Network ($610M), Qubit ($80M), Socket, XBridge, Ronin, Orbit, LiFi, Allbridge, Synapse
+*Approximate public post-mortem figures for the exploits catalogued while scoping the work.
+Losses are the total drained; only a subset are source-detectable code bugs (the F1 eval set).
+The lending row here is the **original** catalog — several labels were later corrected and the
+domain rebuilt (see [DATA_QUALITY.md](DATA_QUALITY.md)).*
 
-### DEX/AMM (5 exploits, $327M)
+### Bridges (10 exploits, ~$2.1B; ~$1.16B in source-detectable logic bugs)
+Nomad ($190M), Poly Network ($610M), Qubit ($80M), Socket, XBridge, Ronin ($625M), Orbit, LiFi, Allbridge, Synapse
+
+### DEX/AMM (5 exploits, ~$327M)
 Euler Finance ($197M), Kyberswap ($46M), Curve, Platypus, DODO
 
-### Lending (3 exploits, $410M)
+### Lending (3 exploits, ~$410M — original catalog, since rebuilt)
 Venus ($200M), Cream ($130M), Compound ($80M)
 
 ```mermaid
-pie title DeFi Losses by Domain ($1.6B Total)
-    "Bridges $1.2B" : 1200
-    "Lending $410M" : 410
-    "DEX/AMM $327M" : 327
+pie title DeFi Losses by Domain (~$2.8B catalogued)
+    "Bridges ~$2.1B" : 2100
+    "Lending ~$410M" : 410
+    "DEX/AMM ~$327M" : 327
 ```
 
 ---
@@ -187,13 +204,14 @@ hacks (Ronin, Orbit, KelpDAO, IoTeX, Force Bridge, Humanity Protocol) are kept i
 `bridge_bench.py` for loss-coverage only and **excluded from the F1 eval** — they have
 no source-level bug to detect.
 
-**Finding 5: Fable 5 refuses the task.** The newest model returns
-`stop_reason: refusal` (empty output) on smart-contract vulnerability-analysis
-prompts, reproduced across (a) the agentic tool harness, (b) a single-turn JSON
-analyzer, and (c) an explicit *authorized post-incident defensive audit* system
-prompt. Sonnet 4.6 and Opus 4.8 engage normally. A safety-tuned refusal of
-adversarial-code analysis is a real obstacle to defensive-security tooling and is
-itself a citable result.
+**Finding 5 (anecdotal, not committed): Fable 5 may decline the task.** In *uncommitted*
+manual testing the newest model returned refusals (empty output) on the vulnerability-analysis
+prompt where Sonnet 4.6 and Opus 4.8 engaged. **This is not reproduced in the committed
+harness** — no result file records it, the committed tool loop reads LiteLLM's `finish_reason`
+(not a `refusal` stop reason), and the two committed system prompts are generic auditor
+framings (a dedicated authorized-defensive-audit prompt is *not* in the repo). If it holds up
+under a committed run, a safety-tuned refusal of defensive-code analysis would be a real
+obstacle worth studying — but as it stands it is an observation to verify, not a citable result.
 
 **Finding 6: Exact-string scoring massively undercounts a strong model.** On the 16
 real-source contracts, Opus 4.8 agentic scored **5% F1 / 7% recall** by the benchmark's
@@ -223,10 +241,37 @@ disagreement is genuine label ambiguity, not judge unreliability. The earlier
 worry about judge nondeterminism was an artifact of order-dependent finding
 *consumption* in the rescorer, not judge instability (97% unanimous here).
 
-**Operational note.** `claude-fable-5` and `claude-opus-4-8` reject an explicit
-`temperature` parameter (400); analyzers now omit it for those models while keeping
-`temperature=0` where supported. Per-model results write to
-`results_real__<model>.json` so baselines are never clobbered.
+*Limits of this calibration (don't over-read it):* it is **in-sample** — the 38 gold units
+are the same 38 miss-decisions the judge scores on this run, a self-consistency check rather
+than held-out validation. The 92% precision is over **n = 26 positives** (Wilson 95% CI ≈
+[0.76, 0.98]) and κ = 0.54 is only ~6 points above an always-match baseline (76% positive base
+rate). The judge also **never sees the contract source**, so it scores label-vs-label
+similarity, not whether a finding is truly correct about the code — and there is **no separate
+gold standard for the DEX/lending domain**, which is still reported at ~30% semantic F1.
+
+**Operational note.** `claude-fable-5` and `claude-opus-4-8` were observed in testing to
+reject an explicit `temperature` parameter, so `agents/llm.py::_supports_temperature` omits it
+for those model families while keeping `temperature=0` where supported. The workaround is in
+code; the underlying 400 response was not saved as a committed trace. Per-model results write
+to `results_real__<model>.json` so baselines are never clobbered.
+
+**Reproducing the static baseline numbers** (no API key):
+
+```bash
+python -m agents.report          # the measured multi-domain table (from committed JSON)
+python - <<'PY'                  # the synthetic static baseline: 8 TP / 7 FP / 6 FN = 55% F1
+from agents.benchmark_runner import evaluate_findings
+from agents.static_analyzer_v2 import analyze_static
+from benchmarks.test_contracts import TEST_CONTRACTS
+tp = fp = fn = 0
+for name, c in TEST_CONTRACTS.items():
+    f = [{"type": x.vuln_type, "severity": x.severity} for x in analyze_static(c["source"])]
+    m = evaluate_findings(f, c["ground_truth"]["vulnerabilities"])
+    tp, fp, fn = tp + m["tp"], fp + m["fp"], fn + m["fn"]
+p, r = tp / (tp + fp), tp / (tp + fn)
+print(f"synthetic static: tp{tp} fp{fp} fn{fn} F1={2*p*r/(p+r)*100:.1f}%")
+PY
+```
 
 ### Phase 8: Multi-model harness + cost/performance optimization (June 2026)
 
@@ -355,12 +400,9 @@ BENCH_CONCURRENCY=8  python3 -m agents.benchmark_runner --real --hybrid
 
 ## References
 
-- **Phase 4 Paper**: [Sonnet outperforms static on real contracts](results_real.json)
-- **Phase 5B Results**: [DEX generalization](phase5b_results.json)
-- **Skills Extracted**:
-  - [LLM Prompt Optimization for Multi-Domain Analysis](https://github.com/0xSoftBoi/anthropic-fellowship/tree/main/.claude/skills/llm-prompt-optimization-multi-domain)
-  - [Etherscan v2 Multichain Contract Fetching](https://github.com/0xSoftBoi/anthropic-fellowship/tree/main/.claude/skills/etherscan-v2-multichain-contract-fetching)
-  - [LLM Vulnerability Benchmark Ground Truth Gap](https://github.com/0xSoftBoi/anthropic-fellowship/tree/main/.claude/skills/llm-vulnerability-benchmark-ground-truth-gap)
+- **Phase 4 Paper**: [Sonnet outperforms static on real contracts](../results_real.json)
+- **Phase 5B Results**: [early DEX single-contract probe](../phase5b_results.json) *(orphan
+  early artifact — superseded by the committed multi-domain Opus run; not a headline source)*
 
 ---
 

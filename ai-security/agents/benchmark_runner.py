@@ -35,19 +35,31 @@ from benchmarks.test_contracts import TEST_CONTRACTS
 from benchmarks.bridge_contracts_real import load_real_contracts
 from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
+from benchmarks.live_contracts import load_live_contracts
+from benchmarks.matched_contracts import load_matched_contracts
+from benchmarks.sanitize import LEVELS as SANITIZE_LEVELS, sanitize
 
 
-# Fuzzy type matching for evaluation
+# Fuzzy type matching for evaluation.
+#
+# PROVENANCE & LENIENCY (read before trusting string-match F1): this table maps
+# each canonical ground-truth vuln key to the finding-strings that count as the
+# same root cause. Some equivalences were added reactively after observing model
+# phrasings, so this scorer is deliberately generous — it is a low-effort proxy,
+# not an independent oracle. Treat string-match F1 as a *floor*; the validated
+# semantic judge (semantic_rescorer.py) is the primary signal. Every key below is
+# unique — earlier duplicate keys that Python silently shadowed have been merged
+# so no equivalence is lost.
 TYPE_EQUIVALENCES = {
     "unprotected_admin_function": ["unprotected_admin_function", "missing_access_control"],
-    "untrusted_external_call": ["untrusted_external_call", "signature_verification_bypass"],
+    "untrusted_external_call": ["untrusted_external_call", "signature_verification_bypass", "arbitrary_external_call", "reentrancy", "unsafe_external_call"],
     "unused_signature_parameter": ["missing_signature_verification"],
     "missing_signature_verification": ["missing_signature_verification", "unused_signature_parameter"],
     "missing_reentrancy_guard": ["reentrancy"],
-    "reentrancy": ["reentrancy", "missing_reentrancy_guard"],
-    "spot_price_oracle": ["spot_price_oracle", "flash_loan_exploitable"],
+    "reentrancy": ["reentrancy", "missing_reentrancy_guard", "reentrancy_in_dex_callback", "untrusted_external_call", "cross_function_reentrancy"],
+    "spot_price_oracle": ["spot_price_oracle", "flash_loan_exploitable", "flash_loan_price_manipulation", "spot_price_dependency"],
     "flash_loan_exploitable": ["flash_loan_exploitable", "spot_price_oracle"],
-    "unprotected_initializer": ["unprotected_initializer"],
+    "unprotected_initializer": ["unprotected_initializer", "reinitialization", "missing_access_control", "unprotected_init", "reinitializable"],
     "reinitializable": ["reinitializable"],
     "zero_root_acceptance": ["zero_root_acceptance"],
     "no_rate_limiting": ["no_rate_limiting"],
@@ -76,7 +88,6 @@ TYPE_EQUIVALENCES = {
     "flash_loan_collateral_inflation": ["flash_loan_collateral_inflation", "flash_loan_price_manipulation"],
     "donation_attack_bad_debt": ["donation_attack_bad_debt", "bad_debt_accumulation", "zero_value_deposit"],
     "reentrancy_in_dex_callback": ["reentrancy_in_dex_callback", "reentrancy"],
-    "spot_price_oracle": ["spot_price_oracle", "flash_loan_price_manipulation", "spot_price_dependency"],
     "precision_loss_rounding": ["precision_loss_rounding", "tick_boundary_exploit", "integer_boundary_exploit"],
     "jit_liquidity_attack": ["jit_liquidity_attack", "sandwich_attack_vector"],
     "sandwich_attack_vector": ["sandwich_attack_vector", "jit_liquidity_attack"],
@@ -97,27 +108,24 @@ TYPE_EQUIVALENCES = {
     "improper_proof_verification": ["improper_proof_verification", "mmr_missing_bounds_check", "missing_proof_link"],
     "unbounded_mint_authority": ["unbounded_mint_authority", "privileged_mint", "admin_takeover", "missing_access_control", "unprotected_admin_function"],
     "admin_takeover": ["admin_takeover", "unbounded_mint_authority", "missing_access_control"],
-    # 2024-2025 DeFi additions (Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra)
-    "reentrancy": ["reentrancy", "missing_reentrancy_guard", "reentrancy_in_dex_callback", "untrusted_external_call", "cross_function_reentrancy"],
-    "untrusted_external_call": ["untrusted_external_call", "arbitrary_external_call", "reentrancy", "unsafe_external_call"],
+    # 2024-2025 DeFi additions (Penpie, Seneca, Prisma, Sonne, Dough, Abracadabra).
+    # `reentrancy` and `untrusted_external_call` were previously re-declared here,
+    # silently shadowing their bridge-section definitions — now merged above.
     "unvalidated_callback": ["unvalidated_callback", "arbitrary_external_call", "missing_input_validation", "unvalidated_flashloan_callback", "untrusted_external_call"],
-    "exchange_rate_manipulation": ["exchange_rate_manipulation", "empty_market_donation", "rounding_error", "first_depositor", "donation_attack_bad_debt", "share_inflation"],
     "rounding_error": ["rounding_error", "precision_loss_rounding", "exchange_rate_manipulation"],
-    "empty_market_donation": ["empty_market_donation", "donation_attack_bad_debt", "first_depositor", "exchange_rate_manipulation"],
-    "missing_solvency_check": ["missing_solvency_check", "skipped_solvency_check", "undercollateralized_borrow", "missing_health_check", "state_flag_reset"],
     "state_flag_reset": ["state_flag_reset", "missing_solvency_check", "logic_error"],
     "logic_error": ["logic_error", "state_flag_reset", "missing_solvency_check", "insufficient_validation"],
     "event_spoofing": ["event_spoofing", "forged_event", "spoofed_deposit", "input_validation", "message_forgery"],
     "improper_whitelist": ["improper_whitelist", "arbitrary_external_call", "approval_exploitation", "unchecked_user_calldata", "missing_input_validation"],
-    # DEX/lending domain (Euler, Onyx, Compound P062, Cream crAMP)
-    "missing_solvency_check": ["missing_solvency_check", "solvency_check_bypass", "missing_health_check", "donate_to_reserves", "skipped_solvency_check"],
+    # DEX/lending domain (Euler, Onyx, Compound P062, Cream crAMP). These three keys
+    # merge the earlier Phase-5B/2024-25 definitions that Python had shadowed.
+    "missing_solvency_check": ["missing_solvency_check", "solvency_check_bypass", "missing_health_check", "donate_to_reserves", "skipped_solvency_check", "undercollateralized_borrow", "state_flag_reset"],
     "exchange_rate_manipulation": ["exchange_rate_manipulation", "empty_market_donation", "rounding_error", "donation_attack", "donation_attack_bad_debt", "first_depositor", "share_inflation", "integer_truncation"],
     "empty_market_donation": ["empty_market_donation", "donation_attack", "donation_attack_bad_debt", "exchange_rate_manipulation", "first_depositor"],
     "erc777_callback": ["erc777_callback", "reentrancy", "cross_function_reentrancy", "token_hook_reentrancy", "tokens_received_hook"],
     "cross_function_reentrancy": ["cross_function_reentrancy", "reentrancy", "erc777_callback", "cei_violation"],
     "reward_accounting_bug": ["reward_accounting_bug", "incorrect_comparison_operator", "reward_distribution_error", "comp_distribution", "logic_error", "incorrect_distribution"],
     "incorrect_comparison_operator": ["incorrect_comparison_operator", "reward_accounting_bug", "off_by_one", "logic_error"],
-    "unprotected_initializer": ["unprotected_initializer", "reinitialization", "missing_access_control", "unprotected_init", "reinitializable"],
     "missing_input_validation": ["missing_input_validation", "input_validation", "insufficient_validation", "unvalidated_input", "missing_validation", "no_input_validation"],
     # reverse-direction keys: fuzzy_match keys on the model's finding string, so the
     # model's likely phrasings must each map onto the canonical ground-truth key.
@@ -125,6 +133,13 @@ TYPE_EQUIVALENCES = {
     "insufficient_validation": ["insufficient_validation", "missing_input_validation"],
     "missing_validation": ["missing_validation", "missing_input_validation"],
     "unvalidated_input": ["unvalidated_input", "missing_input_validation"],
+    # Matched-pair (Suwappu audit) types — labels grounded in fix-commit diffs.
+    "missing_token_transfer": ["missing_token_transfer", "no_op_transfer", "missing_transferfrom", "accounting_error", "logic_error"],
+    "front_running": ["front_running", "frontrunning", "mev", "sandwich_attack_vector", "flash_stake_frontrun"],
+    "denial_of_service": ["denial_of_service", "dos", "locked_funds", "griefing", "permanent_lock", "bricked"],
+    "unchecked_return_value": ["unchecked_return_value", "unchecked_call_return", "ignored_return", "unchecked_low_level_call"],
+    "integer_truncation": ["integer_truncation", "int96_overflow", "unsafe_cast", "integer_overflow", "downcast_overflow"],
+    "incorrect_decimal_scaling": ["incorrect_decimal_scaling", "decimal_mismatch", "wrong_decimals", "scaling_error"],
 }
 
 
@@ -337,6 +352,13 @@ def _run_audit_benchmark(dataset, dataset_name, worker, method, banner) -> dict 
     .total_tokens, .cached_tokens, .tool_calls_made. Cascade audits additionally
     expose cheap/strong token splits, recorded when present.
     """
+    # Validate run configuration BEFORE the credential early-return, so a typo in
+    # BENCH_SANITIZE fails loudly here instead of silently reverting to `raw` on the
+    # machine that actually has a key — which would quietly produce a leaky run.
+    level = os.environ.get("BENCH_SANITIZE", "raw").strip().lower()
+    if level not in SANITIZE_LEVELS:
+        raise SystemExit(f"BENCH_SANITIZE must be one of {SANITIZE_LEVELS}, got {level!r}")
+
     if not llm.has_credentials():
         print(f"\nSkipping {method} analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
@@ -351,14 +373,32 @@ def _run_audit_benchmark(dataset, dataset_name, worker, method, banner) -> dict 
     totals = {"tp": 0, "fp": 0, "fn": 0}
 
     # Build the worklist (contracts with usable source), preserving dataset order.
+    #
+    # BENCH_SANITIZE controls prompt-leakage removal (see benchmarks/sanitize.py):
+    #   raw       (default) — the committed `.sol` verbatim, INCLUDING the provenance
+    #                         header. 13/24 of those headers describe the bug in prose,
+    #                         so raw scores are inflated by answer leakage.
+    #   stripped  — comments removed; kills the leaked answer, keeps protocol identity.
+    #   anon      — also removes protocol identity, to attack the memorization confound.
+    # The contract *name* is passed into the prompt too, so it is neutralized alongside
+    # the source at the `anon` level — otherwise "euler_finance_lending" re-leaks identity.
+    # (`level` is resolved and validated at the top of this function.)
+    if level != "raw":
+        print(f"[bench] BENCH_SANITIZE={level}: removing prompt leakage before analysis")
+
     worklist = []
-    for name, data in dataset.items():
+    for idx, (name, data) in enumerate(dataset.items()):
         if not (isinstance(data, dict) and "source" in data):
             continue
         if data["source"] is None:
             print(f"\n{name}: SKIPPED (source not available)")
             continue
-        worklist.append((name, data["source"], data["ground_truth"]["vulnerabilities"]))
+        source, display = data["source"], name
+        if level != "raw":
+            source, _rep = sanitize(source, level, name, data.get("metadata"))
+            if level == "anon":
+                display = f"Contract_{idx:02d}"
+        worklist.append((name, source, data["ground_truth"]["vulnerabilities"], display))
 
     # Contracts are independent and I/O-bound (API round-trips), so run them
     # concurrently behind a bounded pool. Each worker owns its own state; LiteLLM
@@ -367,18 +407,21 @@ def _run_audit_benchmark(dataset, dataset_name, worker, method, banner) -> dict 
     t0 = time.monotonic()
     audits: dict[str, object] = {}
     if concurrency == 1 or len(worklist) <= 1:
-        for name, source, _ in worklist:
-            audits[name] = worker(source, name)
+        for name, source, _, display in worklist:
+            audits[name] = worker(source, display)
     else:
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            fut_by_name = {name: pool.submit(worker, source, name) for name, source, _ in worklist}
+            fut_by_name = {
+                name: pool.submit(worker, source, display)
+                for name, source, _, display in worklist
+            }
             for name, fut in fut_by_name.items():
                 audits[name] = fut.result()  # propagates any exception
     elapsed = time.monotonic() - t0
 
     # Score + record in deterministic worklist order.
-    for name, source, gt_vulns in worklist:
+    for name, source, gt_vulns, _display in worklist:
         audit = audits[name]
         ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.findings]
         metrics = evaluate_findings(ai_findings, gt_vulns)
@@ -600,6 +643,20 @@ if __name__ == "__main__":
         help="Run against the lending dataset (benchmarks/lending_contracts_real.py)",
     )
     parser.add_argument(
+        "--live",
+        action="store_true",
+        help="Run against the live/negative-control dataset (benchmarks/live_contracts.py): "
+             "first-party, unexploited, audit-hardened contracts. Score with "
+             "agents/specificity.py, not F1.",
+    )
+    parser.add_argument(
+        "--matched",
+        action="store_true",
+        help="Run against the matched-pair positives (benchmarks/matched_contracts.py): "
+             "pre-audit Suwappu contracts with diff-grounded bug labels — memorization-free "
+             "positives, the buggy counterpart of --live. Scored by recall/F1.",
+    )
+    parser.add_argument(
         "--compare",
         action="store_true",
         help="Compare synthetic vs real contract results",
@@ -636,7 +693,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Determine which dataset(s) to run
-    run_synthetic = (not args.real and not args.defi and not args.lending) or args.compare
+    run_synthetic = (not args.real and not args.defi and not args.lending
+                     and not args.live and not args.matched) or args.compare
     run_real = args.real or args.compare
 
     results_all = {}
@@ -797,6 +855,10 @@ if __name__ == "__main__":
         run_domain(load_defi_contracts(), "defi", args, results_all)
     if args.lending:
         run_domain(load_lending_contracts(), "lending", args, results_all)
+    if args.live:
+        run_domain(load_live_contracts(), "live", args, results_all)
+    if args.matched:
+        run_domain(load_matched_contracts(), "matched", args, results_all)
 
     # ──────────────────────────────────────────────────────────────────
     # Save results
@@ -836,9 +898,14 @@ if __name__ == "__main__":
         _k = os.environ.get("SC_SAMPLES", "3")
         _model_tag = (("__" + _RUN_MODEL.replace("/", "-")) if _RUN_MODEL != "claude-sonnet-4-6" else "") \
             + f"__sc{_k}"
-    if (args.defi or args.lending) and not args.real and not args.compare:
+    if args.matched and not args.defi and not args.lending and not args.live and not args.real and not args.compare:
+        output_filename = f"results_matched{_model_tag}.json"
+    elif args.live and not args.defi and not args.lending and not args.matched and not args.real and not args.compare:
+        output_filename = f"results_live{_model_tag}.json"
+    elif (args.defi or args.lending or args.live or args.matched) and not args.real and not args.compare:
         _dom = "defi" if args.defi else ""
         _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"
+        _dom = (_dom + ("_live" if args.live else "")).strip("_")
         output_filename = f"results_{_dom}{_model_tag}.json"
     elif args.real and not args.compare:
         output_filename = f"results_real{_model_tag}.json"

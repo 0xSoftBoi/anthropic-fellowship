@@ -60,8 +60,12 @@ reproduced. Companion docs: [DATA_QUALITY.md](DATA_QUALITY.md) (the label audit)
 - **Not suitable for.** Training a detector (too small; risk of memorization of public exploits),
   or claiming detection of off-chain/operational risks (those are explicitly out of scope).
 - **Caveats for users.** Public exploits may appear in model training data — treat results as
-  detection-under-possible-leakage. The single-annotator labels and moderate-κ judge mean F1 is
-  a *direction with a stated error profile*, not a precise constant.
+  detection-under-possible-leakage. **This is the dataset's most serious limitation**: every
+  instance is a famous exploit with a public post-mortem predating the models under test, and
+  the labels were derived from those same post-mortems, so recognition and reasoning are not
+  separable by the current design. The control experiment is specified (but not yet run) in
+  [CONTAMINATION.md](CONTAMINATION.md). The single-annotator labels and moderate-κ judge mean
+  F1 is a *direction with a stated error profile*, not a precise constant.
 
 ## Distribution & maintenance
 

@@ -13,4 +13,10 @@ venv/
 benchmarks/_cache/
 *.solc-cache
 
+# Sanitized corpora — derived artifacts, regenerate with:
+#   python -m benchmarks.sanitize --write
+# (benchmarks/leakage_report.json IS committed: it is the measurement, not the output.)
+benchmarks/contracts_stripped/
+benchmarks/contracts_anon/
+
 # Note: results_*.json are committed on purpose (auditable benchmark artifacts).

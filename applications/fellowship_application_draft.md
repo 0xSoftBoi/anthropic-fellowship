@@ -4,92 +4,170 @@
 
 ---
 
-## Research Proposal: Cross-Chain Bridge Vulnerability Detection with AI Agents
+## Research Proposal: Are We Measuring Vulnerability Detection, or Recognition?
 
 ### Problem
 
-Cross-chain bridges have lost over $2.8 billion to exploits since 2022,
-representing ~40% of all DeFi hacks. The attack surface is growing:
-bridge TVL exceeds $55B, and exploit sophistication is increasing.
+AI-agent vulnerability detection is being evaluated on benchmarks built from
+*famous historical exploits*. That construction has a validity problem, and I
+found a concrete instance of it in my own work.
 
-Xiao & Killian (Anthropic Fellows, 2026) demonstrated that AI agents
-can find $4.6M in exploitable single-chain contract vulnerabilities,
-with exploit revenue doubling every 1.3 months. But their work focused
-on single-chain EVM contracts. The hardest vulnerabilities — cross-chain
-message forgery, bridge proof verification bugs, and cross-domain
-composability attacks — remain under-studied.
+I built BRIDGE-bench: 24 real verified contracts across bridges, DEX, and
+lending, with hand-audited labels and a validated LLM-judge. Opus 4.8 scored
+35% semantic F1 / 54% recall — a result I was ready to write up.
+
+Then I printed the exact string the model receives, and grepped it.
+
+**13 of 24 prompts (54%) contained a comment describing the bug in prose. Two
+stated the ground-truth label verbatim.** The contracts' provenance headers —
+written for human auditability — were being fed to the model along with the
+source.
+
+The sharpest case is Euler. Its header reads `...donateToReserves had no
+account health/solvency check ... CORRECTED label: missing_solvency_check`.
+Opus's top finding was `missing_solvency_check`, scored a **true positive** —
+and `donateToReserves` **is not in the committed source**. The bug was not
+there to find. The answer was.
+
+I doubt I am the only one with this problem. The same shape — artifact under
+test bundled with curated annotation metadata — recurs in CVE corpora with
+advisory text, bug-bounty datasets with report summaries, and incident
+datasets with post-mortem links. Nobody publishes the exact prompt string, so
+nobody greps it.
 
 ### Proposed Research
 
-I propose to build and evaluate AI agents specialized for cross-chain
-bridge vulnerability detection, with three contributions:
+Shift the question from *"can an agent find bridge bugs?"* to **"what do
+security-capability benchmarks actually measure, and how do we build ones that
+measure detection?"** Three contributions:
 
-**1. Cross-Chain Bridge Benchmark (BRIDGE-bench)**
+**1. A validity methodology, with tooling**
 
-An extension of SCONE-bench focused on bridge-specific vulnerabilities.
-I've already catalogued 10 major bridge exploits ($2.1B total losses)
-with a vulnerability taxonomy:
-- Smart contract logic bugs: 5 exploits, $1.16B (55% of losses)
-- Key compromise: 4 exploits, $933M (44%)
-- Upgrade mechanism abuse: 1 exploit, $4.3M (1%)
+Three independent ways a security-capability benchmark reports a number that
+isn't measuring detection — separable, and each cheap to measure:
 
-6 of 10 have AI-detectable vulnerability classes. I will expand this
-to 50+ contracts with source code, ground truth labels, and simulated
-exploit reproductions.
+- **Prompt leakage** — the answer is in the input. Found, fixed, and now
+  regression-tested in my repo (`benchmarks/sanitize.py`).
+- **Memorization** — the answer is in the weights. The contract is famous, its
+  post-mortem is in training data, and recognition substitutes for analysis.
+- **Judge validity** — the answer depends on who grades. I measured this one
+  too: scoring the *same* model findings with my human gold labels instead of
+  the LLM judge moves bridge F1 from **37.1% to 51.6%**. A 14.5-point swing
+  from changing nothing but the grader — larger than the model differences the
+  benchmark exists to detect. One flipped judge call out of 53 moves the
+  headline ~1.1 points.
+- **No negative controls** — every exploit contract has a bug, so the base rate
+  is 100% and specificity is unmeasurable. I added a **negative-control domain**:
+  first-party, *unexploited*, audit-hardened contracts from a live cross-chain
+  DeFi SDK, with no incident in any training set. It measures whether the model
+  over-flags hardened, unfamiliar code — the half of "good detector" a
+  famous-exploit benchmark structurally cannot show, and the direct answer to
+  "why only test on things that got hacked?" Its **positive complement is built
+  too**: the *pre-audit* versions of those same contracts, giving 16 real,
+  exploitable bugs the model cannot have memorized — with ground truth taken not
+  from a prose post-mortem but from the **git fix-commit diff** itself. That is
+  the one measurement a famous-exploit benchmark cannot make: recall where recall
+  can't be recall-of-a-write-up.
 
-**2. Claude-Based Detection Agent vs Static Tool Baselines**
+The harness now runs at three levels — `raw` / `stripped` (comments removed) /
+`anon` (protocol identity removed, semantics preserved) — through one choke
+point, so **Δ(raw→stripped)** isolates leakage and **Δ(stripped→anon)**
+isolates memorization. Sanitization is guarded by a safety invariant (token
+stream and control-flow counts must be unchanged) so a drop in F1 cannot be the
+sanitizer breaking contracts. That verifier already caught a real bug of mine:
+the address-neutralizing regex was corrupting `bytes32` function selectors.
 
-I've built a working pipeline:
-- Static pattern analyzer (6 vulnerability categories) → 41% F1 baseline
-- Claude-powered deep analyzer with structured JSON output
-- Evaluation harness measuring precision/recall/F1 against ground truth
-- Etherscan contract source fetcher
+**2. Re-measurement, and the honest number**
 
-The core research question: does Claude find vulnerabilities that
-Slither/Mythril miss, especially compositional/cross-chain bugs where
-a flash loan + oracle manipulation + cross-chain message compose into
-an attack that no single static rule catches?
+Re-run the committed 24-contract Opus benchmark at all three levels and publish
+all three, including whatever it does to my own headline. If Δ(raw→stripped) is
+large, my 35% was substantially reading comments — and that is the finding. If
+Δ(stripped→anon) is large, exploit-derived benchmarks measure recognition
+generally. If both are small, the capability claim survives its strongest
+attack and is worth much more than it was before. **I do not know which, which
+is why it is worth running.**
 
-**3. Defense-First Framing**
+**3. A construction standard for security-capability evals**
 
-Unlike Xiao & Killian's exploit-focused approach, I'll emphasize
-detection *before* deployment (shift-left security) and concrete
-patch suggestions. This is the angle the DeFi security community
-needs most.
+From the deltas plus the audits, a short checklist for anyone building these
+benchmarks: print the literal prompt and grep it for your labels; separate
+author-injected annotation from upstream artifact content; report a
+de-identified arm; state whether the labeled bug is even present in the supplied
+code; and report a grader-sensitivity range rather than a point estimate — with
+at least one arm where the judge can see the artifact, not just the label.
+Cheap, and none of it is standard practice today.
+
+### Why this is safety-relevant, not just crypto
+
+Dangerous-capability evaluations are how we decide what models can do. A
+contaminated eval reports capability that isn't there — or masks capability
+that is. Getting vulnerability-detection measurement right is upstream of every
+deployment decision that depends on it, and smart contracts are just the
+cleanest testbed I have: adversarial code, unambiguous ground truth (money
+moved), and a public incident record. The method is the contribution; the
+domain is where I can execute fastest.
 
 ### Why Me
 
-I'm not coming from academia — I'm a builder with domain expertise:
+I'm not coming from academia — I'm a builder, and the relevant evidence is that
+I audited my own result until it broke:
 
-- **8+ years in DeFi infrastructure:** Cross-chain arbitrage systems
-  (Bellman-Ford pathfinder), MEV protection, bridge integrations,
-  trading bot with Rust execution + Python ML signals
-- **Attacker + defender mindset:** I've built arbitrage systems (attacker
-  perspective) and monitoring/protection layers (defender perspective).
-  I've also personally experienced a USDC theft incident and executed
-  multi-channel recovery.
-- **Working code, not just ideas:** I have a functional pipeline
-  (benchmark → static analysis → Claude analysis → evaluation)
-  built before applying. The security track is ready to run experiments
-  on day 1 of the fellowship.
-- **Strong Python + Rust**, familiar with Solidity, ethers/web3
+- **I found the defect in my own benchmark and published it.** Nobody asked me
+  to grep my prompts. The finding cost me my headline number and is now the
+  strongest thing in the repo. That is the disposition this work needs — an
+  eval you cannot bring yourself to attack is not an eval.
+- **This is the third time I've corrected my own record.** I audited the
+  dataset and found mislabeled exploits (a "$80M Compound oracle hack" that
+  never happened; two Cream incidents conflated), and rebuilt the lending
+  domain around verified source bugs before reporting any F1. I caught a
+  methodological mistake in my mech-interp work (single-position patching of a
+  multi-token entity) and documented it rather than quietly fixing it.
+- **8+ years in DeFi infrastructure, and I ship it.** I build Suwappu, a live
+  cross-chain DeFi SDK — its own audited contracts became the benchmark's
+  negative-control set. I know what these contracts do and how they get drained,
+  which is why I can label ground truth and tell a real bug from an audit nitpick.
+- **Working code, not just ideas.** Provider-agnostic harness (any hosted or
+  local model through one path), validated LLM-judge, leakage sanitizer with a
+  safety invariant, a negative-control domain with a specificity scorer, a
+  matched buggy/fixed-pair domain labeled from git fix diffs, 46 CPU-only tests
+  in CI. Day-1 ready.
+- **Strong Python + Rust**, familiar with Solidity, ethers/web3.
+
+What I don't have: a PhD or ML publications. I'm betting that finding the
+measurement bug is worth more than another point of F1.
 
 ### Timeline (4 months)
 
-- Month 1: Expand benchmark to 50+ contracts, reproduce top 10 exploits
-  in simulation, run Claude analyzer against full benchmark
-- Month 2: Systematic comparison: Claude agent vs Slither vs Mythril
-  vs manual audit baselines
-- Month 3: Compositional vulnerability detection experiments,
-  cross-chain-specific agent improvements
-- Month 4: Paper writing, open-source release
+- **Month 1 — measure the deltas.** Re-run the committed 24-contract Opus
+  benchmark at `raw` / `stripped` / `anon`; publish all three plus the revised
+  honest number. Run the judge sweep (`judge_ablation.py`, ~$12 for 18
+  configurations) — including the source-visible arm, which is the only one that
+  can tell a finding that is *correct about the code* from one that merely
+  matches the label. Add a second labeler for inter-annotator agreement and a
+  held-out judge gold standard (the current one is in-sample, n=26 positives).
+- **Month 2 — generalize the audit.** Apply the leakage scan to other public
+  security-capability benchmarks (SCONE-bench, CVE- and bug-bounty-derived
+  sets). Question: is this repo's defect idiosyncratic or endemic? Either
+  answer is worth publishing.
+- **Month 3 — rebuild for validity.** Expand toward 50+ contracts under the
+  construction standard: post-cutoff holdout arm, annotation stored *outside*
+  the artifact, verification that the labeled bug is present in the supplied
+  code, de-identified arm reported by default. Grow the negative-control set
+  (external dependencies are already catalogued) and extend the matched
+  buggy/fixed-pair domain — the first 16 diff-grounded positives from Suwappu's
+  own audit history are already built; scale them and add other repos with clean
+  fix-commit histories, so the zero-memorization positive set grows alongside the
+  negatives.
+- **Month 4 — write up**, release the tooling as a reusable package, and
+  publish the checklist.
 
 ### Expected Output
 
-- Paper: "AI Agents for Cross-Chain Bridge Security: Benchmark,
-  Detection, and Compositional Vulnerability Reasoning"
-- Open-source: BRIDGE-bench dataset + detection agent + eval harness
-- Blog post for the DeFi security community
+- Paper: *"Measuring Detection, Not Recognition: Prompt Leakage and
+  Memorization in AI Security-Capability Benchmarks"*
+- Open-source: the leakage/anonymization tooling as a standalone package any
+  benchmark author can run, plus the corrected BRIDGE-bench
+- A construction checklist for security-capability evals
 
 ---
 
@@ -133,14 +211,17 @@ SensorForge (open-source robotics data capture) and exploring
 AI safety research as a career transition.
 
 I'm motivated by reducing catastrophic risks from advanced AI systems.
-The intersection of AI capabilities and DeFi attack surfaces is a
-concrete, measurable domain where safety research has immediate
-real-world impact — bridges get exploited every month, and the
-dollar amounts are growing.
+The concrete version of that, for me, is measurement: we decide what
+models are allowed to do based on evaluations, and an evaluation that
+measures the wrong thing is a safety failure that looks like a result.
+Smart contracts are where I can test that claim fastest — adversarial
+code, ground truth denominated in money moved, a public incident record
+— but the failure mode I found is not specific to them.
 
-I don't have a PhD or prior ML publications. What I have is the
-ability to ship working systems fast, deep domain expertise in
-exactly the area Anthropic's security team is researching, and
-the intellectual honesty to say what I don't know.
+I don't have a PhD or prior ML publications. What I have is the ability
+to ship working systems fast, enough domain depth to label ground truth
+honestly, and a demonstrated willingness to run the experiment that
+costs me my own headline number.
 
-Code: github.com/[username]/anthropic-fellowship
+Code: github.com/0xSoftBoi/anthropic-fellowship
+Start here: `ai-security/docs/LEAKAGE_AUDIT.md`

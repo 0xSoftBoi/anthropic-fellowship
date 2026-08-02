@@ -20,8 +20,12 @@ from pathlib import Path
 from benchmarks.bridge_contracts_real import load_real_contracts
 from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
+from benchmarks.live_contracts import load_live_contracts
+from benchmarks.matched_contracts import load_matched_contracts
 
 CONTRACTS_DIR = Path(__file__).parent / "contracts"
+LIVE_DIR = Path(__file__).parent / "contracts_live"
+MATCHED_DIR = Path(__file__).parent / "contracts_matched"
 # Known empty-source placeholders (verified-only-on-Etherscan or off-chain hacks).
 KNOWN_PLACEHOLDERS = {
     "poly_network_eth_cross_chain_manager", "ronin_bridge_validator",
@@ -79,6 +83,52 @@ def validate():
                                     f"TYPE_EQUIVALENCES entry (exact-match only)")
         stats[domain] = {"contracts": len(contracts), "with_source": with_source,
                          "gt_vulns": gt_total}
+
+    # Live / negative-control domain — different invariants: 0 ground-truth vulns is
+    # EXPECTED (that's what a negative control is), so it must not trip the exploit-domain
+    # "0 vulns = labeling bug" check above. Validate the negative-control invariants instead.
+    live = load_live_contracts()
+    live_with_source = 0
+    for c in live:
+        name = c["name"]
+        src = (c.get("source") or "").strip()
+        if not c["metadata"].get("negative_control"):
+            errors.append(f"[live] {name}: not marked negative_control")
+        if c["ground_truth"]["vulnerabilities"]:
+            errors.append(f"[live] {name}: negative control must have 0 ground-truth vulns")
+        if len(src) > 200:
+            live_with_source += 1
+        elif c["metadata"].get("address") is not None:
+            warnings.append(f"[live] {name}: no committed source but has an address")
+        if src and not (LIVE_DIR / f"{name}.sol").exists():
+            errors.append(f"[live] {name}: contracts_live/{name}.sol missing (key ≠ filename?)")
+    stats["live"] = {"contracts": len(live), "with_source": live_with_source, "gt_vulns": 0}
+
+    # Matched-pair domain — positives (must have labels + source + a live fixed counterpart).
+    matched = load_matched_contracts()
+    live_names = {c["name"] for c in live}
+    m_with_source, m_gt = 0, 0
+    for c in matched:
+        name = c["name"]
+        src = (c.get("source") or "").strip()
+        vulns = c["ground_truth"]["vulnerabilities"]
+        m_gt += len(vulns)
+        if not vulns:
+            errors.append(f"[matched] {name}: positive must have >=1 ground-truth vuln")
+        if len(src) > 200:
+            m_with_source += 1
+        else:
+            errors.append(f"[matched] {name}: no committed source (positive is unrunnable)")
+        if not (MATCHED_DIR / f"{name}.sol").exists():
+            errors.append(f"[matched] {name}: contracts_matched/{name}.sol missing (key ≠ filename?)")
+        fixed = c["metadata"].get("fixed_counterpart")
+        if fixed not in live_names:
+            errors.append(f"[matched] {name}: fixed_counterpart '{fixed}' not in the live domain")
+        for v in vulns:
+            if v["type"] not in equiv:
+                warnings.append(f"[matched] {name}: vuln '{v['type']}' has no TYPE_EQUIVALENCES entry (exact-match only)")
+    stats["matched"] = {"contracts": len(matched), "with_source": m_with_source, "gt_vulns": m_gt}
+
     return errors, warnings, stats
 
 
