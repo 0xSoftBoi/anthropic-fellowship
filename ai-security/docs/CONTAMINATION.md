@@ -1,9 +1,22 @@
 # Training-Data Contamination: the confound, and the experiment that would resolve it
 
-**Status: OPEN. Not yet run.** This document states the single biggest threat to validity of
-every F1 number in this repo, and specifies the experiment that would measure it. It is
-written before running the experiment deliberately — the design should be committed to before
-seeing results, not fitted to them afterwards.
+**Status: tooling SHIPPED, experiment NOT YET RUN.** This document specifies the memorization
+experiment before running it — the design should be committed to before seeing results, not
+fitted to them afterwards.
+
+> **Update — a more basic problem was found first.** Building the tooling for this experiment
+> surfaced *prompt* leakage: 13 of 24 contracts were shipping a comment describing the bug
+> straight into the model's context. That is now measured and fixed
+> ([LEAKAGE_AUDIT.md](LEAKAGE_AUDIT.md)). The sanitizer built for it (`benchmarks/sanitize.py`)
+> is the same machinery Arm A below needs, so Arms A and C are now one command each:
+>
+> ```bash
+> BENCH_SANITIZE=stripped python -m agents.benchmark_runner --real --agentic  # Δ = leakage
+> BENCH_SANITIZE=anon     python -m agents.benchmark_runner --real --agentic  # Δ = memorization
+> ```
+>
+> Read the two confounds as a stack: leakage is the answer being *in the input*, memorization
+> is the answer being *in the weights*. `stripped` removes the first; `anon` attacks the second.
 
 ## The problem
 
@@ -33,7 +46,13 @@ ground truth and the likely memorized text share a source.
 
 Three complementary arms. Arm A is the cheapest and most informative; run it first.
 
-### Arm A — Semantic-preserving perturbation (identifier/constant scrubbing)
+### Arm A — Semantic-preserving perturbation (identifier/constant scrubbing) — **implemented**
+
+*Implemented as `BENCH_SANITIZE=anon` (`benchmarks/sanitize.py::anonymize`). The validity
+requirement below — "the perturbation must be verified not to remove the bug" — is enforced
+mechanically by `verify()`: the code-token stream must match under the rename map and all
+control-flow counts must be identical, checked for all 24 contracts in CI. What follows is
+the original design rationale.*
 
 Rewrite each contract so the *bug is bit-for-bit preserved* but the surface identifiers that
 make it recognizable are gone:

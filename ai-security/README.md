@@ -1,8 +1,23 @@
-# AI Security Research: LLM-Driven Smart Contract Vulnerability Detection
+# AI Security Research: measuring detection, not recognition
 
-> **Can LLMs with tool-use outperform static analysis on real smart contracts?**
+> **What do LLM vulnerability benchmarks actually measure?**
 
-Research demonstrating that compositional reasoning + multi-turn analysis beats pattern matching on real-world blockchain exploits.
+I built a detection benchmark, scored Opus 4.8 at 35% semantic F1 — then found that **13 of
+24 prompts (54%) contained a comment describing the bug**, and 2 stated the ground-truth
+label verbatim. The benchmark was partly scoring the model's ability to read a comment.
+
+**[→ The leakage audit](docs/LEAKAGE_AUDIT.md)** (measured, no API key: `python -m benchmarks.sanitize`)
+
+The fix is shipped and regression-tested; re-measuring the effect is the open experiment:
+
+```bash
+BENCH_SANITIZE=stripped python -m agents.benchmark_runner --real --agentic  # Δ = prompt-leakage effect
+BENCH_SANITIZE=anon     python -m agents.benchmark_runner --real --agentic  # Δ = memorization effect
+```
+
+Everything below is the underlying capability work. **All committed numbers were measured at
+`BENCH_SANITIZE=raw`** — i.e. under the leakage above — and are contaminated upper bounds
+until re-run.
 
 ---
 
@@ -182,6 +197,14 @@ See **[OPTIMIZATION.md](docs/OPTIMIZATION.md)**.
 
 ## Key Findings
 
+**0. The benchmark was leaking the answer into the prompt.** 13 of 24 contracts' provenance
+headers describe the bug in prose; 2 state the ground-truth label verbatim. On Euler the
+model's scored true positive (`missing_solvency_check`) is the exact string in the header,
+and the vulnerable function isn't even in the committed source. Every finding below was
+measured under that condition. Found by printing the literal prompt and grepping it — see
+[LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md). This is the most important result in this repo,
+and it is a negative one about my own work.
+
 **1. Compositional vulnerabilities require multi-turn reasoning.** Flash loan + oracle
 manipulation + reentrancy is a single multi-step exploit path. On real contracts the
 static baseline scores ~1–5% F1; an agentic LLM reading the same source identifies the
@@ -352,8 +375,15 @@ Costs are dominated by the largest contracts (Penpie ~184 KB).
 
 ## Honest limitations
 
-- **Training-data contamination is the biggest threat to validity — and it is not yet
-  controlled for.** Every contract here is a *famous* historical exploit whose public
+- **Every committed number was measured with the answer partly in the prompt.** 13 of 24
+  provenance headers describe the bug; 2 name the label. Treat all F1 below as contaminated
+  upper bounds until re-run at `BENCH_SANITIZE=stripped`. Details and the Euler case study:
+  [LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md).
+- **One contract's labeled bug is absent from its own source.** Euler's committed file is the
+  module bundle, not the `EToken` module holding `donateToReserves`, so its ground truth is
+  not findable from the supplied code at all. Not yet fixed (needs the right source fetched).
+- **Training-data contamination is the second threat to validity — tooling now exists, the
+  experiment has not been run.** Every contract here is a *famous* historical exploit whose public
   post-mortem is almost certainly in the model's training data, so "Opus finds the Euler
   donation bug" is confounded by memorization of the Euler write-up. These numbers are
   **detection-under-possible-leakage**, not clean capability measurement. The key open
@@ -397,6 +427,7 @@ python -m agents.report                 # regenerate the results tables from com
 - **[MULTI_MODEL.md](docs/MULTI_MODEL.md)** — provider-agnostic models, local/self-host deployment, the bake-off
 - **[OPTIMIZATION.md](docs/OPTIMIZATION.md)** — prompt caching, concurrency, cascade, self-consistency, large-context
 - **[DATASHEET.md](docs/DATASHEET.md)** — Datasheet-for-Datasets: provenance, composition, limitations
+- **[LEAKAGE_AUDIT.md](docs/LEAKAGE_AUDIT.md)** — the prompt-leakage finding, the Euler case study, and the sanitizer
 - **[CONTAMINATION.md](docs/CONTAMINATION.md)** — the memorization confound and the pre-registered experiment to measure it
 - **[DATA_QUALITY.md](docs/DATA_QUALITY.md)** — the DEX/lending label audit and corrections
 - **[writeups/multi_domain_analysis.md](writeups/multi_domain_analysis.md)** — what Opus catches vs. misses, per contract

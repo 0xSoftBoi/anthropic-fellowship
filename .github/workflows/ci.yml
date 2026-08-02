@@ -20,8 +20,14 @@ jobs:
       - name: Dataset integrity
         run: python -m benchmarks.validate_dataset
 
-      - name: Unit tests (eval logic + integrity)
+      - name: Unit tests (eval logic + sanitizer safety + integrity)
         run: python -m pytest tests/ -q
+
+      # Fails the build if the sanitizer ever changes program semantics (token stream or
+      # control-flow counts), which would silently invalidate the leakage/contamination
+      # deltas. Also re-measures leakage so the finding can't regress unnoticed.
+      - name: Prompt-leakage audit + sanitizer safety invariant
+        run: python -m benchmarks.sanitize
 
       - name: Static benchmark smoke test (free, no model)
         run: python -m agents.benchmark_runner --real --no-claude

@@ -35,6 +35,7 @@ from benchmarks.test_contracts import TEST_CONTRACTS
 from benchmarks.bridge_contracts_real import load_real_contracts
 from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
+from benchmarks.sanitize import LEVELS as SANITIZE_LEVELS, sanitize
 
 
 # Fuzzy type matching for evaluation.
@@ -342,6 +343,13 @@ def _run_audit_benchmark(dataset, dataset_name, worker, method, banner) -> dict 
     .total_tokens, .cached_tokens, .tool_calls_made. Cascade audits additionally
     expose cheap/strong token splits, recorded when present.
     """
+    # Validate run configuration BEFORE the credential early-return, so a typo in
+    # BENCH_SANITIZE fails loudly here instead of silently reverting to `raw` on the
+    # machine that actually has a key — which would quietly produce a leaky run.
+    level = os.environ.get("BENCH_SANITIZE", "raw").strip().lower()
+    if level not in SANITIZE_LEVELS:
+        raise SystemExit(f"BENCH_SANITIZE must be one of {SANITIZE_LEVELS}, got {level!r}")
+
     if not llm.has_credentials():
         print(f"\nSkipping {method} analysis (set ANTHROPIC_API_KEY, a provider key, or LLM_BASE_URL to enable)")
         return None
@@ -356,14 +364,32 @@ def _run_audit_benchmark(dataset, dataset_name, worker, method, banner) -> dict 
     totals = {"tp": 0, "fp": 0, "fn": 0}
 
     # Build the worklist (contracts with usable source), preserving dataset order.
+    #
+    # BENCH_SANITIZE controls prompt-leakage removal (see benchmarks/sanitize.py):
+    #   raw       (default) — the committed `.sol` verbatim, INCLUDING the provenance
+    #                         header. 13/24 of those headers describe the bug in prose,
+    #                         so raw scores are inflated by answer leakage.
+    #   stripped  — comments removed; kills the leaked answer, keeps protocol identity.
+    #   anon      — also removes protocol identity, to attack the memorization confound.
+    # The contract *name* is passed into the prompt too, so it is neutralized alongside
+    # the source at the `anon` level — otherwise "euler_finance_lending" re-leaks identity.
+    # (`level` is resolved and validated at the top of this function.)
+    if level != "raw":
+        print(f"[bench] BENCH_SANITIZE={level}: removing prompt leakage before analysis")
+
     worklist = []
-    for name, data in dataset.items():
+    for idx, (name, data) in enumerate(dataset.items()):
         if not (isinstance(data, dict) and "source" in data):
             continue
         if data["source"] is None:
             print(f"\n{name}: SKIPPED (source not available)")
             continue
-        worklist.append((name, data["source"], data["ground_truth"]["vulnerabilities"]))
+        source, display = data["source"], name
+        if level != "raw":
+            source, _rep = sanitize(source, level, name, data.get("metadata"))
+            if level == "anon":
+                display = f"Contract_{idx:02d}"
+        worklist.append((name, source, data["ground_truth"]["vulnerabilities"], display))
 
     # Contracts are independent and I/O-bound (API round-trips), so run them
     # concurrently behind a bounded pool. Each worker owns its own state; LiteLLM
@@ -372,18 +398,21 @@ def _run_audit_benchmark(dataset, dataset_name, worker, method, banner) -> dict 
     t0 = time.monotonic()
     audits: dict[str, object] = {}
     if concurrency == 1 or len(worklist) <= 1:
-        for name, source, _ in worklist:
-            audits[name] = worker(source, name)
+        for name, source, _, display in worklist:
+            audits[name] = worker(source, display)
     else:
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            fut_by_name = {name: pool.submit(worker, source, name) for name, source, _ in worklist}
+            fut_by_name = {
+                name: pool.submit(worker, source, display)
+                for name, source, _, display in worklist
+            }
             for name, fut in fut_by_name.items():
                 audits[name] = fut.result()  # propagates any exception
     elapsed = time.monotonic() - t0
 
     # Score + record in deterministic worklist order.
-    for name, source, gt_vulns in worklist:
+    for name, source, gt_vulns, _display in worklist:
         audit = audits[name]
         ai_findings = [{"type": f.vuln_type, "severity": f.severity} for f in audit.findings]
         metrics = evaluate_findings(ai_findings, gt_vulns)
