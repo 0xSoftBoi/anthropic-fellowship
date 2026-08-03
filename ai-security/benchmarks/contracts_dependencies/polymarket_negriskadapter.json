@@ -1,0 +1,12 @@
+{
+  "key": "polymarket_negriskadapter",
+  "protocol": "Polymarket",
+  "contract_name": "NegRiskAdapter",
+  "address": "0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296",
+  "chain": "polygon",
+  "category": "prediction_market",
+  "tier": "clean",
+  "memorization_exposure": "medium",
+  "exploit_history": "no contract hack (see Gnosis CTF note)",
+  "explorer": "Blockscout(polygon)"
+}

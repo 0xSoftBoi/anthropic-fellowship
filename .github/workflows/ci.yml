@@ -52,5 +52,13 @@ jobs:
       - name: Matched-pair static baseline (recall on unmemorized bugs)
         run: python -m agents.benchmark_runner --matched --no-claude
 
+      # External-dependency negative controls: the unhacked, in-use contracts Suwappu depends
+      # on (committed verified source). Static baseline + specificity, so the domain stays
+      # runnable and the "static over-flags real hardened code" figure is reproducible.
+      - name: Dependency negative-control static baseline + specificity
+        run: |
+          python -m agents.benchmark_runner --deps --no-claude
+          python -m agents.specificity results_deps.json
+
       - name: Static benchmark smoke test (free, no model)
         run: python -m agents.benchmark_runner --real --no-claude

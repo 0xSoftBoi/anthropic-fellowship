@@ -1,0 +1,12 @@
+{
+  "key": "circle_cctp_v2_tokenmessengerv2",
+  "protocol": "Circle CCTP v2",
+  "contract_name": "TokenMessengerV2",
+  "address": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+  "chain": "base",
+  "category": "bridge",
+  "tier": "clean",
+  "memorization_exposure": "low",
+  "exploit_history": "no production CCTP V1/V2 contract exploit (a 2024 Noble/Cosmos handler bug was found & fixed, no funds lost)",
+  "explorer": "Blockscout(base)"
+}

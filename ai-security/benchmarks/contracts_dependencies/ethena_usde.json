@@ -1,0 +1,12 @@
+{
+  "key": "ethena_usde",
+  "protocol": "Ethena",
+  "contract_name": "USDe",
+  "address": "0x4c9EDD5852cd905f086C759E8383e09bff1E68B3",
+  "chain": "ethereum",
+  "category": "stablecoin_token",
+  "tier": "caveat",
+  "memorization_exposure": "medium",
+  "exploit_history": "no contract exploit \u2014 but USDe depegged to ~$0.65 on Binance (Oct 2025); that was exchange-side price manipulation, on-chain redemptions held at $1",
+  "explorer": "Blockscout(ethereum)"
+}

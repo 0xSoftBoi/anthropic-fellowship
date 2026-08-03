@@ -10,6 +10,7 @@
 - **[LEAKAGE_AUDIT.md](LEAKAGE_AUDIT.md)** — prompt leakage: 13/24 prompts described the bug (measured, fixed)
 - **[JUDGE_VALIDITY.md](JUDGE_VALIDITY.md)** — grader-dependence: the headline moves 14.5 F1 points (measured)
 - **[LIVE_DATASET.md](LIVE_DATASET.md)** — negative controls: first-party unexploited contracts, measuring specificity (the exploit set can't)
+- **[DEPENDENCY_DATASET.md](DEPENDENCY_DATASET.md)** — the unhacked, in-use external contracts Suwappu depends on: mined, exploit-history-verified, prioritized for a negative-control run
 - **[MATCHED_PAIRS.md](MATCHED_PAIRS.md)** — memorization-free positives: pre-audit contracts, labels grounded in the git fix diffs
 - **[CONTAMINATION.md](CONTAMINATION.md)** — the memorization confound and the pre-registered control experiment (open)
 

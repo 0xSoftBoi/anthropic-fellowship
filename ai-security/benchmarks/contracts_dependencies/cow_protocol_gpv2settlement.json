@@ -1,0 +1,12 @@
+{
+  "key": "cow_protocol_gpv2settlement",
+  "protocol": "CoW Protocol",
+  "contract_name": "GPv2Settlement",
+  "address": "0x9008D19f58AAbD9eD0D60971565AA8510560ab41",
+  "chain": "ethereum",
+  "category": "swap_aggregator",
+  "tier": "caveat",
+  "memorization_exposure": "high",
+  "exploit_history": "core settlement logic not broken \u2014 but a Feb 2023 incident let a malicious solver drain ~$166k of funds temporarily held in the settlement contract",
+  "explorer": "Blockscout(ethereum)"
+}

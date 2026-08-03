@@ -1,0 +1,12 @@
+{
+  "key": "erc_4337_entrypoint_v0_7",
+  "protocol": "ERC-4337",
+  "contract_name": "EntryPoint v0.7",
+  "address": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+  "chain": "base",
+  "category": "account_abstraction",
+  "tier": "anchor",
+  "memorization_exposure": "high",
+  "exploit_history": "canonical audited singleton, no core exploit (2026 'ERC-4337 mistakes' writeups target account IMPLEMENTATIONS, not the EntryPoint)",
+  "explorer": "Blockscout(base)"
+}

@@ -1,0 +1,12 @@
+{
+  "key": "uniswap_v3_nonfungiblepositionmanager",
+  "protocol": "Uniswap v3",
+  "contract_name": "NonfungiblePositionManager (Base)",
+  "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1",
+  "chain": "base",
+  "category": "dex_amm",
+  "tier": "anchor",
+  "memorization_exposure": "high",
+  "exploit_history": "Uniswap v3 core never hacked",
+  "explorer": "Blockscout(base)"
+}
