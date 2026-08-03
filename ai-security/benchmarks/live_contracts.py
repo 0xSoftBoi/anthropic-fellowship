@@ -89,38 +89,27 @@ FIRST_PARTY = {
 
 # ── External dependencies (contracts Suwappu CALLS but does not own) ─────────
 #
-# Catalogued for completeness — "all the contracts it's reliant on" — but source is NOT
-# committed here (many are large and some, like Uniswap v3, carry heavy training-data
-# exposure that dilutes the memorization-control value). They are fetchable via
-# fetch_contracts.py for a future negative-control expansion. Registry only, à la
-# bridge_bench.py's off-chain-hack registry: documented, not yet runnable.
+# The full, tiered, exploit-history-checked catalogue now lives in
+# benchmarks/dependency_registry.py — built from the suwappubot docs+code, with the
+# "unhacked only" filter applied and 2025-2026 exploit history RE-VERIFIED (which moved
+# Across and Coinbase SpendPermissionManager out of the clean set). This list is the
+# backward-compatible view: the EVM, concrete-address, unhacked *run-ready* targets
+# (clean + anchor + caveat tiers), mapped to the legacy shape. Source is not committed here
+# — see docs/DEPENDENCY_DATASET.md; fetch via keyless Blockscout/Sourcify.
+from benchmarks.dependency_registry import run_ready_targets as _run_ready_targets
+
 EXTERNAL_DEPENDENCIES = [
-    {"name": "superfluid_gda_forwarder", "chain": "base", "address": "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
-     "role": "Superfluid GDAv1Forwarder (real-yield streaming to stakers)", "memorization_exposure": "low"},
-    {"name": "superfluid_host", "chain": "base", "address": "0x4C073B3baB862572842bFB01F7B1FA40B61D1A06",
-     "role": "Superfluid Host", "memorization_exposure": "low"},
-    {"name": "usdcx_super_token", "chain": "base", "address": "0xD04383398dD2426297da660F9CCA3d439AF9ce1b",
-     "role": "USDCx Superfluid super token (wrapped USDC)", "memorization_exposure": "low"},
-    # NB: the Suwappu repo's README truncates this to 41 hex chars; the correct Base
-    # NonfungiblePositionManager address ends ...Ed34f4 (42 chars). Corrected here.
-    {"name": "uniswap_v3_position_manager", "chain": "base", "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f4",
-     "role": "Uniswap v3 NonfungiblePositionManager (bonds accept LP NFTs)", "memorization_exposure": "high"},
-    {"name": "uniswap_v3_factory", "chain": "base", "address": "0x33128a8fC17869897dcE68Ed026d694621f6FDfD",
-     "role": "Uniswap v3 Factory", "memorization_exposure": "high"},
-    {"name": "usdc_base", "chain": "base", "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-     "role": "USDC (Base) — settlement/underlying", "memorization_exposure": "high"},
-    {"name": "polymarket_ctf_exchange", "chain": "polygon", "address": "0xE111180000d2663C0091e4f400237545B87B996B",
-     "role": "Polymarket CTF exchange (prediction-market orders, EIP-712)", "memorization_exposure": "medium"},
-    {"name": "coinbase_spend_permission_manager", "chain": "base", "address": "0xf85210B21cC50302F477BA56686d2019dC9b67Ad",
-     "role": "Coinbase SpendPermissionManager (delegated spend for agent wallets)", "memorization_exposure": "medium"},
-    # Swap execution is routed through third-party aggregators the SDK quotes against.
-    # Their router contracts are the deepest external dependency; several (KyberSwap, LiFi)
-    # DO have exploit history and already appear in the bridge/DEX domains — a reminder that
-    # "depended-on" and "unexploited" are not the same set.
-    {"name": "oneinch_aggregation_router_v6", "chain": "multi", "address": "0x111111125421cA6dc452d289314280a0f8842A65",
-     "role": "1inch AggregationRouterV6 (swap execution)", "memorization_exposure": "high"},
-    {"name": "cowswap_gpv2_settlement", "chain": "multi", "address": "0x9008D19f58AAbD9eD0D60971565AA8510560ab41",
-     "role": "CoW Protocol GPv2Settlement (batch-auction swap settlement)", "memorization_exposure": "medium"},
+    {
+        "name": e["protocol"],
+        "contract_name": e["contract_name"],
+        "chain": e["chain"],
+        "address": e["address"],
+        "role": e["uses"],
+        "category": e["category"],
+        "tier": e["tier"],
+        "memorization_exposure": e["memorization_exposure"],
+    }
+    for e in _run_ready_targets()
 ]
 
 
