@@ -1,0 +1,240 @@
+{
+  "deps_static": {
+    "n_contracts": 12,
+    "clean": 2,
+    "specificity": 0.16666666666666666,
+    "mean_findings_per_contract": 13.25,
+    "total_findings": 159,
+    "per_contract": [
+      {
+        "contract": "morpho_morphochainlinkoraclev2",
+        "findings": 0,
+        "flagged": []
+      },
+      {
+        "contract": "circle_cctp_v2_tokenmessengerv2",
+        "findings": 11,
+        "flagged": [
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "unprotected_admin_function",
+          "unprotected_upgrade"
+        ]
+      },
+      {
+        "contract": "gnosis_polymarket_conditionaltokens",
+        "findings": 0,
+        "flagged": []
+      },
+      {
+        "contract": "polymarket_negriskadapter",
+        "findings": 11,
+        "flagged": [
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function"
+        ]
+      },
+      {
+        "contract": "aave_v3_pool",
+        "findings": 12,
+        "flagged": [
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "missing_signature_verification",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_upgrade"
+        ]
+      },
+      {
+        "contract": "uniswap_v3_nonfungiblepositionmanager",
+        "findings": 20,
+        "flagged": [
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "missing_signature_verification",
+          "missing_signature_verification",
+          "unused_signature_parameter",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "duplicate_signature_acceptance",
+          "no_rate_limiting",
+          "unprotected_upgrade"
+        ]
+      },
+      {
+        "contract": "circle_usdc",
+        "findings": 3,
+        "flagged": [
+          "untrusted_external_call",
+          "unprotected_admin_function",
+          "unprotected_upgrade"
+        ]
+      },
+      {
+        "contract": "erc_4337_entrypoint_v0_7",
+        "findings": 13,
+        "flagged": [
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "missing_signature_verification",
+          "missing_signature_verification",
+          "missing_signature_verification",
+          "missing_signature_verification",
+          "unused_signature_parameter",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "no_rate_limiting",
+          "unprotected_upgrade"
+        ]
+      },
+      {
+        "contract": "ethena_usde",
+        "findings": 9,
+        "flagged": [
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "duplicate_signature_acceptance"
+        ]
+      },
+      {
+        "contract": "metamorpho_steakhouse_usdc_vault",
+        "findings": 35,
+        "flagged": [
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "missing_signature_verification",
+          "missing_signature_verification",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function"
+        ]
+      },
+      {
+        "contract": "superfluid_gdav1forwarder",
+        "findings": 42,
+        "flagged": [
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "untrusted_external_call",
+          "missing_signature_verification",
+          "missing_signature_verification",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_initializer",
+          "reinitializable",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_admin_function",
+          "unprotected_upgrade"
+        ]
+      },
+      {
+        "contract": "cow_protocol_gpv2settlement",
+        "findings": 3,
+        "flagged": [
+          "unprotected_admin_function",
+          "duplicate_signature_acceptance",
+          "unprotected_upgrade"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "key": "circle_usdc",
+  "protocol": "Circle",
+  "contract_name": "USDC (Base)",
+  "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  "chain": "base",
+  "category": "stablecoin_token",
+  "tier": "anchor",
+  "memorization_exposure": "high",
+  "exploit_history": "no USDC contract exploit",
+  "explorer": "Blockscout(base)"
+}

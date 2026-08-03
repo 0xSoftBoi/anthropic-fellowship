@@ -22,10 +22,12 @@ from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
 from benchmarks.live_contracts import load_live_contracts
 from benchmarks.matched_contracts import load_matched_contracts
+from benchmarks.dependency_registry import load_dependency_contracts
 
 CONTRACTS_DIR = Path(__file__).parent / "contracts"
 LIVE_DIR = Path(__file__).parent / "contracts_live"
 MATCHED_DIR = Path(__file__).parent / "contracts_matched"
+DEPS_DIR = Path(__file__).parent / "contracts_dependencies"
 # Known empty-source placeholders (verified-only-on-Etherscan or off-chain hacks).
 KNOWN_PLACEHOLDERS = {
     "poly_network_eth_cross_chain_manager", "ronin_bridge_validator",
@@ -128,6 +130,23 @@ def validate():
             if v["type"] not in equiv:
                 warnings.append(f"[matched] {name}: vuln '{v['type']}' has no TYPE_EQUIVALENCES entry (exact-match only)")
     stats["matched"] = {"contracts": len(matched), "with_source": m_with_source, "gt_vulns": m_gt}
+
+    # External-dependency negative controls — same invariants as `live` (0 gt vulns EXPECTED).
+    deps = load_dependency_contracts()
+    deps_with_source = 0
+    for c in deps:
+        name = c["name"]
+        if not c["metadata"].get("negative_control"):
+            errors.append(f"[deps] {name}: not marked negative_control")
+        if c["ground_truth"]["vulnerabilities"]:
+            errors.append(f"[deps] {name}: negative control must have 0 ground-truth vulns")
+        if (c.get("source") or "").strip():
+            deps_with_source += 1
+        else:
+            errors.append(f"[deps] {name}: no committed source")
+        if not (DEPS_DIR / f"{name}.sol").exists():
+            errors.append(f"[deps] {name}: contracts_dependencies/{name}.sol missing (run fetch_dependencies)")
+    stats["deps"] = {"contracts": len(deps), "with_source": deps_with_source, "gt_vulns": 0}
 
     return errors, warnings, stats
 

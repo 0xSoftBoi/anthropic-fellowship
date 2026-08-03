@@ -1,0 +1,12 @@
+{
+  "key": "superfluid_gdav1forwarder",
+  "protocol": "Superfluid",
+  "contract_name": "GDAv1Forwarder",
+  "address": "0x6DA13Bde224A05a288748d857b9e7DDEffd1dE08",
+  "chain": "base",
+  "category": "streaming",
+  "tier": "caveat",
+  "memorization_exposure": "medium",
+  "exploit_history": "GDA forwarder path not exploited \u2014 but the Superfluid Host suffered a Feb 2022 ctx-spoofing exploit (~$13M, mostly recovered); Base Host instance is post-fix",
+  "explorer": "Blockscout(base)"
+}

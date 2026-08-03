@@ -47,7 +47,7 @@ travels with it).
 | 3 | clean | prediction | Gnosis / ConditionalTokens (CTF) | polygon | `0x4D97DCd97eC945f40cF65F87097ACe5EA0476045` | medium |
 | 4 | clean | prediction | Polymarket / NegRiskAdapter | polygon | `0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296` | medium |
 | 5 | anchor | lending | Aave v3 / Pool | base | `0xA238Dd80C259a72e81d7e4664a9801593F98d1c5` | high |
-| 6 | anchor | dex_amm | Uniswap v3 / NonfungiblePositionManager | base | `0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f4` | high |
+| 6 | anchor | dex_amm | Uniswap v3 / NonfungiblePositionManager | base | `0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1` | high |
 | 7 | anchor | token | Circle / USDC | base | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | high |
 | 8 | anchor | account_abstraction | ERC-4337 / EntryPoint v0.7 | all-evm | `0x0000000071727De22E5E9d8BAf0edAc6f37da032` | high |
 | 9 | caveat | token | Ethena / USDe | ethereum | `0x4c9EDD5852cd905f086C759E8383e09bff1E68B3` | medium |
@@ -107,12 +107,37 @@ Surfaced while mining — worth fixing in suwappubot:
   mislabeled (claimed 6dp/Polygon; DAI is 18dp/Ethereum). Real Polymarket collateral is USDC.e.
 - Python config **DAI** doesn't match canonical DAI `0x6B17…271d0F`.
 - Foundry `DeployTestnet.s.sol` hardcodes **stale Superfluid** values vs `DEPLOYMENTS.md`.
+- **Uniswap v3 NPM (Base)** — the README truncates the address to 41 chars; the correct verified
+  contract ends `…Ed34f1`, while the naive 42nd-char fill `…Ed34f4` is an unrelated **EOA**
+  (found when the keyless fetch missed it; confirmed on Blockscout).
 
-## Next steps (still key-free)
+## Run-ready: source fetched, wired, tested
 
-1. **Fetch verified source** for the 12 run-ready targets via keyless Blockscout/Sourcify
-   (`fetch_contracts.py`) into a `contracts_dependencies/` dir, provenance-only headers (same
-   anti-leakage discipline as the negative controls — no "this is clean" signal in the prompt).
-2. **Re-verify exploit history** immediately before the run (the Across lesson).
-3. Only then spend the API budget — scored by `agents/specificity.py`, adjudicated by the
-   source-aware judge, exactly like the first-party negative controls.
+All 12 targets are **fetched and committed** (verified source, keyless, provenance-only headers):
+
+```bash
+python -m benchmarks.fetch_dependencies            # keyless Blockscout v2 + Sourcify fallback
+python -m agents.benchmark_runner --deps --no-claude   # static baseline
+python -m agents.specificity results_deps.json     # score specificity
+```
+
+- Source lives in `benchmarks/contracts_dependencies/*.sol`, each with a **provenance-only**
+  header (protocol, contract, address, chain, explorer — no bug/audit/clean words; a test enforces
+  it). Bug/tier/exploit metadata lives in the loader, never the prompt.
+- The loader is `dependency_registry.load_dependency_contracts()`; the runner exposes `--deps`;
+  `validate_dataset` covers the domain (now 6 domains, 43 source-bearing contracts).
+- **Static baseline (`static_v2`, committed `results_deps.json`): specificity 17% (2/12 clean),
+  ~13 findings/contract.** That is the mirror image of its 0/16 recall on the matched positives:
+  the regex/heuristic analyzer both misses real bugs *and* over-flags real hardened code — useless
+  in both directions on real compositional Solidity, which is the whole point of the LLM comparison.
+  The interesting number is the **LLM's** specificity here (needs a key); the harness is ready.
+
+## Before the paid run
+
+1. **Re-verify exploit history** immediately before the run — "unexploited" decays (the Across
+   lesson: it was clean when this set was assembled and hacked days later).
+2. Spend the API budget — scored by `agents/specificity.py`, adjudicated by the source-aware judge
+   (`judge_ablation.py` source-visible arm), exactly like the first-party negative controls. A
+   flagged finding is a *screen*, not a verdict: some may be real bugs, not false positives.
+3. Weight results by `memorization_exposure`: the low-exposure controls (Morpho oracle, CCTP)
+   carry more negative-control signal than the high-exposure anchors (Aave, USDC, EntryPoint).

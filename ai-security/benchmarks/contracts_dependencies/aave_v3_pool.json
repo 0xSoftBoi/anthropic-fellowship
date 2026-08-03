@@ -1,0 +1,12 @@
+{
+  "key": "aave_v3_pool",
+  "protocol": "Aave v3",
+  "contract_name": "Pool (Base)",
+  "address": "0xA238Dd80C259a72e81d7e4664a9801593F98d1c5",
+  "chain": "base",
+  "category": "lending",
+  "tier": "anchor",
+  "memorization_exposure": "high",
+  "exploit_history": "Aave v3 CORE never hacked; 2026 incidents hit misconfigured FORKS (dTRINITY) and rsETH collateral via KelpDAO's LayerZero bridge, not Aave's contracts",
+  "explorer": "Blockscout(base)"
+}

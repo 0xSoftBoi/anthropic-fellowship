@@ -1,0 +1,12 @@
+{
+  "key": "metamorpho_steakhouse_usdc_vault",
+  "protocol": "MetaMorpho",
+  "contract_name": "Steakhouse USDC vault (ERC-4626)",
+  "address": "0xbeeF010f9cb27031ad51e3333f9aF9C6B1228183",
+  "chain": "base",
+  "category": "lending",
+  "tier": "caveat",
+  "memorization_exposure": "medium",
+  "exploit_history": "no contract exploit of THIS vault \u2014 but the MetaMorpho vault class saw an ~$18M market-driven loss (msY collapse, Jun 2026) and KelpDAO-exploit contagion; risk is collateral/curation, not a contract bug",
+  "explorer": "Blockscout(base)"
+}

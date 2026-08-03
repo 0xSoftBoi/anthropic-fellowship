@@ -5,13 +5,19 @@ was built to satisfy, so a future edit can't silently regress them.
 """
 import re
 
+from pathlib import Path
+
 from benchmarks.dependency_registry import (
     DEPENDENCIES,
     by_tier,
     run_ready_targets,
     categories,
+    load_dependency_contracts,
+    slug,
     REPO_DATA_QUALITY_NOTES,
 )
+
+_DEPS_DIR = Path(__file__).parent.parent / "benchmarks" / "contracts_dependencies"
 
 _EVM = re.compile(r"^0x[0-9a-fA-F]{40}$")
 _FABRICATED_POLYMARKET_CTF = "0xE111180000d2663C0091e4f400237545B87B996B"
@@ -79,3 +85,40 @@ def test_run_ready_addresses_are_unique():
 
 def test_data_quality_notes_recorded():
     assert len(REPO_DATA_QUALITY_NOTES) >= 3
+
+
+# ── fetched-source negative-control domain ───────────────────────────────────
+
+def test_dependency_contracts_load_as_negative_controls():
+    ds = load_dependency_contracts()
+    # Source is committed, so all run-ready targets should load.
+    assert len(ds) >= 10
+    for c in ds:
+        assert (c.get("source") or "").strip(), f"{c['name']} has no source"
+        assert c["ground_truth"]["vulnerabilities"] == [], "negative control must have empty ground truth"
+        assert c["metadata"]["negative_control"] is True
+        assert c["metadata"]["in_training_data_as_incident"] is False
+
+
+# Words in the AUTHOR-INJECTED header that would leak the answer for a negative control
+# ("nothing to find here"). Upstream NatSpec in the contract body is exempt (a human auditor
+# sees it too) — we only scan the provenance header we prepend, before the first source marker.
+_HEADER_LEAK_TOKENS = ("clean", "audit", "safe", "unexploited", "hardened",
+                       "negative control", "no bug", "vulnerab", "exploit")
+
+
+def test_committed_dependency_headers_do_not_leak_the_answer():
+    sols = list(_DEPS_DIR.glob("*.sol"))
+    assert sols, "no fetched dependency sources found (run benchmarks.fetch_dependencies)"
+    for sol in sols:
+        text = sol.read_text()
+        header = text.split("// =====", 1)[0].lower()   # our provenance header only
+        for tok in _HEADER_LEAK_TOKENS:
+            assert tok not in header, f"{sol.name} header leaks '{tok}': {header!r}"
+
+
+def test_fetched_files_match_registry_slugs():
+    keys = {slug(e["protocol"], e["contract_name"]) for e in run_ready_targets()}
+    on_disk = {p.stem for p in _DEPS_DIR.glob("*.sol")}
+    missing = keys - on_disk
+    assert not missing, f"registry targets with no fetched source: {missing}"

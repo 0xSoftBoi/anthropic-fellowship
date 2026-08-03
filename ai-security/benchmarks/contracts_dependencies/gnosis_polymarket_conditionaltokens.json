@@ -1,0 +1,12 @@
+{
+  "key": "gnosis_polymarket_conditionaltokens",
+  "protocol": "Gnosis / Polymarket",
+  "contract_name": "ConditionalTokens (CTF)",
+  "address": "0x4D97DCd97eC945f40cF65F87097ACe5EA0476045",
+  "chain": "polygon",
+  "category": "prediction_market",
+  "tier": "clean",
+  "memorization_exposure": "medium",
+  "exploit_history": "no contract hack (2019-era Gnosis CTF; Polymarket's 2025-26 incidents were a leaked key, a frontend supply-chain attack, and an auth bug \u2014 not the CTF contract)",
+  "explorer": "Blockscout(polygon)"
+}

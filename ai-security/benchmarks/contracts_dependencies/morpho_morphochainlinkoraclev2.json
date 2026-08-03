@@ -1,0 +1,12 @@
+{
+  "key": "morpho_morphochainlinkoraclev2",
+  "protocol": "Morpho",
+  "contract_name": "MorphoChainlinkOracleV2",
+  "address": "0x663BECd10daE6C4A3Dcd89F1d76c1174199639B9",
+  "chain": "base",
+  "category": "oracle",
+  "tier": "clean",
+  "memorization_exposure": "low",
+  "exploit_history": "no known contract exploit (Morpho oracle wrappers); Morpho Blue core has withstood audits",
+  "explorer": "Blockscout(base)"
+}

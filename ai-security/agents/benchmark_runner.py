@@ -37,6 +37,7 @@ from benchmarks.defi_contracts_real import load_defi_contracts
 from benchmarks.lending_contracts_real import load_lending_contracts
 from benchmarks.live_contracts import load_live_contracts
 from benchmarks.matched_contracts import load_matched_contracts
+from benchmarks.dependency_registry import load_dependency_contracts
 from benchmarks.sanitize import LEVELS as SANITIZE_LEVELS, sanitize
 
 
@@ -657,6 +658,14 @@ if __name__ == "__main__":
              "positives, the buggy counterpart of --live. Scored by recall/F1.",
     )
     parser.add_argument(
+        "--deps",
+        action="store_true",
+        help="Run against the external-dependency negative controls "
+             "(benchmarks/dependency_registry.py): the unhacked, in-use contracts Suwappu depends "
+             "on, fetched via benchmarks/fetch_dependencies.py. Score with agents/specificity.py, "
+             "not F1.",
+    )
+    parser.add_argument(
         "--compare",
         action="store_true",
         help="Compare synthetic vs real contract results",
@@ -694,7 +703,7 @@ if __name__ == "__main__":
 
     # Determine which dataset(s) to run
     run_synthetic = (not args.real and not args.defi and not args.lending
-                     and not args.live and not args.matched) or args.compare
+                     and not args.live and not args.matched and not args.deps) or args.compare
     run_real = args.real or args.compare
 
     results_all = {}
@@ -859,6 +868,8 @@ if __name__ == "__main__":
         run_domain(load_live_contracts(), "live", args, results_all)
     if args.matched:
         run_domain(load_matched_contracts(), "matched", args, results_all)
+    if args.deps:
+        run_domain(load_dependency_contracts(), "deps", args, results_all)
 
     # ──────────────────────────────────────────────────────────────────
     # Save results
@@ -898,14 +909,18 @@ if __name__ == "__main__":
         _k = os.environ.get("SC_SAMPLES", "3")
         _model_tag = (("__" + _RUN_MODEL.replace("/", "-")) if _RUN_MODEL != "claude-sonnet-4-6" else "") \
             + f"__sc{_k}"
-    if args.matched and not args.defi and not args.lending and not args.live and not args.real and not args.compare:
+    _single = lambda flag: flag and not (args.defi or args.lending or args.real or args.compare)
+    if _single(args.deps) and not args.live and not args.matched:
+        output_filename = f"results_deps{_model_tag}.json"
+    elif _single(args.matched) and not args.live and not args.deps:
         output_filename = f"results_matched{_model_tag}.json"
-    elif args.live and not args.defi and not args.lending and not args.matched and not args.real and not args.compare:
+    elif _single(args.live) and not args.matched and not args.deps:
         output_filename = f"results_live{_model_tag}.json"
-    elif (args.defi or args.lending or args.live or args.matched) and not args.real and not args.compare:
+    elif (args.defi or args.lending or args.live or args.matched or args.deps) and not args.real and not args.compare:
         _dom = "defi" if args.defi else ""
         _dom = (_dom + ("_lending" if args.lending else "")).strip("_") or "domain"
         _dom = (_dom + ("_live" if args.live else "")).strip("_")
+        _dom = (_dom + ("_deps" if args.deps else "")).strip("_")
         output_filename = f"results_{_dom}{_model_tag}.json"
     elif args.real and not args.compare:
         output_filename = f"results_real{_model_tag}.json"

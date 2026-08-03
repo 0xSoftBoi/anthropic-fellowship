@@ -36,7 +36,7 @@ def score_negative_controls(results: dict) -> dict:
     Looks at any `live_*` section (live_static, live_agentic, ...). For each contract, a
     finding count of 0 is a correct silence (true negative); >0 is flagged (screened FP).
     """
-    sections = {k: v for k, v in results.items() if k.startswith("live_")}
+    sections = {k: v for k, v in results.items() if k.startswith(("live_", "deps_"))}
     out = {}
     for sec, data in sections.items():
         pc = data.get("per_contract", {})
@@ -74,7 +74,7 @@ def main() -> int:
         return 1
     report = score_negative_controls(json.loads(path.read_text()))
     if not report:
-        print("no live_* section found — is this a --live results file?")
+        print("no negative-control section found — expected live_* or deps_* (a --live/--deps results file)")
         return 1
 
     for sec, r in report.items():

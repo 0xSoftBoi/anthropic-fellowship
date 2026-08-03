@@ -113,13 +113,13 @@ DEPENDENCIES = [
     },
     {
         "protocol": "Uniswap v3", "contract_name": "NonfungiblePositionManager (Base)",
-        "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f4", "chain": "base",
+        "address": "0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1", "chain": "base",
         "category": "dex_amm", "tier": "anchor",
         "uses": "LP-NFT position manager — the external dependency SuwppuBonds accepts LP NFTs from",
         "in_use_evidence": "contracts/SuwppuBonds.sol (positionManager.positions)",
         "exploit_history": "Uniswap v3 core never hacked",
         "memorization_exposure": "high",
-        "notes": "42-char address (repo README truncates to 41; corrected here and in live_contracts.py). Most-memorized dex_amm — recall baseline.",
+        "notes": "Correct Base NPM ends ...Ed34f1 (Blockscout: 'Uniswap V3: Nonfungible Position Manager', verified). The repo README truncates it to 41 chars; the naive fill ...Ed34f4 is an unrelated EOA. Most-memorized dex_amm — recall baseline.",
     },
     {
         "protocol": "Circle", "contract_name": "USDC (Base)",
@@ -287,7 +287,24 @@ REPO_DATA_QUALITY_NOTES = [
     "0x6B175474E89094C44Da98b954EedeAC495271d0F used in api-ts TokenService.ts.",
     "Foundry DeployTestnet.s.sol hardcodes stale Superfluid values differing from "
     "DEPLOYMENTS.md; treat GDAv1Forwarder 0x6DA13Bde... as canonical.",
+    "Uniswap v3 NonfungiblePositionManager (Base): the repo README truncates the address to 41 "
+    "hex chars. The correct verified contract ends ...Ed34f1 "
+    "(0x03a520b32C04BF3bEEf7BEb72E919cf822Ed34f1); the naive 42nd-char fill ...Ed34f4 resolves to "
+    "an unrelated EOA (is_contract=false). Confirmed on Blockscout Base.",
 ]
+
+
+import re
+from pathlib import Path
+
+_DEPS_DIR = Path(__file__).parent / "contracts_dependencies"
+
+
+def slug(protocol: str, contract_name: str) -> str:
+    """Stable filename key for a dependency contract (shared by the fetcher and the loader)."""
+    base = re.sub(r"\(.*?\)", "", f"{protocol}_{contract_name}".lower())   # drop parentheticals
+    base = re.sub(r"[^a-z0-9]+", "_", base).strip("_")
+    return re.sub(r"_+", "_", base)
 
 
 def _evm(entry) -> bool:
@@ -310,6 +327,41 @@ def categories() -> dict:
     for e in run_ready_targets():
         out.setdefault(e["category"], []).append(e["protocol"] + " / " + e["contract_name"])
     return out
+
+
+def load_dependency_contracts() -> list:
+    """External-dependency negative controls with fetched verified source.
+
+    Canonical benchmark format (same shape as the bridge/live/matched loaders), so the runner
+    scores it through one code path. `ground_truth.vulnerabilities` is empty and
+    `metadata.negative_control` is True — score with agents/specificity.py, not F1. Only the
+    run-ready targets whose source was fetched to contracts_dependencies/ are returned; run
+    `python -m benchmarks.fetch_dependencies` (keyless) to populate it.
+    """
+    dataset = []
+    for e in run_ready_targets():
+        sol = _DEPS_DIR / f"{slug(e['protocol'], e['contract_name'])}.sol"
+        if not (sol.exists() and sol.read_text().strip()):
+            continue
+        dataset.append({
+            "name": slug(e["protocol"], e["contract_name"]),
+            "source": sol.read_text(),
+            "ground_truth": {"vulnerabilities": [], "overall_risk": "negative_control"},
+            "metadata": {
+                "negative_control": True,
+                "first_party": False,
+                "in_training_data_as_incident": False,
+                "protocol": e["protocol"],
+                "contract_name": e["contract_name"],
+                "address": e["address"],
+                "chain": e["chain"],
+                "category": e["category"],
+                "tier": e["tier"],
+                "memorization_exposure": e["memorization_exposure"],
+                "exploit_history": e["exploit_history"],
+            },
+        })
+    return dataset
 
 
 if __name__ == "__main__":
