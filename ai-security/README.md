@@ -3,9 +3,11 @@
 > **What do LLM vulnerability benchmarks actually measure?**
 
 I built a detection benchmark, scored Opus 4.8 at 35% semantic F1 — then found that **13 of
-24 prompts (54%) contained a comment describing the bug**, and 2 stated the ground-truth
-label verbatim. The benchmark was partly scoring the model's ability to read a comment.
+24 prompts (54%) contained a comment describing the bug**, and 4 contained a ground-truth
+label string. The benchmark was partly scoring the model's ability to read a comment.
 
+**[→ The paper](papers/measuring-detection-not-recognition.md)** — the whole argument (four
+validity confounds + the matched-pair construction), positioned against the literature.
 **[→ The leakage audit](docs/LEAKAGE_AUDIT.md)** (measured, no API key: `python -m benchmarks.sanitize`)
 
 The fix is shipped and regression-tested; re-measuring the effect is the open experiment:
@@ -446,6 +448,7 @@ python -m agents.report                 # regenerate the results tables from com
 
 ## Documentation
 
+- **[papers/measuring-detection-not-recognition.md](papers/measuring-detection-not-recognition.md)** — the paper: four validity confounds + matched pairs, with related work and honest positioning
 - **[RESEARCH.md](docs/RESEARCH.md)** — full methodology and phase-by-phase findings (incl. Phase 7)
 - **[MULTI_MODEL.md](docs/MULTI_MODEL.md)** — provider-agnostic models, local/self-host deployment, the bake-off
 - **[OPTIMIZATION.md](docs/OPTIMIZATION.md)** — prompt caching, concurrency, cascade, self-consistency, large-context
