@@ -1,0 +1,102 @@
+name: BRIDGE-bench remeasurement
+
+on:
+  workflow_dispatch:
+    inputs:
+      condition:
+        description: "Experiment condition. 'all' is preferred for a same-checkout paired run."
+        required: true
+        default: preflight
+        type: choice
+        options:
+          - preflight
+          - raw
+          - stripped
+          - anon
+          - all
+      max_estimated_cost_usd:
+        description: "Estimated-list-cost guard for paid inference. 0 is safe/preflight-only."
+        required: true
+        default: "0"
+        type: string
+      confirm_paid:
+        description: "I understand a paid condition can create Anthropic API charges up to/around the estimator guard; provider billing limits remain authoritative."
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-security
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Zero-cost experiment preflight
+        run: |
+          python -m benchmarks.sanitize
+          python -m agents.remeasure --preflight
+          python -m agents.remeasure --estimate
+          python -m pytest tests/test_sanitize.py tests/test_remeasure.py -q
+      - name: Upload preflight report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-remeasure-preflight-${{ github.sha }}
+          path: ai-security/benchmarks/remeasure_preflight.json
+
+  paid:
+    needs: preflight
+    if: ${{ inputs.condition != 'preflight' && inputs.confirm_paid == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: ai-security
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      BENCH_MODEL: opus
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require credential and positive explicit cap
+        env:
+          CONDITION: ${{ inputs.condition }}
+          MAX_COST: ${{ inputs.max_estimated_cost_usd }}
+        run: |
+          set -euo pipefail
+          test -n "${ANTHROPIC_API_KEY:-}" || { echo "ANTHROPIC_API_KEY repository secret is not configured"; exit 2; }
+          python - <<'PY'
+          import os
+          cap = float(os.environ["MAX_COST"])
+          assert cap > 0, "max_estimated_cost_usd must be > 0 for a paid run"
+          print(f"paid condition={os.environ['CONDITION']} with explicit estimated-cost guard ${cap:.2f}")
+          PY
+      - name: Install benchmark runtime
+        run: pip install -r requirements.txt
+      - name: Re-run zero-cost gates on paid worker
+        run: |
+          python -m benchmarks.sanitize
+          python -m agents.remeasure --preflight
+      - name: Run locked experiment
+        env:
+          CONDITION: ${{ inputs.condition }}
+          MAX_COST: ${{ inputs.max_estimated_cost_usd }}
+        run: python -m agents.remeasure --run "$CONDITION" --max-estimated-cost-usd "$MAX_COST"
+      - name: Upload immutable raw experiment artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-remeasure-${{ inputs.condition }}-${{ github.sha }}
+          path: |
+            ai-security/results_remeasure/*.json
+            ai-security/results_remeasure/*.csv
+          if-no-files-found: warn
