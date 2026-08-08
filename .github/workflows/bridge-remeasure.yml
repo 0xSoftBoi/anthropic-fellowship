@@ -54,7 +54,7 @@ jobs:
           python -m benchmarks.sanitize
           python -m agents.remeasure --preflight
           python -m agents.remeasure --estimate
-          python -m pytest tests/test_sanitize.py tests/test_remeasure.py -q
+          python -m pytest tests/test_sanitize.py tests/test_remeasure.py tests/test_remeasure_report.py -q
       - name: Upload preflight report
         uses: actions/upload-artifact@v4
         with:
@@ -95,7 +95,19 @@ jobs:
           python -m agents.remeasure --preflight
       - name: Run locked experiment
         run: python -m agents.remeasure --run "$RUN_CONDITION" --max-estimated-cost-usd "$RUN_MAX_COST"
-      - name: Upload immutable raw experiment artifacts
+      - name: Semantic rescore all three conditions
+        if: ${{ env.RUN_CONDITION == 'all' }}
+        run: |
+          set -euo pipefail
+          for level in raw stripped anon; do
+            files=(results_remeasure/*__${level}.json)
+            test -f "${files[0]}" || { echo "missing ${level} artifact"; exit 3; }
+            python -m agents.semantic_rescorer "${files[0]}"
+          done
+      - name: Build paired bootstrap report
+        if: ${{ env.RUN_CONDITION == 'all' }}
+        run: python -m agents.remeasure_report --dir results_remeasure
+      - name: Upload immutable experiment + analysis artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
