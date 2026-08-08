@@ -47,6 +47,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install preflight test runtime
+        run: python -m pip install pytest
       - name: Zero-cost experiment preflight
         run: |
           python -m benchmarks.sanitize
