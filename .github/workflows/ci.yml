@@ -29,6 +29,14 @@ jobs:
       - name: Prompt-leakage audit + sanitizer safety invariant
         run: python -m benchmarks.sanitize
 
+      # Locks the paid contamination experiment to the exact published 16+5+3 population,
+      # verifies stripped/anon invariants and leakage removal, and computes a zero-cost
+      # planning estimate using versioned list pricing. No credential is available here.
+      - name: Re-measurement population + sanitizer preflight
+        run: |
+          python -m agents.remeasure --preflight
+          python -m agents.remeasure --estimate
+
       # Reproduces the committed semantic F1 from the judge's own decisions (asserted
       # inside the module) and recomputes the gold-corrected figure + bootstrap CI.
       - name: Judge-validity analysis (reproduction gate)
