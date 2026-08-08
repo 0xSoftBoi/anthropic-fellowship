@@ -24,9 +24,17 @@ on:
         required: true
         default: false
         type: boolean
+  push:
+    branches: [master]
+    paths:
+      - ".github/bridge-remeasure-run"
 
 permissions:
   contents: read
+
+env:
+  RUN_CONDITION: ${{ github.event_name == 'push' && 'all' || inputs.condition }}
+  RUN_MAX_COST: ${{ github.event_name == 'push' && '84' || inputs.max_estimated_cost_usd }}
 
 jobs:
   preflight:
@@ -53,7 +61,7 @@ jobs:
 
   paid:
     needs: preflight
-    if: ${{ inputs.condition != 'preflight' && inputs.confirm_paid == true }}
+    if: ${{ (github.event_name == 'push') || (inputs.condition != 'preflight' && inputs.confirm_paid == true) }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     defaults:
@@ -68,17 +76,14 @@ jobs:
         with:
           python-version: "3.12"
       - name: Require credential and positive explicit cap
-        env:
-          CONDITION: ${{ inputs.condition }}
-          MAX_COST: ${{ inputs.max_estimated_cost_usd }}
         run: |
           set -euo pipefail
           test -n "${ANTHROPIC_API_KEY:-}" || { echo "ANTHROPIC_API_KEY repository secret is not configured"; exit 2; }
           python - <<'PY'
           import os
-          cap = float(os.environ["MAX_COST"])
+          cap = float(os.environ["RUN_MAX_COST"])
           assert cap > 0, "max_estimated_cost_usd must be > 0 for a paid run"
-          print(f"paid condition={os.environ['CONDITION']} with explicit estimated-cost guard ${cap:.2f}")
+          print(f"paid condition={os.environ['RUN_CONDITION']} with explicit estimated-cost guard ${cap:.2f}")
           PY
       - name: Install benchmark runtime
         run: pip install -r requirements.txt
@@ -87,15 +92,12 @@ jobs:
           python -m benchmarks.sanitize
           python -m agents.remeasure --preflight
       - name: Run locked experiment
-        env:
-          CONDITION: ${{ inputs.condition }}
-          MAX_COST: ${{ inputs.max_estimated_cost_usd }}
-        run: python -m agents.remeasure --run "$CONDITION" --max-estimated-cost-usd "$MAX_COST"
+        run: python -m agents.remeasure --run "$RUN_CONDITION" --max-estimated-cost-usd "$RUN_MAX_COST"
       - name: Upload immutable raw experiment artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bridge-remeasure-${{ inputs.condition }}-${{ github.sha }}
+          name: bridge-remeasure-${{ env.RUN_CONDITION }}-${{ github.sha }}
           path: |
             ai-security/results_remeasure/*.json
             ai-security/results_remeasure/*.csv
