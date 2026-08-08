@@ -3,12 +3,17 @@
 This module exists because the contamination experiment has stricter requirements than
 an ordinary benchmark run:
 
-* the population must stay fixed to the 24 contracts in the committed Opus baseline;
+* the population must stay fixed to the 24 source-bearing contracts in the published Opus baseline;
 * raw / stripped / anon must differ only by sanitization and anonymized display name;
 * sanitizer invariants must pass before any paid model call;
 * result files are immutable artifacts, never silent overwrites of the historical baseline;
 * paid execution requires an explicit estimated-cost cap;
 * pricing is versioned in the run manifest instead of being buried in code comments.
+
+The historical bridge result JSON contains 20 rows, but four were empty-source placeholders
+and were not meaningful code-evaluation examples. They are explicitly excluded below so a
+future source fetch cannot silently change the experimental population from the published
+16 source-bearing bridge contracts to 20.
 
 The cost guard is an ESTIMATE, not a provider billing limit. It conservatively prices all
 reported input tokens at the base input rate and output tokens at the output rate, ignoring
@@ -34,8 +39,6 @@ import hashlib
 import json
 import os
 import platform
-import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -55,6 +58,16 @@ BASELINE_OTHER = ROOT / "results_defi_lending__claude-opus-4-8.json"
 EXPECTED = {"bridge": 16, "defi": 5, "lending": 3}
 LEVELS = ("raw", "stripped", "anon")
 
+# These rows exist in the historical bridge result but their committed Solidity source is
+# empty. Dataset integrity has always warned that their scores are not meaningful. Keep
+# them excluded even if source is fetched later: otherwise the paired population changes.
+HISTORICAL_EMPTY_BRIDGE_ROWS = {
+    "poly_network_eth_cross_chain_manager",
+    "ronin_bridge_validator",
+    "orbit_chain_multisig",
+    "lifi_protocol_diamond_march_2022",
+}
+
 # Anthropic global standard list price for Claude Opus 4.8, verified 2026-08-08.
 # Keep the source/date in every output manifest so later readers can re-price a run.
 DEFAULT_INPUT_USD_PER_M = 5.0
@@ -68,11 +81,18 @@ def _json(path: Path) -> dict:
 
 
 def _baseline_population() -> dict[str, list[str]]:
-    """Lock the experiment to the contracts that produced the published raw baseline."""
+    """Lock the experiment to the source-bearing contracts behind the published baseline."""
     bridge = _json(BASELINE_BRIDGE)
     other = _json(BASELINE_OTHER)
+    bridge_rows = list(bridge["real_agentic"]["per_contract"].keys())
+    missing_placeholders = HISTORICAL_EMPTY_BRIDGE_ROWS - set(bridge_rows)
+    if missing_placeholders:
+        raise RuntimeError(
+            "historical bridge result no longer contains documented empty placeholders: "
+            + ", ".join(sorted(missing_placeholders))
+        )
     out = {
-        "bridge": list(bridge["real_agentic"]["per_contract"].keys()),
+        "bridge": [n for n in bridge_rows if n not in HISTORICAL_EMPTY_BRIDGE_ROWS],
         "defi": list(other["defi_agentic"]["per_contract"].keys()),
         "lending": list(other["lending_agentic"]["per_contract"].keys()),
     }
@@ -127,6 +147,7 @@ def run_preflight(write_report: bool = True) -> dict:
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "population": {d: sum(i["domain"] == d for i in items) for d in EXPECTED},
+        "excluded_historical_empty_bridge_rows": sorted(HISTORICAL_EMPTY_BRIDGE_ROWS),
         "total": len(items),
         "levels": {},
         "failures": [],
@@ -287,6 +308,7 @@ def run_condition(level: str, max_cost: float, run_id: str, prior_spend: float =
             "started_at": datetime.now(timezone.utc).isoformat(),
             "python": platform.python_version(),
             "population": _baseline_population(),
+            "excluded_historical_empty_bridge_rows": sorted(HISTORICAL_EMPTY_BRIDGE_ROWS),
             "pricing": pricing,
             "max_estimated_cost_usd_all_conditions": max_cost,
             "prior_estimated_spend_usd": round(prior_spend, 4),
@@ -305,9 +327,6 @@ def run_condition(level: str, max_cost: float, run_id: str, prior_spend: float =
 
     spent = prior_spend
     condition_spend = 0.0
-    # Reserve at least $5 of estimated list cost before starting another contract. This
-    # is intentionally conservative relative to the historical sample, but still not a
-    # provider-side billing limit.
     reserve = max(5.0, plan["projected_one_condition_usd"] / len(items) * 2.0)
 
     for item in items:
@@ -325,7 +344,6 @@ def run_condition(level: str, max_cost: float, run_id: str, prior_spend: float =
         if problems:
             raise SystemExit(f"{level}/{item['name']} sanitizer invariant failed: {problems}")
 
-        # Identity is deliberately preserved for raw/stripped and neutralized only for anon.
         analysis_name = item["name"] if level != "anon" else f"contract_{item['ordinal']:02d}"
         print(f"[{level}] {item['ordinal']:02d}/24 {item['domain']}/{analysis_name}  spent≈${spent:.2f}")
         audit = run_agent(source, analysis_name, max_turns=8)
@@ -350,7 +368,7 @@ def run_condition(level: str, max_cost: float, run_id: str, prior_spend: float =
         result[f"{item['domain']}_agentic"]["per_contract"][item["name"]] = rec
         result["_run"]["estimated_list_cost_usd"] = round(condition_spend, 4)
         result["_run"]["cumulative_estimated_list_cost_usd"] = round(spent, 4)
-        out.write_text(json.dumps(result, indent=2) + "\n")  # checkpoint every contract
+        out.write_text(json.dumps(result, indent=2) + "\n")
 
     for domain in EXPECTED:
         section = result[f"{domain}_agentic"]
