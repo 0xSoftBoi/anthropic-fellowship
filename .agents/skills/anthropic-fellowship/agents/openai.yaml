@@ -1,0 +1,6 @@
+interface:
+  display_name: "Anthropic Fellowship"
+  short_description: "Repo-specific patterns and workflows for anthropic-fellowship"
+  default_prompt: "Use the anthropic-fellowship repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true

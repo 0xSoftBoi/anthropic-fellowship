@@ -1,0 +1,151 @@
+# Instincts generated from https://github.com/0xSoftBoi/anthropic-fellowship
+# Reviewed & rewritten against the actual codebase. The original auto-generated
+# set was JS-flavored and inaccurate (relative imports, camelCase functions,
+# __all__ exports, *.test.* files) — none of which this repo uses. These are
+# grounded in agents/llm.py, the analyzers, and the evaluation harness.
+# Version: 2.2
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+
+---
+id: anthropic-fellowship-model-routing
+trigger: "when writing code that calls an LLM / model API"
+confidence: 0.95
+domain: architecture
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Route Model Calls Through agents/llm.py
+
+## Action
+
+Call `llm.completion(...)` — the single provider-agnostic path. Never import an
+Anthropic/OpenAI SDK directly. Select the model with `BENCH_MODEL` (alias or full id).
+
+## Evidence
+
+- `agents/llm.py` defines `completion`, `MODELS`, `litellm_model`, `has_credentials`;
+  every analyzer imports it.
+
+---
+id: anthropic-fellowship-judge-comparability
+trigger: "when running or changing the evaluation / rescorer"
+confidence: 0.9
+domain: evaluation
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Keep the Judge on a Calibrated Anthropic Model
+
+## Action
+
+Leave `JUDGE_MODEL` on the fixed calibrated Anthropic default. Never set it to the
+model under test — that destroys cross-model F1 comparability.
+
+## Evidence
+
+- `semantic_rescorer.py` reads `JUDGE_MODEL` (default `claude-haiku-4-5-...`);
+  `validate_judge.py` calibrates it.
+
+---
+id: anthropic-fellowship-baseline-stamping
+trigger: "when writing benchmark result files"
+confidence: 0.85
+domain: architecture
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Stamp Results Per Model; Don't Clobber Baselines
+
+## Action
+
+Name result files with `model_tag()` so each model's output is separate. Do not
+overwrite the committed Sonnet/Opus baselines.
+
+## Evidence
+
+- `model_tag()` in `agents/llm.py` yields the bare model name for filenames.
+
+---
+id: anthropic-fellowship-imports
+trigger: "when importing project modules"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Imports
+
+## Action
+
+Use absolute, package-rooted imports (`from agents.llm import completion`,
+`from benchmarks.bridge_contracts_real import load_real_contracts`). No relative
+(`from ..`) imports.
+
+## Evidence
+
+- ~35 absolute `from agents` / `from benchmarks` imports; zero relative imports.
+
+---
+id: anthropic-fellowship-naming
+trigger: "when naming files, functions, classes, or constants"
+confidence: 0.9
+domain: code-style
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Naming (Python)
+
+## Action
+
+`snake_case` files and functions, `PascalCase` classes (`AgentAudit`,
+`CascadeAudit`, `StaticFinding`), `SCREAMING_SNAKE_CASE` constants
+(`MAX_SOURCE_CHARS`). Functions are snake_case — not camelCase.
+
+## Evidence
+
+- Verified across `agents/*.py`.
+
+---
+id: anthropic-fellowship-tests
+trigger: "when writing or running tests"
+confidence: 0.9
+domain: testing
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Tests
+
+## Action
+
+Put tests in `ai-security/tests/` and run with pytest: `python -m pytest tests/ -q`.
+Dataset integrity runs keyless: `python -m benchmarks.validate_dataset`.
+
+## Evidence
+
+- `tests/test_eval.py`; README and CI invoke pytest.
+
+---
+id: anthropic-fellowship-commit-format
+trigger: "when writing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis (verified)
+source_repo: 0xSoftBoi/anthropic-fellowship
+---
+
+# Commit Format
+
+## Action
+
+Concise, descriptive; a `type:` prefix (`feat:`, `docs:`, `fix:`) is common. Add a
+`Co-Authored-By:` trailer for agent commits.
+
+## Evidence
+
+- Recent history: `feat:`/`docs:` prefixed and freeform subjects, ~50–80 chars.

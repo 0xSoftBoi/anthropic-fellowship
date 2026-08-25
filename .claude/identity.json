@@ -1,0 +1,16 @@
+{
+  "version": "2.0",
+  "technicalLevel": "technical",
+  "preferredStyle": {
+    "verbosity": "detailed",
+    "codeComments": true,
+    "explanations": true
+  },
+  "domains": [
+    "python",
+    "solidity",
+    "ml-research"
+  ],
+  "suggestedBy": "ecc-tools-repo-analysis (reviewed & corrected)",
+  "createdAt": "2026-06-08T07:39:15.674Z"
+}
