@@ -1,85 +1,72 @@
 # Instincts generated from https://github.com/0xSoftBoi/anthropic-fellowship
-# Reviewed & corrected against the actual codebase (the auto-generated set was
-# JS-flavored and inaccurate: it claimed relative imports, camelCase functions,
-# __all__ exports, and *.test.* files — none of which this repo uses).
-# Version: 2.1
+# Reviewed & rewritten against the actual codebase. The original auto-generated
+# set was JS-flavored and inaccurate (relative imports, camelCase functions,
+# __all__ exports, *.test.* files) — none of which this repo uses. These are
+# grounded in agents/llm.py, the analyzers, and the evaluation harness.
+# Version: 2.2
 # NOTE: This file supplements (does not replace) any existing curated instincts.
 
 ---
-id: anthropic-fellowship-file-naming
-trigger: "when creating a new Python file"
-confidence: 0.9
-domain: code-style
+id: anthropic-fellowship-model-routing
+trigger: "when writing code that calls an LLM / model API"
+confidence: 0.95
+domain: architecture
 source: repo-analysis (verified)
 source_repo: 0xSoftBoi/anthropic-fellowship
 ---
 
-# File Naming
+# Route Model Calls Through agents/llm.py
 
 ## Action
 
-Name Python files in snake_case (e.g. `cascade_analyzer.py`).
+Call `llm.completion(...)` — the single provider-agnostic path. Never import an
+Anthropic/OpenAI SDK directly. Select the model with `BENCH_MODEL` (alias or full id).
 
 ## Evidence
 
-- Every module under `ai-security/agents/` and `benchmarks/` uses snake_case.
+- `agents/llm.py` defines `completion`, `MODELS`, `litellm_model`, `has_credentials`;
+  every analyzer imports it.
 
 ---
-id: anthropic-fellowship-function-naming
-trigger: "when defining a function"
+id: anthropic-fellowship-judge-comparability
+trigger: "when running or changing the evaluation / rescorer"
 confidence: 0.9
-domain: code-style
+domain: evaluation
 source: repo-analysis (verified)
 source_repo: 0xSoftBoi/anthropic-fellowship
 ---
 
-# Function Naming
+# Keep the Judge on a Calibrated Anthropic Model
 
 ## Action
 
-Use snake_case for functions (e.g. `run_agent`, `prepare_source_for_analysis`). This is Python — not camelCase.
+Leave `JUDGE_MODEL` on the fixed calibrated Anthropic default. Never set it to the
+model under test — that destroys cross-model F1 comparability.
 
 ## Evidence
 
-- Functions across `agents/*.py` are snake_case.
+- `semantic_rescorer.py` reads `JUDGE_MODEL` (default `claude-haiku-4-5-...`);
+  `validate_judge.py` calibrates it.
 
 ---
-id: anthropic-fellowship-class-naming
-trigger: "when defining a class"
-confidence: 0.9
-domain: code-style
+id: anthropic-fellowship-baseline-stamping
+trigger: "when writing benchmark result files"
+confidence: 0.85
+domain: architecture
 source: repo-analysis (verified)
 source_repo: 0xSoftBoi/anthropic-fellowship
 ---
 
-# Class Naming
+# Stamp Results Per Model; Don't Clobber Baselines
 
 ## Action
 
-Use PascalCase for classes (e.g. `AgentAudit`, `CascadeAudit`, `Vulnerability`).
+Name result files with `model_tag()` so each model's output is separate. Do not
+overwrite the committed Sonnet/Opus baselines.
 
 ## Evidence
 
-- Dataclasses in `agents/*.py` are PascalCase.
-
----
-id: anthropic-fellowship-constant-naming
-trigger: "when defining a module-level constant"
-confidence: 0.9
-domain: code-style
-source: repo-analysis (verified)
-source_repo: 0xSoftBoi/anthropic-fellowship
----
-
-# Constant Naming
-
-## Action
-
-Use SCREAMING_SNAKE_CASE for constants (e.g. `MAX_SOURCE_CHARS`, `BRIDGE_RISK_PATTERNS`).
-
-## Evidence
-
-- Module constants across the analyzers are SCREAMING_SNAKE_CASE.
+- `model_tag()` in `agents/llm.py` yields the bare model name for filenames.
 
 ---
 id: anthropic-fellowship-imports
@@ -94,30 +81,34 @@ source_repo: 0xSoftBoi/anthropic-fellowship
 
 ## Action
 
-Use absolute, package-rooted imports — `from agents.llm import completion`, `from benchmarks.bridge_contracts_real import load_real_contracts`. Do not use relative (`from ..`) imports.
+Use absolute, package-rooted imports (`from agents.llm import completion`,
+`from benchmarks.bridge_contracts_real import load_real_contracts`). No relative
+(`from ..`) imports.
 
 ## Evidence
 
-- ~35 absolute `from agents` / `from benchmarks` imports; zero relative `from ..` imports.
+- ~35 absolute `from agents` / `from benchmarks` imports; zero relative imports.
 
 ---
-id: anthropic-fellowship-model-access
-trigger: "when calling an LLM / model API"
-confidence: 0.85
-domain: architecture
+id: anthropic-fellowship-naming
+trigger: "when naming files, functions, classes, or constants"
+confidence: 0.9
+domain: code-style
 source: repo-analysis (verified)
 source_repo: 0xSoftBoi/anthropic-fellowship
 ---
 
-# Provider-agnostic Model Access
+# Naming (Python)
 
 ## Action
 
-Route every model call through `agents/llm.py` (`llm.completion(...)`, LiteLLM) and select the model with `BENCH_MODEL`. Never call a provider SDK directly.
+`snake_case` files and functions, `PascalCase` classes (`AgentAudit`,
+`CascadeAudit`, `StaticFinding`), `SCREAMING_SNAKE_CASE` constants
+(`MAX_SOURCE_CHARS`). Functions are snake_case — not camelCase.
 
 ## Evidence
 
-- `agents/llm.py` is the single completion path; all analyzers import it.
+- Verified across `agents/*.py`.
 
 ---
 id: anthropic-fellowship-tests
@@ -132,11 +123,12 @@ source_repo: 0xSoftBoi/anthropic-fellowship
 
 ## Action
 
-Put tests in `ai-security/tests/` and run them with pytest: `python -m pytest tests/ -q`.
+Put tests in `ai-security/tests/` and run with pytest: `python -m pytest tests/ -q`.
+Dataset integrity runs keyless: `python -m benchmarks.validate_dataset`.
 
 ## Evidence
 
-- `ai-security/tests/test_eval.py`; README and CI invoke `python -m pytest tests/ -q`.
+- `tests/test_eval.py`; README and CI invoke pytest.
 
 ---
 id: anthropic-fellowship-commit-format
@@ -151,8 +143,9 @@ source_repo: 0xSoftBoi/anthropic-fellowship
 
 ## Action
 
-Write a concise, descriptive message; a `type:` prefix (`docs:`, `feat:`, `fix:`) is common. Add a `Co-Authored-By:` trailer for agent commits.
+Concise, descriptive; a `type:` prefix (`feat:`, `docs:`, `fix:`) is common. Add a
+`Co-Authored-By:` trailer for agent commits.
 
 ## Evidence
 
-- Recent history mixes type-prefixed and freeform messages.
+- Recent history: `feat:`/`docs:` prefixed and freeform subjects, ~50–80 chars.
