@@ -57,6 +57,9 @@ PYTHONPATH=. python3 agents/agentic_analyzer.py --contract euler_finance
 
 2. Review findings (check against public audits or exploit post-mortems)
 
+   For optional Codex web search and a provenance checklist, see
+   [Researching exploit provenance](ai-security/docs/EXPLOIT_RESEARCH.md).
+
 3. For each finding with confidence ≥0.85:
    - Verify it's a real vulnerability (read audit or CVE)
    - Add to `benchmarks/defi_contracts_real.py`:
