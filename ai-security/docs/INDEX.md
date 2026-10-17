@@ -6,6 +6,7 @@
 - **[Measuring Detection, Not Recognition](../papers/measuring-detection-not-recognition.md)** — the paper: four validity confounds + the matched-pair construction, positioned against the literature (PrimeVul, SWE-Bench+, No Free Labels, ABC, David et al.)
 - **[RESEARCH.md](RESEARCH.md)** — Detailed research methodology, all charts, full results
 - **[MULTI_MODEL.md](MULTI_MODEL.md)** — Provider-agnostic models (Claude/DeepSeek/Kimi/local), the bake-off
+- **[EXPLOIT_RESEARCH.md](EXPLOIT_RESEARCH.md)** — Optional Codex web research with Parallel Search MCP: verify post-mortems and record ground-truth provenance
 - **[OPTIMIZATION.md](OPTIMIZATION.md)** — Prompt caching, concurrency, cascade, self-consistency, large-context
 - **[LEAKAGE_AUDIT.md](LEAKAGE_AUDIT.md)** — prompt leakage: 13/24 prompts described the bug (measured, fixed)
 - **[JUDGE_VALIDITY.md](JUDGE_VALIDITY.md)** — grader-dependence: the headline moves 14.5 F1 points (measured)
